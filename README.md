@@ -62,7 +62,8 @@ npm run dev
 - [Local Tunnel](https://theboroer.github.io/localtunnel-www/)
 
 5. Generate your Farcaster Manifest variables
-   Use this tool provided by Warpcast team
+
+- Follow these [instructions](https://miniapps.farcaster.xyz/docs/guides/publishing)
 - Visit [Manifest Tool](https://warpcast.com/~/developers/mini-apps/manifest)
 - Paste your tunnel domain
 

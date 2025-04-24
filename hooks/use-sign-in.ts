@@ -3,13 +3,9 @@ import { NeynarUser } from "@/lib/neynar";
 import { useAuthenticate, useMiniKit } from "@coinbase/onchainkit/minikit";
 import { useCallback, useEffect, useState } from "react";
 
-interface SignInResponse {
-  success: boolean;
-  user: NeynarUser;
-}
-
 export const useSignIn = ({ autoSignIn = false }: { autoSignIn?: boolean }) => {
   const { context } = useMiniKit();
+  // this method allows for Sign in with Farcaster (SIWF)
   const { signIn } = useAuthenticate();
   const [user, setUser] = useState<NeynarUser | null>(null);
   const [isSignedIn, setIsSignedIn] = useState(false);

@@ -18,7 +18,7 @@ export async function generateMetadata({
     version: "next",
     imageUrl: imageUrl.toString(),
     button: {
-      title: "Mini App Starter",
+      title: "Launch App",
       action: {
         type: "launch_frame",
         name: "Launch App",

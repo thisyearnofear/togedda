@@ -14,7 +14,7 @@ const frame = {
       name: "Mini-app Starter",
       url: appUrl,
       splashImageUrl: `${appUrl}/images/splash.png`,
-      splashBackgroundColor: "#f7f7f7",
+      splashBackgroundColor: "#ffffff",
     },
   },
 };

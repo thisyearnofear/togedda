@@ -1,11 +1,13 @@
 "use client";
 
 import { useSignIn } from "@/hooks/use-sign-in";
-import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 
 export default function Home() {
-  const { signIn, isLoading, isSignedIn, logout } = useSignIn();
+  const { signIn, isLoading, isSignedIn, user } = useSignIn({
+    autoSignIn: true,
+  });
   const [testResult, setTestResult] = useState<string>("");
 
   const testAuth = async () => {
@@ -30,7 +32,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-4">
+    <div className="bg-white text-black flex min-h-screen flex-col items-center justify-center p-4">
       <div className="text-center space-y-4">
         <h1 className="text-4xl font-bold">Welcome</h1>
         <p className="text-lg text-muted-foreground">
@@ -47,18 +49,28 @@ export default function Home() {
           </button>
         ) : (
           <div className="space-y-4">
+            {user && (
+              <div className="flex flex-col items-center space-y-2">
+                <Image
+                  src={user.pfp_url}
+                  alt="Profile"
+                  className="w-20 h-20 rounded-full"
+                  width={80}
+                  height={80}
+                />
+                <div className="text-center">
+                  <p className="font-semibold">{user.display_name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    @{user.username}
+                  </p>
+                </div>
+              </div>
+            )}
             <button
               onClick={testAuth}
               className="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transition-colors duration-200"
             >
               Test Authentication
-            </button>
-
-            <button
-              onClick={logout}
-              className="px-6 py-3 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 transition-colors duration-200 block w-full"
-            >
-              Sign Out
             </button>
 
             {testResult && (
@@ -69,9 +81,6 @@ export default function Home() {
           </div>
         )}
       </div>
-      <Link href="/presave" className="text-lg text-muted-foreground mt-4">
-        Go to Presave
-      </Link>
     </div>
   );
 }

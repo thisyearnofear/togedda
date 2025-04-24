@@ -1,16 +1,22 @@
 import { MESSAGE_EXPIRATION_TIME } from "@/lib/constants";
-import { sdk } from "@farcaster/frame-sdk";
-import { MiniKit } from "@worldcoin/minikit-js";
-import { useCallback, useState } from "react";
-import { ContextType, useMiniAppContext } from "./use-miniapp-context";
+import { NeynarUser } from "@/lib/neynar";
+import { useAuthenticate, useMiniKit } from "@coinbase/onchainkit/minikit";
+import { useCallback, useEffect, useState } from "react";
 
-export const useSignIn = () => {
-  const { type: contextType, context } = useMiniAppContext();
+interface SignInResponse {
+  success: boolean;
+  user: NeynarUser;
+}
+
+export const useSignIn = ({ autoSignIn = false }: { autoSignIn?: boolean }) => {
+  const { context } = useMiniKit();
+  const { signIn } = useAuthenticate();
+  const [user, setUser] = useState<NeynarUser | null>(null);
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const signIn = useCallback(async () => {
+  const handleSignIn = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -18,41 +24,21 @@ export const useSignIn = () => {
       if (!context) {
         throw new Error("No context found");
       }
-
-      if (contextType === ContextType.Farcaster && !context.user?.fid) {
-        throw new Error(
-          "No FID found. Please make sure you're logged into Warpcast."
-        );
-      }
       let referrerFid: number | null = null;
-      let result: { message: string; signature: string; address?: string };
-      if (contextType === ContextType.Worldcoin) {
-        const nonce = Math.random().toString(36).substring(2);
-        const message = `Sign in to MiniApp. Nonce: ${nonce}`;
-        const miniKitResult = await MiniKit.commandsAsync.signMessage({
-          message,
-        });
-        if (miniKitResult.finalPayload.status !== "success") {
-          throw new Error("[MiniKit] Failed to sign message");
-        }
-        result = {
-          message: miniKitResult.commandPayload!.message,
-          signature: miniKitResult.finalPayload.signature,
-          address: miniKitResult.finalPayload.address,
-        };
-      } else {
-        result = await sdk.actions.signIn({
-          nonce: Math.random().toString(36).substring(2),
-          notBefore: new Date().toISOString(),
-          expirationTime: new Date(
-            Date.now() + MESSAGE_EXPIRATION_TIME
-          ).toISOString(),
-        });
-        referrerFid =
-          context.location?.type === "cast_embed"
-            ? context.location.cast.fid
-            : null;
+      const result = await signIn({
+        nonce: Math.random().toString(36).substring(2),
+        notBefore: new Date().toISOString(),
+        expirationTime: new Date(
+          Date.now() + MESSAGE_EXPIRATION_TIME
+        ).toISOString(),
+      });
+      if (!result) {
+        throw new Error("Sign in failed");
       }
+      referrerFid =
+        context.location?.type === "cast_embed"
+          ? context.location.cast.fid
+          : null;
 
       const res = await fetch("/api/auth/sign-in", {
         method: "POST",
@@ -63,10 +49,7 @@ export const useSignIn = () => {
         body: JSON.stringify({
           signature: result.signature,
           message: result.message,
-          ...(contextType === ContextType.Farcaster && {
-            fid: context.user.fid,
-          }),
-          ...(result.address && { walletAddress: result.address }),
+          fid: context.user.fid,
           referrerFid,
         }),
       });
@@ -78,6 +61,8 @@ export const useSignIn = () => {
       }
 
       const data = await res.json();
+      console.log("data", data);
+      setUser(data.user);
       setIsSignedIn(true);
       return data;
     } catch (err) {
@@ -88,19 +73,14 @@ export const useSignIn = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [context, contextType]);
+  }, [context, signIn]);
 
-  const logout = useCallback(async () => {
-    try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-      setIsSignedIn(false);
-    } catch (error) {
-      console.error("Logout failed:", error);
+  useEffect(() => {
+    // if autoSignIn is true, sign in automatically on mount
+    if (autoSignIn) {
+      handleSignIn();
     }
-  }, []);
+  }, [autoSignIn, handleSignIn]);
 
-  return { signIn, logout, isSignedIn, isLoading, error };
+  return { signIn: handleSignIn, isSignedIn, isLoading, error, user };
 };

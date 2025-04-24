@@ -1,22 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import * as jose from "jose";
-import { verifyMessage } from "viem";
-import { fetchUser } from "@/lib/neynar";
 import { env } from "@/lib/env";
+import { fetchUser } from "@/lib/neynar";
+import * as jose from "jose";
+import { NextRequest, NextResponse } from "next/server";
+import { verifyMessage } from "viem";
 
 export const POST = async (req: NextRequest) => {
-  let { fid, walletAddress, signature, message } = await req.json();
-
-  // We don't have the user address in the Farcaster case
-  if (!walletAddress) {
-    const user = await fetchUser(fid);
-    walletAddress = user.custody_address;
-  }
+  let { fid, signature, message } = await req.json();
+  const user = await fetchUser(fid);
 
   // Verify signature matches custody address
   const isValidSignature = await verifyMessage({
-    address: walletAddress as `0x${string}`,
+    address: user.custody_address as `0x${string}`,
     message,
     signature,
   });
@@ -27,14 +21,17 @@ export const POST = async (req: NextRequest) => {
 
   // Generate JWT token
   const secret = new TextEncoder().encode(env.JWT_SECRET);
-  const token = await new jose.SignJWT({ fid, walletAddress })
+  const token = await new jose.SignJWT({
+    fid,
+    walletAddress: user.custody_address,
+  })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
     .sign(secret);
 
   // Create the response
-  const response = NextResponse.json({ success: true });
+  const response = NextResponse.json({ success: true, user });
 
   // Set the auth cookie with the JWT token
   response.cookies.set({

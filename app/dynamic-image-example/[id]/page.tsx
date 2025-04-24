@@ -1,4 +1,4 @@
-import App from "@/components/pages/app";
+import App from "@/components/Home";
 import { Metadata } from "next";
 
 const appUrl = process.env.NEXT_PUBLIC_URL;

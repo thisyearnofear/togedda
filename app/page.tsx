@@ -1,6 +1,6 @@
-import { Metadata } from "next";
-import App from "@/components/pages/app";
+import App from "@/components/App";
 import { env } from "@/lib/env";
+import { Metadata } from "next";
 
 const appUrl = env.NEXT_PUBLIC_URL;
 
@@ -24,7 +24,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: "Mini-app Starter",
     openGraph: {
       title: "Mini-app Starter",
-      description: "A starter for mini-apps",
+      description: "A starter for Farcastermini-apps",
     },
     other: {
       "fc:frame": JSON.stringify(frame),

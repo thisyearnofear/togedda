@@ -19,6 +19,10 @@ export const fetchUser = async (fid: string): Promise<NeynarUser> => {
     }
   );
   if (!response.ok) {
+    console.error(
+      "Failed to fetch Farcaster user on Neynar",
+      await response.json()
+    );
     throw new Error("Failed to fetch Farcaster user on Neynar");
   }
   const data = await response.json();

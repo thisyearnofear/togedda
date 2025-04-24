@@ -1,7 +1,8 @@
 import App from "@/components/Home";
+import { env } from "@/lib/env";
 import { Metadata } from "next";
 
-const appUrl = process.env.NEXT_PUBLIC_URL;
+const appUrl = env.NEXT_PUBLIC_URL;
 
 export async function generateMetadata({
   params,

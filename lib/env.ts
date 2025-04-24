@@ -6,6 +6,8 @@ export const env = createEnv({
   server: {
     NEYNAR_API_KEY: z.string().min(1),
     JWT_SECRET: z.string().min(1),
+    REDIS_URL: z.string().min(1),
+    REDIS_TOKEN: z.string().min(1),
   },
   client: {
     NEXT_PUBLIC_URL: z.string().min(1),

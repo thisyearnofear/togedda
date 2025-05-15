@@ -7,10 +7,11 @@ import { NETWORK_COLORS } from "@/lib/constants";
 import { formatNumber, getNetworkName } from "@/lib/utils";
 import { useNotification } from "@coinbase/onchainkit/minikit";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import TargetsAndStreaks from "@/components/TargetsAndStreaks";
 import Confetti from "@/components/Confetti";
 import { toast } from "react-hot-toast";
+import { addressToFid } from "@/lib/farcaster-social";
 import {
   FaShare,
   FaArrowRight,
@@ -75,8 +76,8 @@ export default function PersonalDashboard({
     }
   }, [user?.fid, updateStreak]);
 
-  // Calculate user stats from network data
-  useEffect(() => {
+  // Define calculateStats function with useCallback
+  const calculateStats = useCallback(async () => {
     if (!isLoading && networkData && user) {
       const stats: UserStats = {
         totalPushups: 0,
@@ -98,7 +99,11 @@ export default function PersonalDashboard({
       // Calculate total contributions
       let allUsers: { address: string; pushups: number; squats: number }[] = [];
 
-      Object.entries(networkData).forEach(([network, scores]) => {
+      // Process each network sequentially to avoid too many API calls at once
+      for (const [network, scores] of Object.entries(networkData) as [
+        string,
+        any[]
+      ][]) {
         // Initialize network in breakdown if not exists
         if (!stats.networkBreakdown[network]) {
           stats.networkBreakdown[network] = {
@@ -107,11 +112,46 @@ export default function PersonalDashboard({
           };
         }
 
-        // Find user's scores in this network
-        const userScore = scores.find(
-          (score) =>
+        // First try to find scores by custody address
+        let userScore = scores.find(
+          (score: any) =>
             score.user.toLowerCase() === user.custody_address.toLowerCase()
         );
+
+        // If not found, check if any of the scores are from connected addresses
+        // by checking if the address resolves to the user's FID
+        if (!userScore) {
+          // Create a map to track which addresses we've checked
+          const checkedAddresses = new Set<string>();
+          checkedAddresses.add(user.custody_address.toLowerCase());
+
+          // Check each score to see if it belongs to the user
+          for (const score of scores as any[]) {
+            const scoreAddress = score.user.toLowerCase();
+
+            // Skip if we've already checked this address
+            if (checkedAddresses.has(scoreAddress)) continue;
+
+            try {
+              // Try to resolve the address to a FID
+              const fid = await addressToFid(scoreAddress);
+
+              // If the FID matches the user's FID, this is their score
+              if (fid && fid.toString() === user.fid) {
+                userScore = score;
+                console.log(
+                  `Found connected address ${scoreAddress} for user ${user.username}`
+                );
+                break;
+              }
+
+              // Mark this address as checked
+              checkedAddresses.add(scoreAddress);
+            } catch (error) {
+              console.error(`Error checking address ${scoreAddress}:`, error);
+            }
+          }
+        }
 
         if (userScore) {
           stats.totalPushups += userScore.pushups;
@@ -121,7 +161,7 @@ export default function PersonalDashboard({
         }
 
         // Collect all users for ranking
-        scores.forEach((score) => {
+        scores.forEach((score: any) => {
           const existingUser = allUsers.find(
             (u) => u.address.toLowerCase() === score.user.toLowerCase()
           );
@@ -137,7 +177,7 @@ export default function PersonalDashboard({
             });
           }
         });
-      });
+      } // End of for loop
 
       // Calculate rankings
       if (allUsers.length > 0) {
@@ -186,7 +226,14 @@ export default function PersonalDashboard({
 
       setUserStats(stats);
     }
-  }, [networkData, isLoading, user]);
+  }, [isLoading, networkData, user]);
+
+  // Call calculateStats when dependencies change
+  useEffect(() => {
+    if (!isLoading && networkData && user) {
+      calculateStats();
+    }
+  }, [calculateStats, isLoading, networkData, user]);
 
   const generateShareableImage = async () => {
     if (!userStats || !user) return;
@@ -320,12 +367,10 @@ export default function PersonalDashboard({
       {/* Confetti animation */}
       <Confetti active={showConfetti} />
 
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="retro-heading text-xl">My Dashboard</h2>
-
-        <div className="flex space-x-2">
+      <div className="flex justify-center items-center mb-6">
+        <div className="flex space-x-4">
           <button
-            className={`px-3 py-1 rounded-lg text-sm ${
+            className={`px-4 py-2 rounded-lg text-sm ${
               !showTargetsAndStreaks ? "bg-blue-600" : "bg-gray-700"
             }`}
             onClick={() => setShowTargetsAndStreaks(false)}
@@ -333,7 +378,7 @@ export default function PersonalDashboard({
             Stats
           </button>
           <button
-            className={`px-3 py-1 rounded-lg text-sm ${
+            className={`px-4 py-2 rounded-lg text-sm ${
               showTargetsAndStreaks ? "bg-blue-600" : "bg-gray-700"
             }`}
             onClick={() => setShowTargetsAndStreaks(true)}

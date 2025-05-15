@@ -6,7 +6,11 @@ import { formatNumber, getNetworkName, truncateAddress } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
 import Web3Profile from "@/components/Web3Profile";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
-import { fetchFollows, addressToFid } from "@/lib/farcaster-social";
+import { fetchFollows } from "@/lib/farcaster-social";
+import {
+  FarcasterProfile,
+  resolveAddressesToProfiles,
+} from "@/lib/farcaster-profiles";
 import { FaShare, FaUserFriends } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import Confetti from "@/components/Confetti";
@@ -30,6 +34,9 @@ export default function Leaderboard({
   const [userFid, setUserFid] = useState<number | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [userPosition, setUserPosition] = useState<number | null>(null);
+  const [addressToProfileMap, setAddressToProfileMap] = useState<
+    Map<string, FarcasterProfile>
+  >(new Map());
 
   // Toggle sort order
   const toggleSort = (field: "pushups" | "squats") => {
@@ -52,8 +59,8 @@ export default function Leaderboard({
     }
   }, [data, selectedNetwork]);
 
-  // Apply filters (friends only if selected)
-  const getFilteredEntries = (): Score[] => {
+  // Apply filters (friends only if selected) - wrapped in useCallback to avoid dependency changes
+  const getFilteredEntries = useCallback((): Score[] => {
     const entries = getEntries();
 
     if (!showOnlyFriends || followFids.length === 0) {
@@ -70,7 +77,7 @@ export default function Leaderboard({
           fid.toString().substring(0, 5)
       );
     });
-  };
+  }, [getEntries, showOnlyFriends, followFids]);
 
   // Fetch follows when user FID is available
   useEffect(() => {
@@ -105,6 +112,29 @@ export default function Leaderboard({
 
     loadUserData();
   }, [context?.user, getEntries]);
+
+  // Resolve wallet addresses to Farcaster profiles
+  useEffect(() => {
+    const resolveAddresses = async () => {
+      if (isLoading || !data) return;
+
+      // Get unique addresses from the top 10 entries
+      const entries = getFilteredEntries().slice(0, 10);
+      if (entries.length === 0) return;
+
+      const addresses = entries.map((entry) => entry.user.toLowerCase());
+
+      try {
+        // Resolve addresses to profiles
+        const profileMap = await resolveAddressesToProfiles(addresses);
+        setAddressToProfileMap(profileMap);
+      } catch (error) {
+        console.error("Error resolving addresses to profiles:", error);
+      }
+    };
+
+    resolveAddresses();
+  }, [data, isLoading, getFilteredEntries]);
 
   // Share leaderboard position
   const shareLeaderboardPosition = async () => {
@@ -294,7 +324,12 @@ export default function Leaderboard({
                   </div>
 
                   <div className="flex-1 flex items-center">
-                    <Web3Profile address={entry.user} />
+                    <Web3Profile
+                      address={entry.user}
+                      farcasterProfile={addressToProfileMap.get(
+                        entry.user.toLowerCase()
+                      )}
+                    />
                     {isFollowed && (
                       <span className="ml-2 text-blue-400 text-xs bg-blue-900 bg-opacity-30 px-2 py-1 rounded">
                         <FaUserFriends className="inline mr-1" /> Follow

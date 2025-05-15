@@ -40,14 +40,25 @@ export default function Home() {
     "goals" | "leaderboard" | "networks" | "predictions" | "personal"
   >("personal");
 
-  // Call Farcaster SDK ready
+  // Check if Farcaster SDK is already initialized
   useEffect(() => {
     const initFarcaster = async () => {
+      // Skip if already initialized
+      if (typeof window !== "undefined" && window.__FARCASTER_SDK_INITIALIZED) {
+        console.log(
+          "Farcaster SDK already initialized, skipping in Home component"
+        );
+        return;
+      }
+
       try {
         const { sdk } = await import("@farcaster/frame-sdk");
         // Call ready to hide the splash screen
         await sdk.actions.ready({ disableNativeGestures: false });
         console.log("Farcaster SDK ready called from Home component");
+
+        // Set the global flag
+        window.__FARCASTER_SDK_INITIALIZED = true;
       } catch (error) {
         console.error("Error calling Farcaster SDK ready from Home:", error);
       }

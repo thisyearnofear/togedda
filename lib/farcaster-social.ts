@@ -38,17 +38,17 @@ export const fetchFollows = async (fid: number, limit: number = 100): Promise<nu
         },
       }
     );
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch follows: ${response.status}`);
     }
-    
+
     const data = await response.json();
     const follows = data.users.map((user: any) => user.fid);
-    
+
     // Update cache
     followsCache.set(fid, { follows, timestamp: Date.now() });
-    
+
     return follows;
   } catch (error) {
     console.error('Error fetching follows:', error);
@@ -93,19 +93,100 @@ export const addressToFid = async (address: string): Promise<number | null> => {
         },
       }
     );
-    
+
     if (!response.ok) {
       return null;
     }
-    
+
     const data = await response.json();
     if (data.users && data.users.length > 0) {
       return data.users[0].fid;
     }
-    
+
     return null;
   } catch (error) {
     console.error('Error converting address to FID:', error);
     return null;
+  }
+};
+
+// Cache for batch address resolution to avoid repeated API calls
+const batchAddressCache = new Map<string, { fid: number, timestamp: number }>();
+const BATCH_CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+
+/**
+ * Convert multiple wallet addresses to FIDs in a single API call
+ * @param addresses Array of Ethereum addresses
+ * @returns Map of address to FID
+ */
+export const batchAddressesToFids = async (addresses: string[]): Promise<Map<string, number>> => {
+  if (addresses.length === 0) return new Map();
+
+  // Normalize addresses for consistent caching
+  const normalizedAddresses = addresses.map(addr => addr.toLowerCase());
+
+  // Check which addresses we need to fetch (not in cache or cache expired)
+  const addressesToFetch: string[] = [];
+  const result = new Map<string, number>();
+
+  normalizedAddresses.forEach(address => {
+    const cached = batchAddressCache.get(address);
+    if (cached && Date.now() - cached.timestamp < BATCH_CACHE_DURATION) {
+      // Use cached value
+      result.set(address, cached.fid);
+    } else {
+      // Need to fetch this address
+      addressesToFetch.push(address);
+    }
+  });
+
+  // If all addresses were in cache, return early
+  if (addressesToFetch.length === 0) {
+    return result;
+  }
+
+  try {
+    // Split into batches of 20 addresses (Neynar API limit)
+    const batchSize = 20;
+
+    for (let i = 0; i < addressesToFetch.length; i += batchSize) {
+      const batch = addressesToFetch.slice(i, i + batchSize);
+
+      const response = await fetch(
+        `https://api.neynar.com/v2/farcaster/user/bulk-by-address?addresses=${batch.join(',')}`,
+        {
+          headers: {
+            'x-api-key': env.NEYNAR_API_KEY!,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error('Error fetching FIDs for addresses:', response.status);
+        continue;
+      }
+
+      const data = await response.json();
+
+      if (data.users && data.users.length > 0) {
+        data.users.forEach((user: any) => {
+          if (user.custody_address && user.fid) {
+            const normalizedAddress = user.custody_address.toLowerCase();
+            result.set(normalizedAddress, user.fid);
+
+            // Update cache
+            batchAddressCache.set(normalizedAddress, {
+              fid: user.fid,
+              timestamp: Date.now()
+            });
+          }
+        });
+      }
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Error batch converting addresses to FIDs:', error);
+    return result;
   }
 };

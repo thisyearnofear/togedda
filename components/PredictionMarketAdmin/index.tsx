@@ -1,7 +1,7 @@
 "use client";
 
 import { useSignIn } from "@/hooks/use-sign-in";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   createNewPredictionMarket,
   getAllPredictionMarkets,
@@ -9,7 +9,10 @@ import {
   isMarketFromFactory,
   transferFactoryOwnership,
 } from "@/lib/prediction-market-factory";
-import { resolvePrediction, updatePredictionValue } from "@/lib/prediction-market";
+import {
+  resolvePrediction,
+  updatePredictionValue,
+} from "@/lib/prediction-market";
 
 export default function PredictionMarketAdmin() {
   const { user, isSignedIn, signIn } = useSignIn({ autoSignIn: false });
@@ -18,25 +21,27 @@ export default function PredictionMarketAdmin() {
   const [markets, setMarkets] = useState<string[]>([]);
   const [notification, setNotification] = useState("");
   const [showNotification, setShowNotification] = useState(false);
-  
+
   // Form states
   const [newOwnerAddress, setNewOwnerAddress] = useState("");
   const [predictionId, setPredictionId] = useState("");
   const [predictionOutcome, setPredictionOutcome] = useState("1"); // 1 = YES, 2 = NO
   const [predictionValue, setPredictionValue] = useState("");
 
-  useEffect(() => {
-    if (isSignedIn) {
-      loadMarketData();
-    }
-  }, [isSignedIn]);
+  const showNotificationMessage = (message: string) => {
+    setNotification(message);
+    setShowNotification(true);
+    setTimeout(() => {
+      setShowNotification(false);
+    }, 3000);
+  };
 
-  const loadMarketData = async () => {
+  const loadMarketData = useCallback(async () => {
     setIsLoading(true);
     try {
       const count = await getMarketCount();
       setMarketCount(count);
-      
+
       const allMarkets = await getAllPredictionMarkets();
       setMarkets(allMarkets);
     } catch (error) {
@@ -45,7 +50,13 @@ export default function PredictionMarketAdmin() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (isSignedIn) {
+      loadMarketData();
+    }
+  }, [isSignedIn, loadMarketData]);
 
   const handleCreateMarket = async () => {
     if (!isSignedIn) {
@@ -93,8 +104,15 @@ export default function PredictionMarketAdmin() {
 
     setIsLoading(true);
     try {
-      await resolvePrediction(parseInt(predictionId), parseInt(predictionOutcome));
-      showNotificationMessage(`Prediction ${predictionId} resolved with outcome ${predictionOutcome === "1" ? "YES" : "NO"}`);
+      await resolvePrediction(
+        parseInt(predictionId),
+        parseInt(predictionOutcome)
+      );
+      showNotificationMessage(
+        `Prediction ${predictionId} resolved with outcome ${
+          predictionOutcome === "1" ? "YES" : "NO"
+        }`
+      );
       setPredictionId("");
     } catch (error) {
       console.error("Error resolving prediction:", error);
@@ -106,14 +124,21 @@ export default function PredictionMarketAdmin() {
 
   const handleUpdatePredictionValue = async () => {
     if (!isSignedIn || !predictionId || !predictionValue) {
-      showNotificationMessage("Please sign in and enter prediction ID and value");
+      showNotificationMessage(
+        "Please sign in and enter prediction ID and value"
+      );
       return;
     }
 
     setIsLoading(true);
     try {
-      await updatePredictionValue(parseInt(predictionId), parseInt(predictionValue));
-      showNotificationMessage(`Prediction ${predictionId} value updated to ${predictionValue}`);
+      await updatePredictionValue(
+        parseInt(predictionId),
+        parseInt(predictionValue)
+      );
+      showNotificationMessage(
+        `Prediction ${predictionId} value updated to ${predictionValue}`
+      );
       setPredictionId("");
       setPredictionValue("");
     } catch (error) {
@@ -122,14 +147,6 @@ export default function PredictionMarketAdmin() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const showNotificationMessage = (message: string) => {
-    setNotification(message);
-    setShowNotification(true);
-    setTimeout(() => {
-      setShowNotification(false);
-    }, 3000);
   };
 
   if (!isSignedIn) {
@@ -170,17 +187,24 @@ export default function PredictionMarketAdmin() {
       </div>
 
       <h2 className="retro-heading text-xl mb-4">Prediction Market Admin</h2>
-      
+
       <div className="mb-6">
-        <p className="mb-2">Factory Address: <span className="text-yellow-400">0x668331bC0F8fAC8F7F79b3874197d6255de2Ccf9</span></p>
-        <p className="mb-2">Market Count: <span className="text-yellow-400">{marketCount}</span></p>
+        <p className="mb-2">
+          Factory Address:{" "}
+          <span className="text-yellow-400">
+            0x668331bC0F8fAC8F7F79b3874197d6255de2Ccf9
+          </span>
+        </p>
+        <p className="mb-2">
+          Market Count: <span className="text-yellow-400">{marketCount}</span>
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Create New Market */}
         <div className="game-container p-4">
           <h3 className="text-lg mb-4">Create New Market</h3>
-          <button 
+          <button
             className="retro-button w-full"
             onClick={handleCreateMarket}
             disabled={isLoading}
@@ -199,7 +223,7 @@ export default function PredictionMarketAdmin() {
             onChange={(e) => setNewOwnerAddress(e.target.value)}
             placeholder="New owner address (0x...)"
           />
-          <button 
+          <button
             className="retro-button w-full"
             onClick={handleTransferOwnership}
             disabled={isLoading || !newOwnerAddress}
@@ -226,7 +250,7 @@ export default function PredictionMarketAdmin() {
             <option value="1">YES</option>
             <option value="2">NO</option>
           </select>
-          <button 
+          <button
             className="retro-button w-full"
             onClick={handleResolvePrediction}
             disabled={isLoading || !predictionId}
@@ -252,7 +276,7 @@ export default function PredictionMarketAdmin() {
             onChange={(e) => setPredictionValue(e.target.value)}
             placeholder="New current value"
           />
-          <button 
+          <button
             className="retro-button w-full"
             onClick={handleUpdatePredictionValue}
             disabled={isLoading || !predictionId || !predictionValue}

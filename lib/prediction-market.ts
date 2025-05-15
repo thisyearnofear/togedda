@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { ContractKit } from '@celo/contractkit';
+// Note: This file is updated to work with ethers v6
 
 // Import ABI - this would be generated from the compiled contract
 // For now, we'll define a simplified version
@@ -74,12 +74,12 @@ export interface Vote {
 }
 
 // Connect to CELO network
-export const getProvider = async (): Promise<ethers.providers.Web3Provider | ethers.providers.JsonRpcProvider> => {
+export const getProvider = async () => {
   // Check if we're in a browser environment with an Ethereum provider
   if (typeof window !== 'undefined' && window.ethereum) {
     try {
       await window.ethereum.request({ method: 'eth_requestAccounts' });
-      return new ethers.providers.Web3Provider(window.ethereum);
+      return new ethers.BrowserProvider(window.ethereum);
     } catch (error) {
       console.error('Error connecting to wallet:', error);
     }
@@ -88,15 +88,15 @@ export const getProvider = async (): Promise<ethers.providers.Web3Provider | eth
   // Fallback to read-only provider for Farcaster mini app environment
   // This allows users to view predictions without connecting a wallet
   console.log('Using fallback read-only provider for CELO');
-  return new ethers.providers.JsonRpcProvider('https://forno.celo.org');
+  return new ethers.JsonRpcProvider('https://forno.celo.org');
 };
 
 // Get prediction market contract
 export const getPredictionMarketContract = async (writeAccess = true) => {
   const provider = await getProvider();
 
-  // For read-only operations or if we're using a JsonRpcProvider
-  if (!writeAccess || !('getSigner' in provider)) {
+  // For read-only operations
+  if (!writeAccess) {
     return new ethers.Contract(
       PREDICTION_MARKET_ADDRESS,
       PredictionMarketABI,
@@ -104,23 +104,26 @@ export const getPredictionMarketContract = async (writeAccess = true) => {
     );
   }
 
-  // For write operations when we have a Web3Provider
+  // For write operations when we have a BrowserProvider
   try {
-    const signer = (provider as ethers.providers.Web3Provider).getSigner();
-    return new ethers.Contract(
-      PREDICTION_MARKET_ADDRESS,
-      PredictionMarketABI,
-      signer
-    );
+    if ('getSigner' in provider) {
+      const signer = await provider.getSigner();
+      return new ethers.Contract(
+        PREDICTION_MARKET_ADDRESS,
+        PredictionMarketABI,
+        signer
+      );
+    }
   } catch (error) {
     console.error('Error getting signer:', error);
-    // Fallback to read-only if getting signer fails
-    return new ethers.Contract(
-      PREDICTION_MARKET_ADDRESS,
-      PredictionMarketABI,
-      provider
-    );
   }
+
+  // Fallback to read-only if getting signer fails
+  return new ethers.Contract(
+    PREDICTION_MARKET_ADDRESS,
+    PredictionMarketABI,
+    provider
+  );
 };
 
 // Create a prediction
@@ -147,7 +150,7 @@ export const createPrediction = async (
     const receipt = await tx.wait();
 
     // Get prediction ID from event
-    const event = receipt.events?.find(e => e.event === 'PredictionCreated');
+    const event = receipt.events?.find((e: any) => e.event === 'PredictionCreated');
     if (event && event.args) {
       return event.args.id.toNumber();
     }
@@ -167,7 +170,7 @@ export const voteOnPrediction = async (
   try {
     const contract = await getPredictionMarketContract();
     const tx = await contract.vote(predictionId, isYes, {
-      value: ethers.utils.parseEther(amount.toString())
+      value: ethers.parseEther(amount.toString())
     });
     await tx.wait();
   } catch (error) {
@@ -195,9 +198,9 @@ export const getPrediction = async (predictionId: number): Promise<Prediction> =
       category: prediction.category,
       network: prediction.network,
       emoji: prediction.emoji,
-      totalStaked: parseFloat(ethers.utils.formatEther(prediction.totalStaked)),
-      yesVotes: parseFloat(ethers.utils.formatEther(prediction.yesVotes)),
-      noVotes: parseFloat(ethers.utils.formatEther(prediction.noVotes)),
+      totalStaked: parseFloat(ethers.formatEther(prediction.totalStaked)),
+      yesVotes: parseFloat(ethers.formatEther(prediction.yesVotes)),
+      noVotes: parseFloat(ethers.formatEther(prediction.noVotes)),
       status: prediction.status,
       outcome: prediction.outcome,
       createdAt: prediction.createdAt.toNumber()
@@ -220,7 +223,7 @@ export const getUserVote = async (
 
     return {
       isYes: vote.isYes,
-      amount: parseFloat(ethers.utils.formatEther(vote.amount)),
+      amount: parseFloat(ethers.formatEther(vote.amount)),
       claimed: vote.claimed
     };
   } catch (error) {

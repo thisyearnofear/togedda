@@ -75,6 +75,12 @@ export default function PredictionMarket() {
   const [stakeAmount, setStakeAmount] = useState<number>(10);
   const [showStakeModal, setShowStakeModal] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [sortOption, setSortOption] = useState<"date" | "votes" | "network">(
+    "date"
+  );
+  const [currentPage, setCurrentPage] = useState(1);
+  const predictionsPerPage = 5;
   const notificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const confettiTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -181,6 +187,7 @@ export default function PredictionMarket() {
   // Load predictions from blockchain
   const loadPredictions = useCallback(async () => {
     try {
+      setIsLoading(true);
       showNotificationMessage("Loading predictions from blockchain...");
       const onchainPredictions = await getAllPredictions();
 
@@ -213,15 +220,23 @@ export default function PredictionMarket() {
         })
       );
 
+      // Always replace mock data with real data, even if empty
+      setPredictions(formattedPredictions);
+
       if (formattedPredictions.length > 0) {
-        setPredictions(formattedPredictions);
         showNotificationMessage(
           `Loaded ${formattedPredictions.length} predictions`
         );
+      } else {
+        showNotificationMessage("No predictions found. Create the first one!");
       }
     } catch (error) {
       console.error("Failed to load predictions:", error);
       showNotificationMessage("Failed to load predictions from blockchain");
+      // Reset to empty array on error to avoid showing mock data
+      setPredictions([]);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -265,6 +280,46 @@ export default function PredictionMarket() {
       loadPredictions();
     }
   }, [isSignedIn, loadPredictions]);
+
+  // Sort and paginate predictions
+  const getSortedAndPaginatedPredictions = useCallback(() => {
+    // First sort the predictions
+    let sortedPredictions = [...predictions];
+
+    switch (sortOption) {
+      case "date":
+        sortedPredictions.sort(
+          (a, b) =>
+            new Date(b.targetDate).getTime() - new Date(a.targetDate).getTime()
+        );
+        break;
+      case "votes":
+        sortedPredictions.sort(
+          (a, b) => b.votes.yes + b.votes.no - (a.votes.yes + a.votes.no)
+        );
+        break;
+      case "network":
+        sortedPredictions.sort((a, b) =>
+          (a.network || "").localeCompare(b.network || "")
+        );
+        break;
+    }
+
+    // Then paginate
+    const startIndex = (currentPage - 1) * predictionsPerPage;
+    const endIndex = startIndex + predictionsPerPage;
+    return sortedPredictions.slice(startIndex, endIndex);
+  }, [predictions, sortOption, currentPage, predictionsPerPage]);
+
+  // Calculate total pages
+  const totalPages = Math.ceil(predictions.length / predictionsPerPage);
+
+  // Handle page change
+  const handlePageChange = (newPage: number) => {
+    if (newPage > 0 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
 
   const handleVote = async (id: string, vote: "yes" | "no") => {
     if (!isSignedIn) {
@@ -612,8 +667,19 @@ export default function PredictionMarket() {
     setFormData((prev) => ({ ...prev, emoji }));
   };
 
+  // Add keyframe animation for spinner
+  const spinnerStyle = `
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  `;
+
   return (
     <div className="game-container my-8 relative">
+      {/* Add spinner animation */}
+      <style>{spinnerStyle}</style>
+
       {/* Confetti Animation */}
       {showConfetti && (
         <div className="confetti-container">
@@ -849,144 +915,247 @@ export default function PredictionMarket() {
         </div>
       )}
 
-      <div className="space-y-8">
-        {predictions.map((prediction) => {
-          const progress = calculateProgress(
-            prediction.currentValue,
-            prediction.targetValue
-          );
-          const odds = calculateOdds(prediction.votes.yes, prediction.votes.no);
-          const daysLeft = Math.ceil(
-            (new Date(prediction.targetDate).getTime() - new Date().getTime()) /
-              (1000 * 60 * 60 * 24)
-          );
-          const networkColor = getNetworkColor(prediction.network);
-
-          return (
-            <div
-              key={prediction.id}
-              className="prediction-card border-2 border-white p-4 rounded-lg relative"
-              style={{
-                boxShadow: `0 0 15px ${networkColor}40`,
-              }}
+      {/* Sorting and Filtering Controls */}
+      <div className="mb-6 game-container p-3">
+        <div className="flex flex-wrap justify-between items-center">
+          <div className="mb-2 md:mb-0">
+            <span className="text-sm mr-2">Sort by:</span>
+            <select
+              className="bg-black border-2 border-white p-1 text-white text-sm"
+              value={sortOption}
+              onChange={(e) =>
+                setSortOption(e.target.value as "date" | "votes" | "network")
+              }
             >
-              {/* Network Badge */}
-              {prediction.network && (
-                <div
-                  className="absolute top-2 right-2 w-6 h-6 rounded-full"
-                  style={{ backgroundColor: networkColor }}
-                />
-              )}
+              <option value="date">Date</option>
+              <option value="votes">Popularity</option>
+              <option value="network">Network</option>
+            </select>
+          </div>
+          <div className="text-sm">
+            Showing{" "}
+            {predictions.length > 0
+              ? (currentPage - 1) * predictionsPerPage + 1
+              : 0}{" "}
+            - {Math.min(currentPage * predictionsPerPage, predictions.length)}{" "}
+            of {predictions.length} predictions
+          </div>
+        </div>
+      </div>
 
-              {/* Creator Badge */}
-              {prediction.creator && (
-                <div className="absolute top-2 left-2 flex items-center">
-                  <div className="w-6 h-6 rounded-full overflow-hidden">
-                    <Image
-                      src={prediction.creator.avatar}
-                      alt={prediction.creator.username}
-                      width={24}
-                      height={24}
-                    />
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex justify-center items-center p-8">
+          <div
+            className="loading-spinner"
+            style={{
+              width: "30px",
+              height: "30px",
+              border: "4px solid rgba(255, 255, 255, 0.3)",
+              borderRadius: "50%",
+              borderTop: "4px solid white",
+              animation: "spin 1s linear infinite",
+            }}
+          ></div>
+          <p className="ml-4">Loading predictions...</p>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!isLoading && predictions.length === 0 && (
+        <div className="game-container p-8 text-center">
+          <p className="mb-4">
+            No predictions yet! Be the first to create one.
+          </p>
+          {isSignedIn ? (
+            <button
+              className="retro-button pulse-animation"
+              onClick={() => setShowCreateForm(true)}
+            >
+              Create First Prediction
+            </button>
+          ) : (
+            <button className="retro-button" onClick={signIn}>
+              Sign In to Create
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Predictions List */}
+      {!isLoading && predictions.length > 0 && (
+        <div className="space-y-8">
+          {getSortedAndPaginatedPredictions().map((prediction) => {
+            const progress = calculateProgress(
+              prediction.currentValue,
+              prediction.targetValue
+            );
+            const odds = calculateOdds(
+              prediction.votes.yes,
+              prediction.votes.no
+            );
+            const daysLeft = Math.ceil(
+              (new Date(prediction.targetDate).getTime() -
+                new Date().getTime()) /
+                (1000 * 60 * 60 * 24)
+            );
+            const networkColor = getNetworkColor(prediction.network);
+
+            return (
+              <div
+                key={prediction.id}
+                className="prediction-card border-2 border-white p-4 rounded-lg relative"
+                style={{
+                  boxShadow: `0 0 15px ${networkColor}40`,
+                }}
+              >
+                {/* Network Badge */}
+                {prediction.network && (
+                  <div
+                    className="absolute top-2 right-2 w-6 h-6 rounded-full"
+                    style={{ backgroundColor: networkColor }}
+                  />
+                )}
+
+                {/* Creator Badge */}
+                {prediction.creator && (
+                  <div className="absolute top-2 left-2 flex items-center">
+                    <div className="w-6 h-6 rounded-full overflow-hidden">
+                      <Image
+                        src={prediction.creator.avatar}
+                        alt={prediction.creator.username}
+                        width={24}
+                        height={24}
+                      />
+                    </div>
                   </div>
+                )}
+
+                {/* Category & Emoji */}
+                <div className="flex items-center mb-2">
+                  <span className="text-2xl mr-2">{prediction.emoji}</span>
+                  <h3 className="text-lg">{prediction.title}</h3>
                 </div>
-              )}
 
-              {/* Category & Emoji */}
-              <div className="flex items-center mb-2">
-                <span className="text-2xl mr-2">{prediction.emoji}</span>
-                <h3 className="text-lg">{prediction.title}</h3>
-              </div>
+                <p className="text-sm mb-4">{prediction.description}</p>
 
-              <p className="text-sm mb-4">{prediction.description}</p>
+                {prediction.targetValue > 0 && (
+                  <div className="mb-4">
+                    <div className="flex justify-between text-xs mb-1">
+                      <span>Progress: {progress.toFixed(1)}%</span>
+                      <span>
+                        {formatNumber(prediction.currentValue)} /{" "}
+                        {formatNumber(prediction.targetValue)}
+                      </span>
+                    </div>
+                    <div className="progress-container">
+                      <div
+                        className="progress-bar"
+                        style={{
+                          width: `${progress}%`,
+                          backgroundColor: networkColor || "#ff69b4",
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
 
-              {prediction.targetValue > 0 && (
-                <div className="mb-4">
-                  <div className="flex justify-between text-xs mb-1">
-                    <span>Progress: {progress.toFixed(1)}%</span>
-                    <span>
-                      {formatNumber(prediction.currentValue)} /{" "}
-                      {formatNumber(prediction.targetValue)}
+                <div className="flex justify-between items-center mb-4">
+                  <div className="text-sm">
+                    <span className="text-yellow-400">
+                      ⏱️ {daysLeft} days left
                     </span>
                   </div>
-                  <div className="progress-container">
-                    <div
-                      className="progress-bar"
-                      style={{
-                        width: `${progress}%`,
-                        backgroundColor: networkColor || "#ff69b4",
-                      }}
-                    ></div>
+                  <div className="text-sm">
+                    <span className="text-green-400">{odds.yes}% Yes</span>
+                    <span className="mx-2">|</span>
+                    <span className="text-red-400">{odds.no}% No</span>
                   </div>
                 </div>
-              )}
 
-              <div className="flex justify-between items-center mb-4">
-                <div className="text-sm">
-                  <span className="text-yellow-400">
-                    ⏱️ {daysLeft} days left
-                  </span>
+                {/* Staking Info */}
+                <div className="flex justify-between items-center mb-4 text-xs">
+                  <div>
+                    <span>
+                      👥 {prediction.participants.length} participants
+                    </span>
+                  </div>
+                  <div>
+                    <span>💰 {prediction.staked} staked</span>
+                  </div>
                 </div>
-                <div className="text-sm">
-                  <span className="text-green-400">{odds.yes}% Yes</span>
-                  <span className="mx-2">|</span>
-                  <span className="text-red-400">{odds.no}% No</span>
+
+                <div className="flex flex-wrap justify-center gap-2">
+                  {/* For active predictions, show voting and staking buttons */}
+                  {!prediction.resolved && (
+                    <>
+                      <button
+                        className={`retro-button ${
+                          prediction.userVote === "yes" ? "bg-green-900" : ""
+                        }`}
+                        onClick={() => handleVote(prediction.id, "yes")}
+                      >
+                        Yes ({prediction.votes.yes})
+                      </button>
+                      <button
+                        className={`retro-button ${
+                          prediction.userVote === "no" ? "bg-red-900" : ""
+                        }`}
+                        onClick={() => handleVote(prediction.id, "no")}
+                      >
+                        No ({prediction.votes.no})
+                      </button>
+                      <button
+                        className="retro-button retro-button-celo"
+                        onClick={() => handleStake(prediction.id)}
+                      >
+                        Stake 🪙
+                      </button>
+                    </>
+                  )}
+
+                  {/* For resolved predictions, show claim reward button */}
+                  {prediction.resolved && (
+                    <button
+                      className="retro-button retro-button-celo pulse-animation"
+                      onClick={() => handleClaimReward(prediction.id)}
+                    >
+                      Claim Reward 🏆
+                    </button>
+                  )}
                 </div>
               </div>
+            );
+          })}
+        </div>
+      )}
 
-              {/* Staking Info */}
-              <div className="flex justify-between items-center mb-4 text-xs">
-                <div>
-                  <span>👥 {prediction.participants.length} participants</span>
-                </div>
-                <div>
-                  <span>💰 {prediction.staked} staked</span>
-                </div>
-              </div>
+      {/* Pagination Controls */}
+      {!isLoading && predictions.length > predictionsPerPage && (
+        <div className="flex justify-center mt-6">
+          <button
+            className="retro-button mx-1 px-3 py-1"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            ◀
+          </button>
 
-              <div className="flex flex-wrap justify-center gap-2">
-                {/* For active predictions, show voting and staking buttons */}
-                {!prediction.resolved && (
-                  <>
-                    <button
-                      className={`retro-button ${
-                        prediction.userVote === "yes" ? "bg-green-900" : ""
-                      }`}
-                      onClick={() => handleVote(prediction.id, "yes")}
-                    >
-                      Yes ({prediction.votes.yes})
-                    </button>
-                    <button
-                      className={`retro-button ${
-                        prediction.userVote === "no" ? "bg-red-900" : ""
-                      }`}
-                      onClick={() => handleVote(prediction.id, "no")}
-                    >
-                      No ({prediction.votes.no})
-                    </button>
-                    <button
-                      className="retro-button retro-button-celo"
-                      onClick={() => handleStake(prediction.id)}
-                    >
-                      Stake 🪙
-                    </button>
-                  </>
-                )}
+          <div className="flex items-center mx-2">
+            <span className="text-sm">
+              Page {currentPage} of {totalPages}
+            </span>
+          </div>
 
-                {/* For resolved predictions, show claim reward button */}
-                {prediction.resolved && (
-                  <button
-                    className="retro-button retro-button-celo pulse-animation"
-                    onClick={() => handleClaimReward(prediction.id)}
-                  >
-                    Claim Reward 🏆
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+          <button
+            className="retro-button mx-1 px-3 py-1"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            ▶
+          </button>
+        </div>
+      )}
     </div>
   );
 }

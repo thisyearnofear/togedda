@@ -101,8 +101,8 @@ export default function CollectiveGoalsComponent({
 
         <div className="text-center">
           <p className="text-xs mt-2 max-w-md mx-auto">
-            Each push-up = 1kg of force lifted. Together we're lifting Mount
-            Olympus (2917m × 100kg)!
+            Each push-up = 1kg of force lifted. Together we&apos;re lifting
+            Mount Olympus (2917m × 100kg)!
           </p>
         </div>
       </div>
@@ -154,18 +154,23 @@ export default function CollectiveGoalsComponent({
 
         <div className="text-center">
           <p className="text-xs mt-2 max-w-md mx-auto">
-            1 squat = 1 meter. We're running from Mandera to Lunga Lunga (1,030
-            kilometers)!
+            1 squat = 1 meter. We&apos;re running from Mandera to Lunga Lunga
+            (1,030 kilometers)!
           </p>
         </div>
       </div>
 
       <div className="mt-8 text-center">
-        <button className="retro-button pulse-button">
-          Log Your Workout 💪
-        </button>
+        <a
+          href="https://imperfectform.fun"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="retro-button pulse-button"
+        >
+          Visit imperfectform.fun 💪
+        </a>
         <p className="text-xs mt-4">
-          Every rep counts towards our collective goals!
+          Log your workouts at imperfectform.fun to contribute.
         </p>
       </div>
     </div>

@@ -4,7 +4,7 @@ import { ethers } from 'ethers';
 const PredictionMarketFactoryABI = [
   // Events
   "event PredictionMarketCreated(address indexed marketAddress, address indexed creator)",
-  
+
   // Functions
   "function createPredictionMarket() external returns (address)",
   "function getAllPredictionMarkets() external view returns (address[])",
@@ -22,33 +22,36 @@ import { getProvider } from './prediction-market';
 // Get factory contract
 export const getFactoryContract = async (writeAccess = true) => {
   const provider = await getProvider();
-  
-  // For read-only operations or if we're using a JsonRpcProvider
-  if (!writeAccess || !('getSigner' in provider)) {
+
+  // For read-only operations
+  if (!writeAccess) {
     return new ethers.Contract(
       FACTORY_ADDRESS,
       PredictionMarketFactoryABI,
       provider
     );
   }
-  
-  // For write operations when we have a Web3Provider
+
+  // For write operations when we have a BrowserProvider
   try {
-    const signer = (provider as ethers.providers.Web3Provider).getSigner();
-    return new ethers.Contract(
-      FACTORY_ADDRESS,
-      PredictionMarketFactoryABI,
-      signer
-    );
+    if ('getSigner' in provider) {
+      const signer = await provider.getSigner();
+      return new ethers.Contract(
+        FACTORY_ADDRESS,
+        PredictionMarketFactoryABI,
+        signer
+      );
+    }
   } catch (error) {
     console.error('Error getting signer:', error);
-    // Fallback to read-only if getting signer fails
-    return new ethers.Contract(
-      FACTORY_ADDRESS,
-      PredictionMarketFactoryABI,
-      provider
-    );
   }
+
+  // Fallback to read-only if getting signer fails
+  return new ethers.Contract(
+    FACTORY_ADDRESS,
+    PredictionMarketFactoryABI,
+    provider
+  );
 };
 
 // Create a new prediction market
@@ -57,9 +60,9 @@ export const createNewPredictionMarket = async (): Promise<string> => {
     const contract = await getFactoryContract(true);
     const tx = await contract.createPredictionMarket();
     const receipt = await tx.wait();
-    
+
     // Get the new prediction market address from the event
-    const event = receipt.events?.find(e => e.event === 'PredictionMarketCreated');
+    const event = receipt.events?.find((e: any) => e.event === 'PredictionMarketCreated');
     if (event && event.args) {
       return event.args.marketAddress;
     }

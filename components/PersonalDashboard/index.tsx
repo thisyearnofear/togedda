@@ -39,7 +39,7 @@ export default function PersonalDashboard({
   networkData,
   isLoading,
 }: PersonalDashboardProps) {
-  const { user, isSignedIn } = useSignIn();
+  const { user, isSignedIn } = useSignIn({ autoSignIn: false });
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [shareableImage, setShareableImage] = useState<string | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
@@ -79,7 +79,8 @@ export default function PersonalDashboard({
 
         // Find user's scores in this network
         const userScore = scores.find(
-          (score) => score.user.toLowerCase() === user.custody_address.toLowerCase()
+          (score) =>
+            score.user.toLowerCase() === user.custody_address.toLowerCase()
         );
 
         if (userScore) {
@@ -116,14 +117,16 @@ export default function PersonalDashboard({
         );
         const userPushupsRank =
           pushupsRanking.findIndex(
-            (u) => u.address.toLowerCase() === user.custody_address.toLowerCase()
+            (u) =>
+              u.address.toLowerCase() === user.custody_address.toLowerCase()
           ) + 1;
 
         // Sort by squats
         const squatsRanking = [...allUsers].sort((a, b) => b.squats - a.squats);
         const userSquatsRank =
           squatsRanking.findIndex(
-            (u) => u.address.toLowerCase() === user.custody_address.toLowerCase()
+            (u) =>
+              u.address.toLowerCase() === user.custody_address.toLowerCase()
           ) + 1;
 
         // Sort by total (pushups + squats)
@@ -132,7 +135,8 @@ export default function PersonalDashboard({
         );
         const userTotalRank =
           totalRanking.findIndex(
-            (u) => u.address.toLowerCase() === user.custody_address.toLowerCase()
+            (u) =>
+              u.address.toLowerCase() === user.custody_address.toLowerCase()
           ) + 1;
 
         stats.rank = {
@@ -156,9 +160,9 @@ export default function PersonalDashboard({
 
   const generateShareableImage = async () => {
     if (!userStats || !user) return;
-    
+
     setIsGeneratingImage(true);
-    
+
     try {
       // This would typically call an API endpoint to generate the image
       // For now, we'll simulate it with a timeout
@@ -177,12 +181,12 @@ export default function PersonalDashboard({
     if (!shareableImage) {
       await generateShareableImage();
     }
-    
+
     // This would typically use the Farcaster SDK to share the image
     // For now, we'll just show a notification
     sendNotification({
       title: "Stats Shared!",
-      body: "Your fitness stats have been shared to your Farcaster feed."
+      body: "Your fitness stats have been shared to your Farcaster feed.",
     });
   };
 
@@ -227,22 +231,28 @@ export default function PersonalDashboard({
         {/* Fitness Stats */}
         <div className="border-2 border-white p-4 rounded-lg">
           <h3 className="text-center mb-4">Fitness Stats</h3>
-          
+
           <div className="flex justify-between mb-4">
             <div className="text-center">
-              <div className="text-pink-500 text-2xl mb-1">{formatNumber(userStats.totalPushups)}</div>
+              <div className="text-pink-500 text-2xl mb-1">
+                {formatNumber(userStats.totalPushups)}
+              </div>
               <div className="text-xs">Push-ups</div>
             </div>
             <div className="text-center">
-              <div className="text-green-500 text-2xl mb-1">{formatNumber(userStats.totalSquats)}</div>
+              <div className="text-green-500 text-2xl mb-1">
+                {formatNumber(userStats.totalSquats)}
+              </div>
               <div className="text-xs">Squats</div>
             </div>
             <div className="text-center">
-              <div className="text-yellow-500 text-2xl mb-1">{formatNumber(userStats.totalPushups + userStats.totalSquats)}</div>
+              <div className="text-yellow-500 text-2xl mb-1">
+                {formatNumber(userStats.totalPushups + userStats.totalSquats)}
+              </div>
               <div className="text-xs">Total</div>
             </div>
           </div>
-          
+
           <div className="text-center">
             <div className="text-xs mb-1">Your Rank</div>
             <div className="flex justify-center space-x-4">
@@ -261,29 +271,37 @@ export default function PersonalDashboard({
             </div>
           </div>
         </div>
-        
+
         {/* Prediction Stats */}
         <div className="border-2 border-white p-4 rounded-lg">
           <h3 className="text-center mb-4">Prediction Stats</h3>
-          
+
           <div className="flex justify-between mb-4">
             <div className="text-center">
-              <div className="text-blue-500 text-2xl mb-1">{userStats.predictions.total}</div>
+              <div className="text-blue-500 text-2xl mb-1">
+                {userStats.predictions.total}
+              </div>
               <div className="text-xs">Total</div>
             </div>
             <div className="text-center">
-              <div className="text-green-500 text-2xl mb-1">{userStats.predictions.correct}</div>
+              <div className="text-green-500 text-2xl mb-1">
+                {userStats.predictions.correct}
+              </div>
               <div className="text-xs">Correct</div>
             </div>
             <div className="text-center">
-              <div className="text-yellow-500 text-2xl mb-1">{userStats.predictions.pending}</div>
+              <div className="text-yellow-500 text-2xl mb-1">
+                {userStats.predictions.pending}
+              </div>
               <div className="text-xs">Pending</div>
             </div>
           </div>
-          
+
           <div className="text-center">
             <div className="text-xs mb-1">Total Staked</div>
-            <div className="text-celo text-xl">{userStats.predictions.staked} CELO</div>
+            <div className="text-celo text-xl">
+              {userStats.predictions.staked} CELO
+            </div>
           </div>
         </div>
       </div>
@@ -291,47 +309,57 @@ export default function PersonalDashboard({
       {/* Network Breakdown */}
       <div className="mb-8">
         <h3 className="text-center mb-4">Network Breakdown</h3>
-        
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {Object.entries(userStats.networkBreakdown).map(([network, stats]) => {
-            const networkColor = NETWORK_COLORS[network as keyof typeof NETWORK_COLORS] || "white";
-            
-            return (
-              <div key={network} className="text-center">
-                <div 
-                  className="w-12 h-12 rounded-full mx-auto mb-2 flex items-center justify-center"
-                  style={{ backgroundColor: networkColor }}
-                >
-                  <span className="text-sm">{network.charAt(0).toUpperCase()}</span>
+          {Object.entries(userStats.networkBreakdown).map(
+            ([network, stats]) => {
+              const networkColor =
+                NETWORK_COLORS[network as keyof typeof NETWORK_COLORS] ||
+                "white";
+
+              return (
+                <div key={network} className="text-center">
+                  <div
+                    className="w-12 h-12 rounded-full mx-auto mb-2 flex items-center justify-center"
+                    style={{ backgroundColor: networkColor }}
+                  >
+                    <span className="text-sm">
+                      {network.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="text-sm">{getNetworkName(network)}</div>
+                  <div className="text-xs text-pink-500">
+                    {formatNumber(stats.pushups)} 💪
+                  </div>
+                  <div className="text-xs text-green-500">
+                    {formatNumber(stats.squats)} 🏃
+                  </div>
                 </div>
-                <div className="text-sm">{getNetworkName(network)}</div>
-                <div className="text-xs text-pink-500">{formatNumber(stats.pushups)} 💪</div>
-                <div className="text-xs text-green-500">{formatNumber(stats.squats)} 🏃</div>
-              </div>
-            );
-          })}
+              );
+            }
+          )}
         </div>
       </div>
 
       {/* Share Stats */}
       <div className="text-center">
-        <button 
+        <button
           className="retro-button pulse-animation"
           onClick={shareStats}
           disabled={isGeneratingImage}
         >
           {isGeneratingImage ? "Generating..." : "Share My Stats 🚀"}
         </button>
-        
+
         {shareableImage && (
           <div className="mt-4">
             <p className="text-sm mb-2">Your shareable stats image is ready!</p>
             <div className="border-2 border-white p-2 rounded-lg">
-              <Image 
-                src={shareableImage} 
-                alt="Shareable Stats" 
-                width={300} 
-                height={157} 
+              <Image
+                src={shareableImage}
+                alt="Shareable Stats"
+                width={300}
+                height={157}
                 className="mx-auto"
               />
             </div>

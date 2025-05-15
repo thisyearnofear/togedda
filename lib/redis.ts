@@ -10,7 +10,7 @@ if (!env.REDIS_URL || !env.REDIS_TOKEN) {
 export const redis =
   env.REDIS_URL && env.REDIS_TOKEN
     ? new Redis({
-        url: env.REDIS_URL,
+        url: env.REDIS_URL.startsWith('https://') ? env.REDIS_URL : `https://${env.REDIS_URL}`,
         token: env.REDIS_TOKEN,
       })
     : null;

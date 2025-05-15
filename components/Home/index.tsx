@@ -90,39 +90,29 @@ export default function Home() {
             </div>
           </div>
 
-          {/* User Profile or Sign In */}
+          {/* User Profile */}
           <div className="mb-6">
-            {!isSignedIn ? (
-              <button
-                onClick={signIn}
-                disabled={authLoading}
-                className="retro-button text-lg px-8 py-4"
-              >
-                {authLoading ? "Connecting..." : "Connect with Farcaster"}
-              </button>
-            ) : (
-              user && (
-                <div className="game-container py-3 px-4 inline-flex items-center space-x-3">
-                  <Image
-                    src={user.pfp_url}
-                    alt="Profile"
-                    className="w-12 h-12 rounded-full border-2 border-white"
-                    width={48}
-                    height={48}
-                  />
-                  <div className="text-left">
-                    <p className="text-sm">{user.display_name}</p>
-                    <p className="text-xs text-gray-400">@{user.username}</p>
-                  </div>
-                  <button
-                    onClick={handleRefresh}
-                    className="ml-2 p-2 border-2 border-white rounded-full hover:bg-white hover:text-black transition-colors"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? "⟳" : "⟳"}
-                  </button>
+            {isSignedIn && user && (
+              <div className="game-container py-3 px-4 inline-flex items-center space-x-3">
+                <Image
+                  src={user.pfp_url}
+                  alt="Profile"
+                  className="w-12 h-12 rounded-full border-2 border-white"
+                  width={48}
+                  height={48}
+                />
+                <div className="text-left">
+                  <p className="text-sm">{user.display_name}</p>
+                  <p className="text-xs text-gray-400">@{user.username}</p>
                 </div>
-              )
+                <button
+                  onClick={handleRefresh}
+                  className="ml-2 p-2 border-2 border-white rounded-full hover:bg-white hover:text-black transition-colors"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "⟳" : "⟳"}
+                </button>
+              </div>
             )}
           </div>
         </header>
@@ -226,7 +216,7 @@ export default function Home() {
             rel="noopener noreferrer"
             className="retro-button text-lg px-8 py-4 inline-block"
           >
-            Start Exercising Now!
+            Carry The Boats 🚣🌊
           </a>
         </div>
       </div>

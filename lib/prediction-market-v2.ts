@@ -103,12 +103,27 @@ const getProvider = () => {
   return new ethers.JsonRpcProvider('https://forno.celo.org');
 };
 
-// Get browser provider for write operations
+// Get Farcaster wallet provider for write operations
 const getBrowserProvider = async () => {
-  if (typeof window === 'undefined' || !window.ethereum) {
-    throw new Error('No Ethereum provider found. Please install MetaMask or another wallet.');
+  try {
+    // Dynamically import the Farcaster SDK to avoid SSR issues
+    const { sdk } = await import('@farcaster/frame-sdk');
+
+    // Check if we have access to the Farcaster wallet
+    if (sdk.wallet && sdk.wallet.ethProvider) {
+      return new ethers.BrowserProvider(sdk.wallet.ethProvider);
+    } else {
+      console.log('Farcaster wallet not available, falling back to window.ethereum');
+      // Fallback to window.ethereum for testing outside of Farcaster
+      if (typeof window !== 'undefined' && window.ethereum) {
+        return new ethers.BrowserProvider(window.ethereum);
+      }
+    }
+  } catch (error) {
+    console.error('Error accessing Farcaster wallet:', error);
   }
-  return new ethers.BrowserProvider(window.ethereum);
+
+  throw new Error('No wallet provider found. Please ensure you are using the Warpcast app.');
 };
 
 // Get prediction market contract
@@ -119,10 +134,15 @@ const getPredictionMarketContract = async (requireSigner = false) => {
     return new ethers.Contract(PREDICTION_MARKET_ADDRESS, predictionMarketABI, provider);
   }
 
-  // For write operations, use the browser provider with signer
-  const provider = await getBrowserProvider();
-  const signer = await provider.getSigner();
-  return new ethers.Contract(PREDICTION_MARKET_ADDRESS, predictionMarketABI, signer);
+  try {
+    // For write operations, use the Farcaster wallet provider with signer
+    const provider = await getBrowserProvider();
+    const signer = await provider.getSigner();
+    return new ethers.Contract(PREDICTION_MARKET_ADDRESS, predictionMarketABI, signer);
+  } catch (error) {
+    console.error('Error getting signer:', error);
+    throw new Error('Could not access your wallet. Please ensure you are using the Warpcast app.');
+  }
 };
 
 // Get fee information
@@ -343,6 +363,7 @@ export const voteOnPrediction = async (
   amount: number
 ): Promise<void> => {
   try {
+    // Get the contract with signer
     const contract = await getPredictionMarketContract(true);
     const provider = await getBrowserProvider();
     const signer = await provider.getSigner();
@@ -351,50 +372,79 @@ export const voteOnPrediction = async (
     // Check if this is the user's first transaction (not already referred)
     const isFirstTransaction = !hasBeenReferred(userAddress);
 
-    if (isFirstTransaction) {
-      // Get the Divvi referral data suffix
-      const dataSuffix = getDataSuffix({
-        consumer: '0x55A5705453Ee82c742274154136Fce8149597058',
-        providers: [
-          '0x5f0a55FaD9424ac99429f635dfb9bF20c3360Ab8',
-          '0x6226ddE08402642964f9A6de844ea3116F0dFc7e',
-          '0x0423189886D7966f0DD7E7d256898DAeEE625dca'
-        ],
-      });
+    console.log(`Voting on prediction ${predictionId}, isYes: ${isYes}, amount: ${amount} CELO`);
+    console.log(`User address: ${userAddress}, isFirstTransaction: ${isFirstTransaction}`);
 
-      // Prepare the transaction data with the referral suffix
-      const data = contract.interface.encodeFunctionData('vote', [predictionId, isYes]) + dataSuffix;
+    try {
+      let tx;
+      let receipt;
 
-      // Send the transaction manually with the modified data
-      const tx = await signer.sendTransaction({
-        to: PREDICTION_MARKET_ADDRESS,
-        data: data,
-        value: ethers.parseEther(amount.toString())
-      });
-
-      // Wait for transaction confirmation
-      const receipt = await tx.wait();
-
-      if (receipt) {
-        // Submit the referral to Divvi
-        const chainId = (await provider.getNetwork()).chainId;
-        await submitReferral({
-          txHash: receipt.hash as `0x${string}`,
-          chainId: Number(chainId),
+      if (isFirstTransaction) {
+        // Get the Divvi referral data suffix
+        const dataSuffix = getDataSuffix({
+          consumer: '0x55A5705453Ee82c742274154136Fce8149597058',
+          providers: [
+            '0x5f0a55FaD9424ac99429f635dfb9bF20c3360Ab8',
+            '0x6226ddE08402642964f9A6de844ea3116F0dFc7e',
+            '0x0423189886D7966f0DD7E7d256898DAeEE625dca'
+          ],
         });
 
-        // Mark user as referred
-        markUserAsReferred(userAddress);
-        console.log('User referred successfully:', userAddress);
+        // Prepare the transaction data with the referral suffix
+        const data = contract.interface.encodeFunctionData('vote', [predictionId, isYes]) + dataSuffix;
+
+        // Send the transaction with increased gas limit for Warpcast wallet
+        tx = await signer.sendTransaction({
+          to: PREDICTION_MARKET_ADDRESS,
+          data: data,
+          value: ethers.parseEther(amount.toString()),
+          gasLimit: 500000 // Increase gas limit for Warpcast wallet
+        });
+
+        console.log('Transaction sent:', tx.hash);
+
+        // Wait for transaction confirmation
+        receipt = await tx.wait();
+        console.log('Transaction confirmed:', receipt);
+
+        if (receipt) {
+          // Submit the referral to Divvi
+          const chainId = (await provider.getNetwork()).chainId;
+          await submitReferral({
+            txHash: receipt.hash as `0x${string}`,
+            chainId: Number(chainId),
+          });
+
+          // Mark user as referred
+          markUserAsReferred(userAddress);
+          console.log('User referred successfully:', userAddress);
+        }
+      } else {
+        // Regular transaction for returning users with increased gas limit
+        tx = await contract.vote(predictionId, isYes, {
+          value: ethers.parseEther(amount.toString()),
+          gasLimit: 500000 // Increase gas limit for Warpcast wallet
+        });
+
+        console.log('Transaction sent:', tx.hash);
+        receipt = await tx.wait();
+        console.log('Transaction confirmed:', receipt);
       }
-    } else {
-      // Regular transaction for returning users
-      const tx = await contract.vote(predictionId, isYes, {
-        value: ethers.parseEther(amount.toString())
-      });
-      await tx.wait();
+    } catch (txError: any) {
+      console.error('Transaction error:', txError);
+
+      // Provide more user-friendly error messages
+      if (txError.message.includes('user rejected')) {
+        throw new Error('Transaction was rejected by the user.');
+      } else if (txError.message.includes('insufficient funds')) {
+        throw new Error('Insufficient funds. Please make sure you have enough CELO to complete this transaction.');
+      } else if (txError.message.includes('gas required exceeds')) {
+        throw new Error('Transaction requires more gas than available. Try a smaller amount.');
+      } else {
+        throw new Error(`Transaction failed: ${txError.message || 'Unknown error'}`);
+      }
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error voting on prediction:', error);
     throw error;
   }
@@ -419,11 +469,28 @@ export const updatePredictionValue = async (
 export const claimReward = async (predictionId: number): Promise<void> => {
   try {
     const contract = await getPredictionMarketContract(true);
-    const tx = await contract.claimReward(predictionId);
-    await tx.wait();
-  } catch (error) {
-    console.error('Error claiming reward:', error);
-    throw error;
+
+    // Add gas limit for Warpcast wallet
+    const tx = await contract.claimReward(predictionId, {
+      gasLimit: 500000 // Increase gas limit for Warpcast wallet
+    });
+
+    console.log('Claim reward transaction sent:', tx.hash);
+    const receipt = await tx.wait();
+    console.log('Claim reward transaction confirmed:', receipt);
+  } catch (txError: any) {
+    console.error('Error claiming reward:', txError);
+
+    // Provide more user-friendly error messages
+    if (txError.message.includes('user rejected')) {
+      throw new Error('Transaction was rejected by the user.');
+    } else if (txError.message.includes('insufficient funds')) {
+      throw new Error('Insufficient funds. Please make sure you have enough CELO to complete this transaction.');
+    } else if (txError.message.includes('gas required exceeds')) {
+      throw new Error('Transaction requires more gas than available.');
+    } else {
+      throw new Error(`Transaction failed: ${txError.message || 'Unknown error'}`);
+    }
   }
 };
 

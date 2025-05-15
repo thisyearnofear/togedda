@@ -75,11 +75,6 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
   }, [address, prediction.id]);
 
   const handleVote = async (isYes: boolean) => {
-    if (!address) {
-      toast.error("Please connect your wallet first");
-      return;
-    }
-
     if (!isActive) {
       toast.error("This prediction is no longer active");
       return;
@@ -87,27 +82,45 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
 
     try {
       setIsVoting(true);
+
+      // Import the SDK dynamically to avoid SSR issues
+      const { sdk } = await import("@farcaster/frame-sdk");
+
+      // Check if we have access to the Farcaster wallet
+      if (!sdk.wallet || !sdk.wallet.ethProvider) {
+        toast.error(
+          "Warpcast wallet not available. Please ensure you're using the Warpcast app."
+        );
+        return;
+      }
+
+      // Proceed with the vote
       await voteOnPrediction(prediction.id, isYes, parseFloat(amount));
       toast.success(`You voted ${isYes ? "YES" : "NO"} with ${amount} CELO`);
       onVote();
 
+      // Get the current address from the provider
+      const provider = new ethers.BrowserProvider(sdk.wallet.ethProvider);
+      const signer = await provider.getSigner();
+      const currentAddress = await signer.getAddress();
+
       // Refresh user vote
-      const vote = await getUserVote(prediction.id, address);
+      const vote = await getUserVote(prediction.id, currentAddress);
       setUserVote(vote);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error voting:", error);
-      toast.error("Failed to vote. Please try again.");
+      // Display a more user-friendly error message
+      if (error.message) {
+        toast.error(error.message);
+      } else {
+        toast.error("Failed to vote. Please try again.");
+      }
     } finally {
       setIsVoting(false);
     }
   };
 
   const handleClaimReward = async () => {
-    if (!address) {
-      toast.error("Please connect your wallet first");
-      return;
-    }
-
     if (!isResolved) {
       toast.error("This prediction is not resolved yet");
       return;
@@ -134,16 +147,38 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
 
     try {
       setIsVoting(true);
+
+      // Import the SDK dynamically to avoid SSR issues
+      const { sdk } = await import("@farcaster/frame-sdk");
+
+      // Check if we have access to the Farcaster wallet
+      if (!sdk.wallet || !sdk.wallet.ethProvider) {
+        toast.error(
+          "Warpcast wallet not available. Please ensure you're using the Warpcast app."
+        );
+        return;
+      }
+
       await claimReward(prediction.id);
       toast.success("Reward claimed successfully!");
       onVote();
 
+      // Get the current address from the provider
+      const provider = new ethers.BrowserProvider(sdk.wallet.ethProvider);
+      const signer = await provider.getSigner();
+      const currentAddress = await signer.getAddress();
+
       // Refresh user vote
-      const vote = await getUserVote(prediction.id, address);
+      const vote = await getUserVote(prediction.id, currentAddress);
       setUserVote(vote);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error claiming reward:", error);
-      toast.error("Failed to claim reward. Please try again.");
+      // Display a more user-friendly error message
+      if (error.message) {
+        toast.error(error.message);
+      } else {
+        toast.error("Failed to claim reward. Please try again.");
+      }
     } finally {
       setIsVoting(false);
     }

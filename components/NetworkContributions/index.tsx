@@ -36,16 +36,17 @@ export default function NetworkContributions({
 
   return (
     <div className="game-container my-8">
-      <h2 className="retro-heading text-xl mb-6">Chain Battle</h2>
+      <h2 className="retro-heading text-xl mb-6">
+        Onchain Olympians (in training)
+      </h2>
 
       <div className="text-center mb-6">
         <p className="text-sm mb-4">
-          Which blockchain network will contribute the most to our fitness
-          goals?
+          Build that BASE u M(on)AD one. Saggy buns? PolyGONE.{" "}
         </p>
         <div className="inline-block border-2 border-white p-3 rounded-lg bg-black bg-opacity-50">
           <span className="text-yellow-400 font-bold">
-            👑 Chain Champions earn special achievements!
+            CELObrate vim & vigour: use it or lose it
           </span>
         </div>
       </div>
@@ -202,10 +203,10 @@ export default function NetworkContributions({
 
       <div className="mt-8 text-center">
         <div className="inline-block border-2 border-white p-4 rounded-lg bg-black bg-opacity-50">
-          <h3 className="text-lg mb-2">How to Contribute</h3>
+          <h3 className="text-lg mb-2">How to COOK</h3>
           <p className="text-sm mb-4">
-            Connect your wallet from your favorite chain and start logging your
-            fitness activities!
+            Do reps on any chain, raise dosh for charity. Feel good, Look good,
+            do Good.
           </p>
           <div className="flex justify-center space-x-4">
             {Object.entries(NETWORK_COLORS).map(([network, color]) => (

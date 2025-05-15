@@ -43,13 +43,10 @@ export default function CollectiveGoalsComponent({
       <h2 className="retro-heading text-xl mb-6">Collective Goals</h2>
 
       <div className="text-center mb-6">
-        <p className="text-sm mb-4">
-          Join forces with the community to achieve these epic fitness
-          milestones!
-        </p>
+        <p className="text-sm mb-4">Join forces to achieve epic milestones!</p>
         <div className="inline-block border-2 border-white p-3 rounded-lg bg-black bg-opacity-50">
           <span className="text-yellow-400">
-            🏆 Earn special achievements when goals are reached!
+            🏆 Every rep makes a difference!
           </span>
         </div>
       </div>

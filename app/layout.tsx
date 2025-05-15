@@ -35,7 +35,7 @@ export const metadata: Metadata = {
       version: "next",
       imageUrl: "https://imperfectminiapp.vercel.app/og.png",
       button: {
-        title: "Launch App",
+        title: "Stay Hard",
         action: {
           type: "launch_frame",
           url: "https://imperfectminiapp.vercel.app",

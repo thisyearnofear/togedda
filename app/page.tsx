@@ -8,7 +8,7 @@ const frame = {
   version: "next",
   imageUrl: `${appUrl}/og.png`,
   button: {
-    title: "Track Fitness",
+    title: "Stay Hard",
     action: {
       type: "launch_frame",
       name: "Imperfect Form",

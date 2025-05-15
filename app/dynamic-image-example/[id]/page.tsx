@@ -19,13 +19,13 @@ export async function generateMetadata({
     version: "next",
     imageUrl: imageUrl.toString(),
     button: {
-      title: "Launch App",
+      title: "Stay Hard",
       action: {
         type: "launch_frame",
-        name: "Launch App",
+        name: "Imperfect Form",
         url: appUrl,
-        splashImageUrl: `${appUrl}/images/splash.png`,
-        splashBackgroundColor: "#f7f7f7",
+        splashImageUrl: `${appUrl}/splash.png`,
+        splashBackgroundColor: "#000000",
       },
     },
   };

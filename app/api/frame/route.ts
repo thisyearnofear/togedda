@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
       version: "next",
       imageUrl: `${appUrl}/og.png`,
       button: {
-        title: "Launch App",
+        title: "Stay Hard",
         action: {
           type: "post_redirect",
           url: appUrl

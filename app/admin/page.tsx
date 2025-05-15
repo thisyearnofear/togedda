@@ -1,16 +1,7 @@
 import { Metadata } from "next";
-import dynamic from "next/dynamic";
 import { env } from "@/lib/env";
 
 const appUrl = env.NEXT_PUBLIC_URL;
-
-const PredictionMarketAdmin = dynamic(
-  () => import("@/components/PredictionMarketAdmin"),
-  {
-    ssr: false,
-    loading: () => <div>Loading admin panel...</div>,
-  }
-);
 
 export async function generateMetadata(): Promise<Metadata> {
   const frame = {
@@ -57,7 +48,20 @@ export default function AdminPage() {
           </div>
         </header>
 
-        <PredictionMarketAdmin />
+        <div className="game-container p-6 text-center">
+          <h2 className="text-xl mb-4">Admin Panel Deprecated</h2>
+          <p className="mb-4">
+            The admin panel for the old prediction market contracts has been
+            deprecated.
+          </p>
+          <p className="mb-4">
+            The new V2 prediction market contract is now deployed at:
+          </p>
+          <p className="text-yellow-400 mb-6 break-all">
+            0x4d6b336F174f17daAf63D233E1E05cB105562304
+          </p>
+          <p>Please use the contract directly for administrative functions.</p>
+        </div>
       </div>
     </div>
   );

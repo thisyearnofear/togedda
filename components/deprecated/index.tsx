@@ -8,11 +8,11 @@ import {
   getMarketCount,
   isMarketFromFactory,
   transferFactoryOwnership,
-} from "@/lib/prediction-market-factory";
+} from "@/lib/deprecated/prediction-market-factory";
 import {
   resolvePrediction,
   updatePredictionValue,
-} from "@/lib/prediction-market";
+} from "@/lib/deprecated/prediction-market";
 
 export default function PredictionMarketAdmin() {
   const { user, isSignedIn, signIn } = useSignIn({ autoSignIn: false });

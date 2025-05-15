@@ -26,44 +26,12 @@ const PredictionMarket: React.FC = () => {
   });
   const [isSubmittingSuggestion, setIsSubmittingSuggestion] = useState(false);
 
-  // Predefined predictions for the four networks
-  const predefinedPredictions = [
-    {
-      network: "celo",
-      title:
-        "The celo community will not reach 10,000 total squats by 15th June 2025",
-      description:
-        "Will the collective Celo community reach the milestone of 10,000 total squats before the target date?",
-      emoji: "🟡",
-      category: PredictionCategory.FITNESS,
-    },
-    {
-      network: "polygon",
-      title:
-        "No polygon user will complete 500 pushups in a single week by 15th June 2025",
-      description:
-        "Will any individual Polygon user achieve 500 pushups in a single week before the target date?",
-      emoji: "🟣",
-      category: PredictionCategory.FITNESS,
-    },
-    {
-      network: "base",
-      title:
-        "No base user will complete 500 squats in a single week by 15th June 2025",
-      description:
-        "Will any individual Base user achieve 500 squats in a single week before the target date?",
-      emoji: "🔵",
-      category: PredictionCategory.FITNESS,
-    },
-    {
-      network: "monad",
-      title:
-        "The monad community will not reach 10,000 total pushups by 15th June 2025",
-      description:
-        "Will the collective Monad community reach the milestone of 10,000 total pushups before the target date?",
-      emoji: "⚫",
-      category: PredictionCategory.FITNESS,
-    },
+  // Network information
+  const networks = [
+    { id: "celo", name: "Celo Mainnet", emoji: "🟡", color: "celo" },
+    { id: "polygon", name: "Polygon Mainnet", emoji: "🟣", color: "polygon" },
+    { id: "base", name: "Base Sepolia", emoji: "🔵", color: "base-chain" },
+    { id: "monad", name: "Monad Testnet", emoji: "⚫", color: "monad" },
   ];
 
   useEffect(() => {
@@ -223,14 +191,20 @@ const PredictionMarket: React.FC = () => {
     },
   ];
 
-  // Debug the predictions array
-  console.log("Loaded predictions:", predictions);
+  // Use the predictions from the contract or fallback to hardcoded ones
+  const networkPredictions = networks.map((network, index) => {
+    // Try to find a matching prediction from the blockchain
+    const contractPrediction = predictions.find(
+      (p) =>
+        p.network.toLowerCase() === network.id.toLowerCase() &&
+        p.status === PredictionStatus.ACTIVE
+    );
 
-  // Always use hardcoded predictions for now
-  const celoPredictions = [hardcodedPredictions[0]];
-  const polygonPredictions = [hardcodedPredictions[1]];
-  const basePredictions = [hardcodedPredictions[2]];
-  const monadPredictions = [hardcodedPredictions[3]];
+    // If found, use it; otherwise use the hardcoded one
+    return contractPrediction
+      ? [contractPrediction]
+      : [hardcodedPredictions[index]];
+  });
 
   return (
     <div className="game-container my-8">
@@ -281,113 +255,38 @@ const PredictionMarket: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
-          {/* Celo Prediction */}
-          <div className="border-2 border-celo rounded-lg p-4 bg-black bg-opacity-70">
-            <div className="flex items-center mb-2">
-              <div className="w-10 h-10 rounded-full bg-celo flex items-center justify-center mr-3">
-                <span className="text-xl">🟡</span>
+          {networks.map((network, index) => (
+            <div
+              key={network.id}
+              className={`border-2 border-${network.color} rounded-lg p-4 bg-black bg-opacity-70`}
+            >
+              <div className="flex items-center mb-2">
+                <div
+                  className={`w-10 h-10 rounded-full bg-${network.color} flex items-center justify-center mr-3`}
+                >
+                  <span className="text-xl">{network.emoji}</span>
+                </div>
+                <h3 className="text-lg font-bold">{network.name}</h3>
               </div>
-              <h3 className="text-lg font-bold">Celo Mainnet</h3>
+
+              {networkPredictions[index].length > 0 ? (
+                <PredictionCard
+                  prediction={networkPredictions[index][0]}
+                  onVote={handleVote}
+                  simplified={true}
+                />
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-gray-400 mb-2">
+                    No active predictions for {network.name}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {hardcodedPredictions[index].title}
+                  </p>
+                </div>
+              )}
             </div>
-
-            {celoPredictions.length > 0 ? (
-              <PredictionCard
-                prediction={celoPredictions[0]}
-                onVote={handleVote}
-                simplified={true}
-              />
-            ) : (
-              <div className="text-center py-4">
-                <p className="text-gray-400 mb-2">
-                  No active predictions for Celo
-                </p>
-                <p className="text-sm text-gray-500">
-                  {predefinedPredictions[0].title}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Polygon Prediction */}
-          <div className="border-2 border-polygon rounded-lg p-4 bg-black bg-opacity-70">
-            <div className="flex items-center mb-2">
-              <div className="w-10 h-10 rounded-full bg-polygon flex items-center justify-center mr-3">
-                <span className="text-xl">🟣</span>
-              </div>
-              <h3 className="text-lg font-bold">Polygon Mainnet</h3>
-            </div>
-
-            {polygonPredictions.length > 0 ? (
-              <PredictionCard
-                prediction={polygonPredictions[0]}
-                onVote={handleVote}
-                simplified={true}
-              />
-            ) : (
-              <div className="text-center py-4">
-                <p className="text-gray-400 mb-2">
-                  No active predictions for Polygon
-                </p>
-                <p className="text-sm text-gray-500">
-                  {predefinedPredictions[1].title}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Base Prediction */}
-          <div className="border-2 border-base-chain rounded-lg p-4 bg-black bg-opacity-70">
-            <div className="flex items-center mb-2">
-              <div className="w-10 h-10 rounded-full bg-base-chain flex items-center justify-center mr-3">
-                <span className="text-xl">🔵</span>
-              </div>
-              <h3 className="text-lg font-bold">Base Sepolia</h3>
-            </div>
-
-            {basePredictions.length > 0 ? (
-              <PredictionCard
-                prediction={basePredictions[0]}
-                onVote={handleVote}
-                simplified={true}
-              />
-            ) : (
-              <div className="text-center py-4">
-                <p className="text-gray-400 mb-2">
-                  No active predictions for Base
-                </p>
-                <p className="text-sm text-gray-500">
-                  {predefinedPredictions[2].title}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Monad Prediction */}
-          <div className="border-2 border-monad rounded-lg p-4 bg-black bg-opacity-70">
-            <div className="flex items-center mb-2">
-              <div className="w-10 h-10 rounded-full bg-monad flex items-center justify-center mr-3">
-                <span className="text-xl">⚫</span>
-              </div>
-              <h3 className="text-lg font-bold">Monad Testnet</h3>
-            </div>
-
-            {monadPredictions.length > 0 ? (
-              <PredictionCard
-                prediction={monadPredictions[0]}
-                onVote={handleVote}
-                simplified={true}
-              />
-            ) : (
-              <div className="text-center py-4">
-                <p className="text-gray-400 mb-2">
-                  No active predictions for Monad
-                </p>
-                <p className="text-sm text-gray-500">
-                  {predefinedPredictions[3].title}
-                </p>
-              </div>
-            )}
-          </div>
+          ))}
         </div>
       )}
 

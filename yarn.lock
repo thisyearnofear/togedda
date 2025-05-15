@@ -51,6 +51,11 @@
     eventemitter3 "^5.0.1"
     preact "^10.24.2"
 
+"@divvi/referral-sdk@^1.0.0":
+  version "1.0.0"
+  resolved "https://registry.npmjs.org/@divvi/referral-sdk/-/referral-sdk-1.0.0.tgz"
+  integrity sha512-X1i66AFQMJCu5jdOjg6mruSZ70YXolTNE1VHDr9tSHRnoR3EWki1Wtgb+A5fyE0AVl73uWZClqXlEGivyZbQ1w==
+
 "@ecies/ciphers@^0.2.2":
   version "0.2.2"
   resolved "https://registry.npmjs.org/@ecies/ciphers/-/ciphers-0.2.2.tgz"

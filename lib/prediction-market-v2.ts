@@ -1,6 +1,7 @@
 "use client";
 
 import { ethers } from "ethers";
+import { getDataSuffix, submitReferral } from '@divvi/referral-sdk';
 
 // Complete ABI for the prediction market contract
 const predictionMarketABI = [
@@ -34,7 +35,7 @@ const predictionMarketABI = [
 ];
 
 // Deployed prediction market contract address on CELO
-const PREDICTION_MARKET_ADDRESS = process.env.NEXT_PUBLIC_PREDICTION_MARKET_V2_ADDRESS || '0x28461Aeb1af60D059D9aD07051df4fB70C5C1921';
+const PREDICTION_MARKET_ADDRESS = process.env.NEXT_PUBLIC_PREDICTION_MARKET_V2_ADDRESS || '0x4d6b336F174f17daAf63D233E1E05cB105562304';
 
 // Charity address
 const CHARITY_ADDRESS = "0x0e5DaC01687592597d3e4307cdB7B3B616F2822E";
@@ -166,9 +167,6 @@ export const getFeeInfo = async (): Promise<FeeInfo> => {
 // Get all predictions
 export const getAllPredictions = async (): Promise<Prediction[]> => {
   try {
-    console.log("Getting prediction market contract...");
-    console.log("Using address:", PREDICTION_MARKET_ADDRESS);
-
     // Create a read-only provider for CELO mainnet
     const provider = new ethers.JsonRpcProvider("https://forno.celo.org");
 
@@ -179,22 +177,13 @@ export const getAllPredictions = async (): Promise<Prediction[]> => {
       provider
     );
 
-    console.log("Trying to fetch predictions directly...");
-
     const predictions: Prediction[] = [];
     // We know we have 4 predictions (IDs 1-4)
     const knownIds = [1, 2, 3, 4];
 
     for (const id of knownIds) {
       try {
-        console.log(`Fetching prediction ${id}...`);
         const prediction = await contract.getPrediction(id);
-        console.log(`Prediction ${id} data:`, {
-          id: prediction.id.toString(),
-          title: prediction.title,
-          network: prediction.network,
-          status: prediction.status
-        });
 
         predictions.push({
           id: Number(prediction.id),
@@ -215,13 +204,11 @@ export const getAllPredictions = async (): Promise<Prediction[]> => {
           createdAt: Number(prediction.createdAt),
           autoResolvable: prediction.autoResolvable
         });
-        console.log(`Added prediction ${id} to list`);
       } catch (error) {
         console.error(`Error fetching prediction ${id}:`, error);
       }
     }
 
-    console.log("Final predictions list:", predictions);
     return predictions;
   } catch (error) {
     console.error('Error getting all predictions:', error);
@@ -319,7 +306,37 @@ export const createPrediction = async (
   }
 };
 
-// Vote on a prediction
+// Track if a user has already been referred
+const userReferrals = new Map<string, boolean>();
+
+// Check if user has been referred before
+const hasBeenReferred = (address: string): boolean => {
+  if (userReferrals.has(address)) {
+    return userReferrals.get(address) || false;
+  }
+
+  // Check localStorage if available
+  if (typeof window !== 'undefined') {
+    const referred = localStorage.getItem(`divvi-referred-${address}`);
+    const isReferred = referred === 'true';
+    userReferrals.set(address, isReferred);
+    return isReferred;
+  }
+
+  return false;
+};
+
+// Mark user as referred
+const markUserAsReferred = (address: string): void => {
+  userReferrals.set(address, true);
+
+  // Store in localStorage if available
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(`divvi-referred-${address}`, 'true');
+  }
+};
+
+// Vote on a prediction with Divvi referral tracking
 export const voteOnPrediction = async (
   predictionId: number,
   isYes: boolean,
@@ -327,10 +344,56 @@ export const voteOnPrediction = async (
 ): Promise<void> => {
   try {
     const contract = await getPredictionMarketContract(true);
-    const tx = await contract.vote(predictionId, isYes, {
-      value: ethers.parseEther(amount.toString())
-    });
-    await tx.wait();
+    const provider = await getBrowserProvider();
+    const signer = await provider.getSigner();
+    const userAddress = await signer.getAddress();
+
+    // Check if this is the user's first transaction (not already referred)
+    const isFirstTransaction = !hasBeenReferred(userAddress);
+
+    if (isFirstTransaction) {
+      // Get the Divvi referral data suffix
+      const dataSuffix = getDataSuffix({
+        consumer: '0x55A5705453Ee82c742274154136Fce8149597058',
+        providers: [
+          '0x5f0a55FaD9424ac99429f635dfb9bF20c3360Ab8',
+          '0x6226ddE08402642964f9A6de844ea3116F0dFc7e',
+          '0x0423189886D7966f0DD7E7d256898DAeEE625dca'
+        ],
+      });
+
+      // Prepare the transaction data with the referral suffix
+      const data = contract.interface.encodeFunctionData('vote', [predictionId, isYes]) + dataSuffix;
+
+      // Send the transaction manually with the modified data
+      const tx = await signer.sendTransaction({
+        to: PREDICTION_MARKET_ADDRESS,
+        data: data,
+        value: ethers.parseEther(amount.toString())
+      });
+
+      // Wait for transaction confirmation
+      const receipt = await tx.wait();
+
+      if (receipt) {
+        // Submit the referral to Divvi
+        const chainId = (await provider.getNetwork()).chainId;
+        await submitReferral({
+          txHash: receipt.hash as `0x${string}`,
+          chainId: Number(chainId),
+        });
+
+        // Mark user as referred
+        markUserAsReferred(userAddress);
+        console.log('User referred successfully:', userAddress);
+      }
+    } else {
+      // Regular transaction for returning users
+      const tx = await contract.vote(predictionId, isYes, {
+        value: ethers.parseEther(amount.toString())
+      });
+      await tx.wait();
+    }
   } catch (error) {
     console.error('Error voting on prediction:', error);
     throw error;

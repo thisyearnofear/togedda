@@ -7,32 +7,16 @@ const appUrl = env.NEXT_PUBLIC_URL;
 const frame = {
   version: "next",
   imageUrl: `${appUrl}/og.png`,
-  buttons: [
-    {
-      title: "Track Fitness",
-      action: {
-        type: "launch_frame",
-        name: "Imperfect Form",
-        url: appUrl,
-        splashImageUrl: `${appUrl}/splash.png`,
-        splashBackgroundColor: "#000000",
-      },
+  button: {
+    title: "Track Fitness",
+    action: {
+      type: "launch_frame",
+      name: "Imperfect Form",
+      url: appUrl,
+      splashImageUrl: `${appUrl}/splash.png`,
+      splashBackgroundColor: "#000000",
     },
-    {
-      title: "View Leaderboard",
-      action: {
-        type: "post_redirect",
-        url: `${appUrl}/leaderboard`,
-      },
-    },
-    {
-      title: "Prediction Market",
-      action: {
-        type: "post_redirect",
-        url: `${appUrl}/predictions`,
-      },
-    },
-  ],
+  },
 };
 
 export async function generateMetadata(): Promise<Metadata> {

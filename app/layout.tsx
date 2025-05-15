@@ -31,11 +31,20 @@ export const metadata: Metadata = {
     apple: "/logo.png",
   },
   other: {
-    "fc:frame": "vNext",
-    "fc:frame:image": "https://imperfectminiapp.vercel.app/og.png",
-    "fc:frame:post_url": "https://imperfectminiapp.vercel.app/api/frame",
-    "fc:frame:button:1": "Launch App",
-    "fc:frame:button:1:action": "post_redirect",
+    "fc:frame": JSON.stringify({
+      version: "next",
+      imageUrl: "https://imperfectminiapp.vercel.app/og.png",
+      button: {
+        title: "Launch App",
+        action: {
+          type: "launch_frame",
+          url: "https://imperfectminiapp.vercel.app",
+          name: "Imperfect Form",
+          splashImageUrl: "https://imperfectminiapp.vercel.app/splash.png",
+          splashBackgroundColor: "#000000",
+        },
+      },
+    }),
   },
 };
 

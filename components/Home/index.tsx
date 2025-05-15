@@ -40,6 +40,22 @@ export default function Home() {
     "goals" | "leaderboard" | "networks" | "predictions" | "personal"
   >("goals");
 
+  // Call Farcaster SDK ready
+  useEffect(() => {
+    const initFarcaster = async () => {
+      try {
+        const { sdk } = await import("@farcaster/frame-sdk");
+        // Call ready to hide the splash screen
+        await sdk.actions.ready({ disableNativeGestures: false });
+        console.log("Farcaster SDK ready called from Home component");
+      } catch (error) {
+        console.error("Error calling Farcaster SDK ready from Home:", error);
+      }
+    };
+
+    initFarcaster();
+  }, []);
+
   // Fetch data from blockchain
   useEffect(() => {
     async function loadData() {

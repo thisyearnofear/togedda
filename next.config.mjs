@@ -28,6 +28,19 @@ const nextConfig = {
       },
     ];
   },
+  // Add rewrites to ensure manifest files are accessible
+  async rewrites() {
+    return [
+      {
+        source: "/.well-known/farcaster.json",
+        destination: "/api/manifest/farcaster",
+      },
+      {
+        source: "/.well-known/farcaster/manifest.json",
+        destination: "/api/manifest/farcaster",
+      },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -1,14 +1,27 @@
 {
-  "name": "Imperfect Form",
-  "description": "Track fitness goals across multiple blockchain networks with a retro-gamified style.",
-  "icon_url": "https://imperfectminiapp.vercel.app/logo.png",
-  "image": "https://imperfectminiapp.vercel.app/og.png",
-  "app_url": "https://imperfectminiapp.vercel.app",
-  "categories": ["health-fitness"],
-  "tags": ["fitness", "blockchain", "gamification", "prediction-market"],
-  "tagline": "Fitness goals on-chain",
-  "theme_color": "#000000",
-  "publisher_name": "Imperfect Form",
-  "publisher_icon_url": "https://imperfectminiapp.vercel.app/logo.png",
-  "screenshots": ["https://imperfectminiapp.vercel.app/hero.png"]
+  "accountAssociation": {
+    "header": "eyJmaWQiOjUyNTQsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHg4QjAzQTJDMzY1YzI2MUFlQmU2ODQyMjREQkI2Qzk1OTJhQkNkRkIyIn0",
+    "payload": "eyJkb21haW4iOiJpbXBlcmZlY3RtaW5pYXBwLnZlcmNlbC5hcHAifQ",
+    "signature": "MHhlMTFjNzU2OTY3ZGZhNDUzZGY4NGRlYmZhOGUwMTI4ODc1Yjk2M2M5ZTYwZTFjMDNmMzlmNzUwYTdhODUzNmY3MzE5ZmJmNjZlYWRkMTAzNjlkZDg5YjhiZTU5ZTU2YTNmYzc4OTY5Y2RlYWJkYTFjMDkyMDU5OTk4MjhlNTY1NTFi"
+  },
+  "frame": {
+    "version": "1",
+    "name": "Imperfect Form",
+    "iconUrl": "https://imperfectminiapp.vercel.app/logo.png",
+    "homeUrl": "https://imperfectminiapp.vercel.app",
+    "splashImageUrl": "https://imperfectminiapp.vercel.app/splash.png",
+    "splashBackgroundColor": "#000000",
+    "webhookUrl": "https://imperfectminiapp.vercel.app/api/webhook",
+    "subtitle": "Track fitness goals across chains",
+    "description": "Imperfect Form helps you track push-ups and squats across multiple blockchain networks with a retro-gamified style.",
+    "primaryCategory": "health-fitness",
+    "tags": ["fitness", "blockchain", "gamification", "prediction-market"],
+    "heroImageUrl": "https://imperfectminiapp.vercel.app/hero.png",
+    "tagline": "Fitness goals on-chain",
+    "ogTitle": "Imperfect Form",
+    "ogDescription": "Track fitness goals across blockchain networks with a retro-gamified style",
+    "ogImageUrl": "https://imperfectminiapp.vercel.app/og.png",
+    "screenshotUrls": ["https://imperfectminiapp.vercel.app/hero.png"],
+    "noindex": false
+  }
 }

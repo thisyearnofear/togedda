@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Farcaster Manifest Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    h1 {
+      color: #333;
+    }
+    .test-section {
+      margin-bottom: 30px;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    .test-section h2 {
+      margin-top: 0;
+    }
+    .status {
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .success {
+      color: green;
+    }
+    .error {
+      color: red;
+    }
+    button {
+      padding: 8px 16px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Farcaster Manifest Test</h1>
+  
+  <div class="test-section">
+    <h2>Test 1: /.well-known/farcaster.json</h2>
+    <button onclick="testManifest('/.well-known/farcaster.json')">Test</button>
+    <div id="test1-status" class="status"></div>
+    <pre id="test1-result"></pre>
+  </div>
+  
+  <div class="test-section">
+    <h2>Test 2: /.well-known/farcaster/manifest.json</h2>
+    <button onclick="testManifest('/.well-known/farcaster/manifest.json')">Test</button>
+    <div id="test2-status" class="status"></div>
+    <pre id="test2-result"></pre>
+  </div>
+
+  <script>
+    async function testManifest(path) {
+      const testId = path.includes('manifest.json') ? 'test2' : 'test1';
+      const statusEl = document.getElementById(`${testId}-status`);
+      const resultEl = document.getElementById(`${testId}-result`);
+      
+      statusEl.textContent = 'Testing...';
+      statusEl.className = 'status';
+      resultEl.textContent = '';
+      
+      try {
+        const response = await fetch(path);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        statusEl.textContent = 'Success! Manifest is accessible.';
+        statusEl.className = 'status success';
+        resultEl.textContent = JSON.stringify(data, null, 2);
+      } catch (error) {
+        statusEl.textContent = `Error: ${error.message}`;
+        statusEl.className = 'status error';
+        resultEl.textContent = '';
+      }
+    }
+  </script>
+</body>
+</html>

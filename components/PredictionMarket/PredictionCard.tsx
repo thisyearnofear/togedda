@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { toast } from "react-hot-toast";
-import { FaArrowUp, FaArrowDown, FaShare } from "react-icons/fa";
+import { FaArrowUp, FaArrowDown, FaShare, FaFireAlt } from "react-icons/fa";
 import {
   Prediction,
   PredictionStatus,
@@ -15,8 +15,10 @@ import {
   getFeeInfo,
 } from "@/lib/prediction-market-v2";
 import { formatDistanceToNow } from "date-fns";
-import { sdk } from "@farcaster/frame-sdk";
 import { env } from "@/lib/env";
+import Confetti from "@/components/Confetti";
+import { useMiniKit } from "@coinbase/onchainkit/minikit";
+import { ethers } from "ethers";
 
 interface PredictionCardProps {
   prediction: Prediction;
@@ -30,8 +32,11 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
   simplified = false,
 }) => {
   const { address } = useAccount();
+  const { context } = useMiniKit();
   const [isVoting, setIsVoting] = useState(false);
   const [amount, setAmount] = useState("0.1");
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [showSharePrompt, setShowSharePrompt] = useState(false);
   const [userVote, setUserVote] = useState<{
     isYes: boolean;
     amount: number;
@@ -76,7 +81,7 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
 
   const handleVote = async (isYes: boolean) => {
     if (!isActive) {
-      toast.error("This prediction is no longer active");
+      toast.error("This prediction is not active");
       return;
     }
 
@@ -96,6 +101,11 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
 
       // Proceed with the vote
       await voteOnPrediction(prediction.id, isYes, parseFloat(amount));
+
+      // Show success feedback
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
+
       toast.success(`You voted ${isYes ? "YES" : "NO"} with ${amount} CELO`);
       onVote();
 
@@ -107,6 +117,10 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
       // Refresh user vote
       const vote = await getUserVote(prediction.id, currentAddress);
       setUserVote(vote);
+
+      // Show share prompt after successful vote
+      setShowSharePrompt(true);
+      setTimeout(() => setShowSharePrompt(false), 10000); // Hide after 10 seconds
     } catch (error: any) {
       console.error("Error voting:", error);
       // Display a more user-friendly error message
@@ -160,6 +174,11 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
       }
 
       await claimReward(prediction.id);
+
+      // Show success feedback
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
+
       toast.success("Reward claimed successfully!");
       onVote();
 
@@ -171,6 +190,10 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
       // Refresh user vote
       const vote = await getUserVote(prediction.id, currentAddress);
       setUserVote(vote);
+
+      // Show share prompt after successful claim
+      setShowSharePrompt(true);
+      setTimeout(() => setShowSharePrompt(false), 10000); // Hide after 10 seconds
     } catch (error: any) {
       console.error("Error claiming reward:", error);
       // Display a more user-friendly error message
@@ -184,24 +207,48 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
     }
   };
 
+  // Helper function to get network emoji
+  const getNetworkEmoji = (network: string): string => {
+    switch (network.toLowerCase()) {
+      case "celo":
+        return "🟡";
+      case "polygon":
+        return "🟣";
+      case "base":
+        return "🔵";
+      case "monad":
+        return "⚫";
+      default:
+        return "🌐";
+    }
+  };
+
   const handleShare = async () => {
     try {
+      // Import the SDK dynamically to avoid SSR issues
+      const { sdk } = await import("@farcaster/frame-sdk");
+
       const appUrl = env.NEXT_PUBLIC_URL;
       const userChoice = userVote?.isYes ? "YES" : "NO";
       const predictionTitle = prediction.title;
       const network = prediction.network;
+      const networkEmoji = getNetworkEmoji(network);
 
-      // Create a cast with the prediction information
-      const castText = `I just predicted ${userChoice} on "${predictionTitle}" for ${network} on Imperfect Form!\n\nCurrent odds: YES ${odds.yes}% / NO ${odds.no}%\n\n15% of all stakes go to @greenpillnetwork Kenya 🇰🇪\n\nJoin me and make your prediction! 💪`;
+      // Create a more engaging cast with emojis and hashtags
+      const castText = `${networkEmoji} I just predicted ${userChoice} on "${predictionTitle}" for ${network}!\n\nCurrent odds: YES ${odds.yes}% / NO ${odds.no}%\n\n15% goes to @greenpillnetwork Kenya 🇰🇪\n\nJoin me and make your prediction! 💪 #ImperfectForm #StayHard`;
 
-      // Share to Farcaster using composeCast instead of share
+      // Share to Farcaster
       await sdk.actions.composeCast({
         text: castText,
-        // The Farcaster SDK expects embeds to be an array of strings (URLs)
         embeds: [`${appUrl}/predictions/${prediction.id}`],
       });
 
+      // Show success feedback
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
+
       toast.success("Shared to Farcaster!");
+      setShowSharePrompt(false); // Hide share prompt after sharing
     } catch (error) {
       console.error("Error sharing to Farcaster:", error);
       toast.error("Failed to share. Please try again.");
@@ -211,7 +258,26 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
   // Simplified version for the network cards
   if (simplified) {
     return (
-      <div>
+      <div className="relative">
+        {/* Confetti animation */}
+        <Confetti active={showConfetti} />
+
+        {/* Share prompt */}
+        {showSharePrompt && userVote && (
+          <div className="absolute top-0 right-0 left-0 bg-blue-600 text-white p-2 rounded-t-lg flex items-center justify-between z-10">
+            <div className="flex items-center">
+              <FaFireAlt className="mr-2 animate-pulse" />
+              <span className="text-xs">Share!</span>
+            </div>
+            <button
+              onClick={handleShare}
+              className="bg-white text-blue-600 px-2 py-1 rounded text-xs font-bold"
+            >
+              Share
+            </button>
+          </div>
+        )}
+
         <h2 className="text-lg font-bold mb-2">{prediction.title}</h2>
         <p className="text-sm text-gray-300 mb-3">{prediction.description}</p>
 
@@ -253,9 +319,9 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
           <div className="mt-2">
             <button
               onClick={handleShare}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-sm flex items-center justify-center"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-sm flex items-center justify-center animate-pulse"
             >
-              <FaShare className="mr-1" /> Share
+              <FaShare className="mr-1" /> Share Position
             </button>
           </div>
         )}
@@ -265,7 +331,26 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
 
   // Full version
   return (
-    <div className="bg-black border border-gray-800 rounded-lg p-4 mb-4 shadow-lg">
+    <div className="bg-black border border-gray-800 rounded-lg p-4 mb-4 shadow-lg relative">
+      {/* Confetti animation */}
+      <Confetti active={showConfetti} />
+
+      {/* Share prompt */}
+      {showSharePrompt && userVote && (
+        <div className="absolute top-0 right-0 left-0 bg-blue-600 text-white p-2 rounded-t-lg flex items-center justify-between">
+          <div className="flex items-center">
+            <FaFireAlt className="mr-2 animate-pulse" />
+            <span>Share your prediction!</span>
+          </div>
+          <button
+            onClick={handleShare}
+            className="bg-white text-blue-600 px-2 py-1 rounded text-sm font-bold"
+          >
+            Share Now
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center mb-2">
         <span className="text-2xl mr-2">{prediction.emoji}</span>
         <div>

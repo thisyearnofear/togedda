@@ -10,10 +10,10 @@ export async function GET(
 ) {
   try {
     const fid = params.fid;
-    
+
     // Fetch user data from Neynar
     const user = await fetchUser(fid);
-    
+
     // In a real implementation, you would fetch the user's stats from your database
     // For now, we'll use mock data
     const mockStats = {
@@ -60,6 +60,7 @@ export async function GET(
             }}
           >
             {/* User avatar */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={user.pfp_url}
               alt={user.display_name}
@@ -164,7 +165,8 @@ export async function GET(
               textAlign: "center",
             }}
           >
-            Prediction Accuracy: {mockStats.predictions.correct}/{mockStats.predictions.total}
+            Prediction Accuracy: {mockStats.predictions.correct}/
+            {mockStats.predictions.total}
           </div>
 
           <div

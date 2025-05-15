@@ -57,6 +57,7 @@ export async function GET(
           }}
         >
           {/* Render the logo image */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={`data:image/png;base64,${Buffer.from(logoImage).toString(
               "base64"

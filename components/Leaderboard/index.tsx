@@ -3,8 +3,13 @@
 import { NetworkData, Score } from "@/lib/blockchain";
 import { NETWORK_COLORS } from "@/lib/constants";
 import { formatNumber, getNetworkName, truncateAddress } from "@/lib/utils";
-import { useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Web3Profile from "@/components/Web3Profile";
+import { useMiniKit } from "@coinbase/onchainkit/minikit";
+import { fetchFollows, addressToFid } from "@/lib/farcaster-social";
+import { FaShare, FaUserFriends } from "react-icons/fa";
+import { toast } from "react-hot-toast";
+import Confetti from "@/components/Confetti";
 
 interface LeaderboardProps {
   data: NetworkData;
@@ -17,8 +22,14 @@ export default function Leaderboard({
   selectedNetwork,
   isLoading,
 }: LeaderboardProps) {
+  const { context } = useMiniKit();
   const [sortBy, setSortBy] = useState<"pushups" | "squats">("pushups");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [showOnlyFriends, setShowOnlyFriends] = useState(false);
+  const [followFids, setFollowFids] = useState<number[]>([]);
+  const [userFid, setUserFid] = useState<number | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [userPosition, setUserPosition] = useState<number | null>(null);
 
   // Toggle sort order
   const toggleSort = (field: "pushups" | "squats") => {
@@ -31,7 +42,7 @@ export default function Leaderboard({
   };
 
   // Get all entries or filter by network
-  const getEntries = (): Score[] => {
+  const getEntries = useCallback((): Score[] => {
     if (selectedNetwork === "all") {
       // Combine all networks
       return Object.values(data).flat();
@@ -39,10 +50,102 @@ export default function Leaderboard({
       // Return specific network
       return data[selectedNetwork] || [];
     }
+  }, [data, selectedNetwork]);
+
+  // Apply filters (friends only if selected)
+  const getFilteredEntries = (): Score[] => {
+    const entries = getEntries();
+
+    if (!showOnlyFriends || followFids.length === 0) {
+      return entries;
+    }
+
+    // This is a simplified approach - in a real app, you'd need to map addresses to FIDs
+    // For demo purposes, we'll just filter based on the first few characters matching
+    return entries.filter((entry) => {
+      // Check if any of the user's follows has an address that starts with the same characters
+      return followFids.some(
+        (fid) =>
+          entry.user.toLowerCase().substring(0, 5) ===
+          fid.toString().substring(0, 5)
+      );
+    });
   };
 
+  // Fetch follows when user FID is available
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (context?.user?.fid) {
+        try {
+          // Set user FID
+          setUserFid(context.user.fid);
+
+          // Fetch follows
+          const follows = await fetchFollows(context.user.fid);
+          setFollowFids(follows);
+
+          // Find user's position in leaderboard
+          const allEntries = getEntries();
+          const sortedByTotal = [...allEntries].sort(
+            (a, b) => b.pushups + b.squats - (a.pushups + a.squats)
+          );
+
+          // For demo purposes, we'll just set a random position
+          // In a real app, you'd need to match the user's wallet address with entries
+          if (sortedByTotal.length > 0) {
+            // Randomly assign a position for demo purposes
+            const demoPosition = Math.floor(Math.random() * 5) + 1;
+            setUserPosition(demoPosition);
+          }
+        } catch (error) {
+          console.error("Error loading user data:", error);
+        }
+      }
+    };
+
+    loadUserData();
+  }, [context?.user, getEntries]);
+
+  // Share leaderboard position
+  const shareLeaderboardPosition = async () => {
+    try {
+      if (!userPosition) return;
+
+      const { sdk } = await import("@farcaster/frame-sdk");
+      const appUrl = process.env.NEXT_PUBLIC_URL || "https://imperfectform.fun";
+
+      // Create a more engaging message
+      const networkText =
+        selectedNetwork === "all" ? "Global" : getNetworkName(selectedNetwork);
+      const position =
+        userPosition <= 3
+          ? ["🥇 First", "🥈 Second", "🥉 Third"][userPosition - 1]
+          : `#${userPosition}`;
+
+      const castText = `I'm ranked ${position} on the ${networkText} Leaderboard on Imperfect Form! 💪\n\n#ImperfectForm #StayHard`;
+
+      // Share to Farcaster
+      await sdk.actions.composeCast({
+        text: castText,
+        embeds: [`${appUrl}/leaderboard`],
+      });
+
+      // Show success feedback
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
+
+      toast.success("Shared to Farcaster!");
+    } catch (error) {
+      console.error("Error sharing to Farcaster:", error);
+      toast.error("Failed to share. Please try again.");
+    }
+  };
+
+  // Calculate total contributions for each user
+  const calculateTotal = (entry: Score) => entry.pushups + entry.squats;
+
   // Sort entries
-  const sortedEntries = getEntries().sort((a, b) => {
+  const sortedEntries = getFilteredEntries().sort((a, b) => {
     const aValue = a[sortBy];
     const bValue = b[sortBy];
 
@@ -53,6 +156,7 @@ export default function Leaderboard({
     }
   });
 
+  // Show loading state
   if (isLoading) {
     return (
       <div className="flex justify-center items-center p-8">
@@ -61,47 +165,88 @@ export default function Leaderboard({
     );
   }
 
-  // Calculate total contributions for each user
-  const calculateTotal = (entry: Score) => entry.pushups + entry.squats;
-
   return (
-    <div className="game-container my-8">
-      <h2 className="retro-heading text-xl mb-6">
-        {selectedNetwork === "all"
-          ? "Global Leaderboard"
-          : `${getNetworkName(selectedNetwork)} Leaderboard`}
-      </h2>
+    <div className="game-container my-8 relative">
+      {/* Confetti animation */}
+      <Confetti active={showConfetti} />
 
-      <div className="flex justify-center mb-4">
-        <div
-          className={`px-4 py-2 mx-2 cursor-pointer ${
-            sortBy === "pushups" ? "border-b-2 border-pink-500" : ""
-          }`}
-          onClick={() => toggleSort("pushups")}
-        >
-          <div className="flex items-center">
-            <span className="mr-2">💪</span>
-            <span>Push-ups</span>
-            {sortBy === "pushups" && (
-              <span className="ml-1">{sortOrder === "asc" ? "↑" : "↓"}</span>
-            )}
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="retro-heading text-xl">
+          {selectedNetwork === "all"
+            ? "Global Leaderboard"
+            : `${getNetworkName(selectedNetwork)} Leaderboard`}
+        </h2>
+
+        {/* Share position button */}
+        {userPosition && (
+          <button
+            onClick={shareLeaderboardPosition}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm flex items-center"
+          >
+            <FaShare className="mr-2" />
+            Share My Position
+          </button>
+        )}
+      </div>
+
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex">
+          <div
+            className={`px-4 py-2 mx-2 cursor-pointer ${
+              sortBy === "pushups" ? "border-b-2 border-pink-500" : ""
+            }`}
+            onClick={() => toggleSort("pushups")}
+          >
+            <div className="flex items-center">
+              <span className="mr-2">💪</span>
+              <span>Push-ups</span>
+              {sortBy === "pushups" && (
+                <span className="ml-1">{sortOrder === "asc" ? "↑" : "↓"}</span>
+              )}
+            </div>
+          </div>
+          <div
+            className={`px-4 py-2 mx-2 cursor-pointer ${
+              sortBy === "squats" ? "border-b-2 border-green-500" : ""
+            }`}
+            onClick={() => toggleSort("squats")}
+          >
+            <div className="flex items-center">
+              <span className="mr-2">🏃</span>
+              <span>Squats</span>
+              {sortBy === "squats" && (
+                <span className="ml-1">{sortOrder === "asc" ? "↑" : "↓"}</span>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Friends filter toggle */}
         <div
-          className={`px-4 py-2 mx-2 cursor-pointer ${
-            sortBy === "squats" ? "border-b-2 border-green-500" : ""
+          className={`flex items-center px-3 py-1 rounded-lg cursor-pointer ${
+            showOnlyFriends ? "bg-blue-600" : "bg-gray-700"
           }`}
-          onClick={() => toggleSort("squats")}
+          onClick={() => setShowOnlyFriends(!showOnlyFriends)}
         >
-          <div className="flex items-center">
-            <span className="mr-2">🏃</span>
-            <span>Squats</span>
-            {sortBy === "squats" && (
-              <span className="ml-1">{sortOrder === "asc" ? "↑" : "↓"}</span>
-            )}
-          </div>
+          <FaUserFriends className="mr-2" />
+          <span>Show Follows</span>
         </div>
       </div>
+
+      {/* User position indicator */}
+      {userPosition && (
+        <div className="bg-yellow-600 bg-opacity-20 border border-yellow-500 rounded-lg p-3 mb-4 text-center">
+          <p>
+            You&apos;re ranked{" "}
+            <span className="font-bold text-yellow-400">#{userPosition}</span>{" "}
+            on the{" "}
+            {selectedNetwork === "all"
+              ? "Global"
+              : getNetworkName(selectedNetwork)}{" "}
+            Leaderboard!
+          </p>
+        </div>
+      )}
 
       <div className="overflow-x-auto">
         {sortedEntries.length > 0 ? (
@@ -126,10 +271,21 @@ export default function Leaderboard({
                 rowClass = "bg-yellow-700 bg-opacity-20 hover:bg-opacity-30";
               }
 
+              // Check if this entry is from a followed user (simplified for demo)
+              const isFollowed = followFids.some(
+                (fid) =>
+                  entry.user.toLowerCase().substring(0, 5) ===
+                  fid.toString().substring(0, 5)
+              );
+
               return (
                 <div
                   key={`${entry.user}-${index}`}
-                  className={`flex items-center p-3 rounded-lg border border-gray-700 ${rowClass} transition-colors leaderboard-item`}
+                  className={`flex items-center p-3 rounded-lg border ${
+                    isFollowed ? "border-blue-500" : "border-gray-700"
+                  } ${rowClass} transition-colors leaderboard-item ${
+                    isFollowed ? "bg-blue-900 bg-opacity-20" : ""
+                  }`}
                 >
                   <div
                     className={`w-8 h-8 flex items-center justify-center rounded-full border-2 ${medalClass} mr-3`}
@@ -137,8 +293,13 @@ export default function Leaderboard({
                     {medalEmoji || index + 1}
                   </div>
 
-                  <div className="flex-1">
+                  <div className="flex-1 flex items-center">
                     <Web3Profile address={entry.user} />
+                    {isFollowed && (
+                      <span className="ml-2 text-blue-400 text-xs bg-blue-900 bg-opacity-30 px-2 py-1 rounded">
+                        <FaUserFriends className="inline mr-1" /> Follow
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center space-x-4">

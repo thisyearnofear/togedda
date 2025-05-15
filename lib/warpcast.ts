@@ -28,27 +28,27 @@ export async function getFarcasterManifest() {
     frame: {
       version: "1",
       name: frameName,
-      iconUrl: `${appUrl}/images/icon.png`,
+      iconUrl: `${appUrl}/logo.png`,
       homeUrl: appUrl,
-      imageUrl: `${appUrl}/images/feed.png`,
+      imageUrl: `${appUrl}/og.png`,
       buttonTitle: `Launch App`,
-      splashImageUrl: `${appUrl}/images/splash.png`,
-      splashBackgroundColor: "#FFFFFF",
+      splashImageUrl: `${appUrl}/splash.png`,
+      splashBackgroundColor: "#000000",
       webhookUrl: `${appUrl}/api/webhook`,
       // Metadata https://github.com/farcasterxyz/miniapps/discussions/191
-      subtitle: "Starter kit for mini-apps", // 30 characters, no emojis or special characters, short description under app name
-      description: "Starter kit for mini-apps", // 170 characters, no emojis or special characters, promotional message displayed on Mini App Page
-      primaryCategory: "social",
-      tags: ["mini-app", "starter"], // up to 5 tags, filtering/search tags
-      tagline: "Starter kit for mini-apps", // 30 characters, marketing tagline should be punchy and descriptive
+      subtitle: "Track fitness goals across chains", // 30 characters, no emojis or special characters, short description under app name
+      description: "Imperfect Form helps you track push-ups and squats across multiple blockchain networks with a retro-gamified style.", // 170 characters, no emojis or special characters, promotional message displayed on Mini App Page
+      primaryCategory: "health-fitness",
+      tags: ["fitness", "blockchain", "gamification", "prediction-market"], // up to 5 tags, filtering/search tags
+      tagline: "Fitness goals on-chain", // 30 characters, marketing tagline should be punchy and descriptive
       ogTitle: `${frameName}`, // 30 characters, app name + short tag, Title case, no emojis
-      ogDescription: "Starter kit for Farcastermini-apps", // 100 characters, summarize core benefits in 1-2 lines
+      ogDescription: "Track fitness goals across blockchain networks with a retro-gamified style", // 100 characters, summarize core benefits in 1-2 lines
       screenshotUrls: [
         // 1284 x 2778, visual previews of the app, max 3 screenshots
-        `${appUrl}/images/feed.png`,
+        `${appUrl}/hero.png`,
       ],
-      heroImageUrl: `${appUrl}/images/feed.png`, // 1200 x 630px (1.91:1), promotional display image on top of the mini app store
-      ogImageUrl: `${appUrl}/images/feed.png`, // 1200 x 630px (1.91:1), promotional image, same as app hero image
+      heroImageUrl: `${appUrl}/hero.png`, // 1200 x 630px (1.91:1), promotional display image on top of the mini app store
+      ogImageUrl: `${appUrl}/og.png`, // 1200 x 630px (1.91:1), promotional image, same as app hero image
       noindex: noindex,
     },
   };

@@ -6,7 +6,7 @@ const appUrl = env.NEXT_PUBLIC_URL;
 
 const frame = {
   version: "next",
-  imageUrl: `${appUrl}/images/feed.png`,
+  imageUrl: `${appUrl}/og.png`,
   buttons: [
     {
       title: "Track Fitness",
@@ -14,7 +14,7 @@ const frame = {
         type: "launch_frame",
         name: "Imperfect Form",
         url: appUrl,
-        splashImageUrl: `${appUrl}/images/splash.png`,
+        splashImageUrl: `${appUrl}/splash.png`,
         splashBackgroundColor: "#000000",
       },
     },

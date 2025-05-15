@@ -11,7 +11,32 @@ const pressStart2P = Press_Start_2P({
 
 export const metadata: Metadata = {
   title: "Imperfect Form",
-  description: "Track fitness goals across multiple blockchain networks",
+  description:
+    "Track fitness goals across multiple blockchain networks with a retro-gamified style",
+  openGraph: {
+    title: "Imperfect Form",
+    description:
+      "Track fitness goals across blockchain networks with a retro-gamified style",
+    images: [
+      {
+        url: "https://imperfectminiapp.vercel.app/og.png",
+        width: 1200,
+        height: 630,
+        alt: "Imperfect Form",
+      },
+    ],
+  },
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
+  other: {
+    "fc:frame": "vNext",
+    "fc:frame:image": "https://imperfectminiapp.vercel.app/og.png",
+    "fc:frame:post_url": "https://imperfectminiapp.vercel.app/api/frame",
+    "fc:frame:button:1": "Launch App",
+    "fc:frame:button:1:action": "post_redirect",
+  },
 };
 
 export default function RootLayout({

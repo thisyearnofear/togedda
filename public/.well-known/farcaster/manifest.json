@@ -1,0 +1,14 @@
+{
+  "name": "Imperfect Form",
+  "description": "Track fitness goals across multiple blockchain networks with a retro-gamified style.",
+  "icon_url": "https://imperfectminiapp.vercel.app/logo.png",
+  "image": "https://imperfectminiapp.vercel.app/og.png",
+  "app_url": "https://imperfectminiapp.vercel.app",
+  "categories": ["health-fitness"],
+  "tags": ["fitness", "blockchain", "gamification", "prediction-market"],
+  "tagline": "Fitness goals on-chain",
+  "theme_color": "#000000",
+  "publisher_name": "Imperfect Form",
+  "publisher_icon_url": "https://imperfectminiapp.vercel.app/logo.png",
+  "screenshots": ["https://imperfectminiapp.vercel.app/hero.png"]
+}

@@ -1,0 +1,601 @@
+/* Retro Arcade Style CSS for Imperfect Form */
+
+/* Import Press Start 2P font */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+/* Base styles */
+.retro-arcade {
+  color: white;
+  background-color: black;
+  text-shadow: 2px 2px 0px #000;
+  letter-spacing: 1px;
+}
+
+/* Game container */
+.game-container {
+  border: 4px solid white;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  padding: 20px;
+  border-radius: 8px;
+  background-color: black;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* Headings */
+.retro-heading {
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 20px;
+  text-align: center;
+  animation: pulse 2s infinite;
+  font-size: 1.2rem;
+  text-shadow: 2px 2px 0px #000, 4px 4px 0px rgba(0, 0, 0, 0.5);
+  padding: 5px 0;
+}
+
+/* Network-specific colors */
+.network-polygon {
+  color: #800080; /* Purple */
+  border-color: #800080;
+  text-shadow: 0 0 5px #800080;
+}
+
+.network-celo {
+  color: #fcb131; /* Yellow */
+  border-color: #fcb131;
+  text-shadow: 0 0 5px #fcb131;
+}
+
+.network-base {
+  color: #416ced; /* Blue */
+  border-color: #416ced;
+  text-shadow: 0 0 5px #416ced;
+}
+
+.network-monad {
+  color: #ffffff; /* White for black */
+  border-color: #ffffff;
+  text-shadow: 0 0 5px #ffffff;
+}
+
+/* Buttons */
+.retro-button {
+  padding: 10px 20px;
+  border: 3px solid white;
+  background-color: black;
+  color: white;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+  margin: 10px;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+  font-size: 0.7rem;
+  line-height: 1.2;
+  text-shadow: 2px 2px 0px #000;
+}
+
+.retro-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.6);
+  background-color: #111;
+}
+
+.retro-button:active {
+  transform: scale(0.98);
+  background-color: #222;
+}
+
+/* Button variants */
+.retro-button-polygon {
+  border-color: #800080;
+  color: #800080;
+  box-shadow: 0 0 10px rgba(128, 0, 128, 0.5);
+}
+
+.retro-button-celo {
+  border-color: #fcb131;
+  color: #fcb131;
+  box-shadow: 0 0 10px rgba(252, 177, 49, 0.5);
+}
+
+.retro-button-base {
+  border-color: #416ced;
+  color: #416ced;
+  box-shadow: 0 0 10px rgba(65, 108, 237, 0.5);
+}
+
+.retro-button-monad {
+  border-color: #ffffff;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+/* Progress bars */
+.progress-container {
+  width: 100%;
+  background-color: #333;
+  border: 2px solid white;
+  height: 30px;
+  margin: 15px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  transition: width 0.5s ease;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.progress-text {
+  position: absolute;
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  z-index: 10;
+  text-shadow: 1px 1px 2px black;
+}
+
+/* Progress bar variants */
+.progress-bar-pushups {
+  background-color: #ff69b4; /* Pink */
+}
+
+.progress-bar-squats {
+  background-color: #00a651; /* Green */
+}
+
+/* Leaderboard */
+.leaderboard {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+}
+
+.leaderboard th, .leaderboard td {
+  border: 2px solid white;
+  padding: 10px;
+  text-align: center;
+}
+
+.leaderboard th {
+  background-color: #333;
+  text-transform: uppercase;
+}
+
+.leaderboard tr:nth-child(even) {
+  background-color: #111;
+}
+
+/* Medals */
+.medal {
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  margin-right: 10px;
+  border: 2px solid white;
+  text-align: center;
+  line-height: 26px;
+}
+
+.medal-gold {
+  background-color: #fcb131;
+  color: black;
+}
+
+.medal-silver {
+  background-color: #c0c0c0;
+  color: black;
+}
+
+.medal-bronze {
+  background-color: #cd7f32;
+  color: black;
+}
+
+/* Animations */
+@keyframes pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.pulse-animation {
+  animation: pulse 2s infinite ease-in-out;
+}
+
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+/* Typewriter effect */
+.typewriter {
+  overflow: hidden;
+  border-right: 0.15em solid white;
+  white-space: nowrap;
+  margin: 0 auto;
+  letter-spacing: 0.15em;
+  animation:
+    typing 3.5s steps(40, end),
+    blink-caret 0.75s step-end infinite;
+}
+
+@keyframes typing {
+  from { width: 0 }
+  to { width: 100% }
+}
+
+@keyframes blink-caret {
+  from, to { border-color: transparent }
+  50% { border-color: white }
+}
+
+/* Network Selector Styles */
+.network-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 8px;
+  transition: all 0.2s ease;
+  width: 80px;
+  border-radius: 8px;
+}
+
+.network-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.network-button.active-network {
+  background-color: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.network-icon-container {
+  margin-bottom: 8px;
+}
+
+.network-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  border: 2px solid white;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+.network-all {
+  background: linear-gradient(135deg, #800080, #fcb131, #416ced, #000000);
+}
+
+.network-name {
+  font-size: 10px;
+  margin-top: 4px;
+}
+
+/* Tab Styles */
+.tab-content {
+  min-height: 400px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .retro-button {
+    padding: 8px 16px;
+    font-size: 10px;
+  }
+
+  .progress-text {
+    font-size: 8px;
+  }
+
+  .leaderboard th, .leaderboard td {
+    padding: 5px;
+    font-size: 10px;
+  }
+
+  .network-button {
+    width: 70px;
+  }
+
+  .network-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+}
+
+/* Loading spinner */
+.loading-spinner {
+  display: inline-block;
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Glow effects */
+.glow-text {
+  text-shadow: 0 0 10px currentColor;
+}
+
+.glow-box {
+  box-shadow: 0 0 15px currentColor;
+}
+
+/* Prediction Market Styles */
+.prediction-card {
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.prediction-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(255, 255, 255, 0.2);
+}
+
+.prediction-card::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  z-index: -1;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  animation: border-glow 3s linear infinite;
+}
+
+@keyframes border-glow {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 200% 200%;
+  }
+}
+
+/* Confetti Animation */
+.confetti-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.confetti {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  top: -10px;
+  animation: confetti-fall 3s linear forwards;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  max-width: 90%;
+  width: 500px;
+  animation: modal-appear 0.3s ease-out;
+}
+
+@keyframes modal-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Emoji Button */
+.emoji-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 2px solid white;
+  background-color: black;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.emoji-button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+.emoji-button.selected {
+  border-color: #fcb131;
+  box-shadow: 0 0 15px rgba(252, 177, 49, 0.7);
+}
+
+/* Fade In Animation */
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Notification Toast Animation */
+.notification-toast {
+  transform: translateX(-50%) translateY(-20px);
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.notification-toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Tab Transitions */
+.tab-content {
+  position: relative;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Hover Effects for Cards */
+.network-card, .leaderboard-item, .prediction-card {
+  transition: all 0.3s ease;
+}
+
+.network-card:hover, .leaderboard-item:hover, .prediction-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(255, 255, 255, 0.2);
+}
+
+/* Pulse Animation for Buttons */
+.pulse-button {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+
+/* Network Colors */
+.text-celo {
+  color: #fcb131;
+}
+
+.text-polygon {
+  color: #8247e5;
+}
+
+.text-base {
+  color: #0052ff;
+}
+
+.text-monad {
+  color: #000000;
+  text-shadow: 0 0 5px white;
+}
+
+/* Achievement Badge */
+.achievement-badge {
+  position: relative;
+  display: inline-block;
+}
+
+.achievement-badge::after {
+  content: '🏆';
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  font-size: 20px;
+  animation: bounce 1s ease infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Shareable Card */
+.shareable-card {
+  background: linear-gradient(45deg, #000, #222);
+  border: 3px solid white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.shareable-card:hover {
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.4);
+  transform: scale(1.02);
+}

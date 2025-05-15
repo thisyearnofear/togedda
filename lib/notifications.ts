@@ -1,7 +1,7 @@
 import type { FrameNotificationDetails } from "@farcaster/frame-sdk";
 import { redis } from "./redis";
 
-const notificationServiceKey = "minikit";
+const notificationServiceKey = "imperfect-form";
 
 function getUserNotificationDetailsKey(fid: number): string {
   return `${notificationServiceKey}:user:${fid}`;

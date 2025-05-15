@@ -1,0 +1,24 @@
+{
+  "frame": {
+    "version": "1",
+    "name": "Imperfect Form",
+    "iconUrl": "https://your-domain.com/logo.png",
+    "homeUrl": "https://your-domain.com",
+    "splashImageUrl": "https://your-domain.com/splash.png",
+    "splashBackgroundColor": "#000000",
+    "subtitle": "Track fitness goals across chains",
+    "description": "Imperfect Form helps you track push-ups and squats across multiple blockchain networks with a retro-gamified style.",
+    "primaryCategory": "health-fitness",
+    "tags": [
+      "fitness",
+      "blockchain",
+      "gamification",
+      "prediction-market"
+    ],
+    "heroImageUrl": "https://your-domain.com/hero.png",
+    "tagline": "Fitness goals on-chain",
+    "ogTitle": "Imperfect Form",
+    "ogDescription": "Track fitness goals across blockchain networks with a retro-gamified style",
+    "ogImageUrl": "https://your-domain.com/og.png"
+  }
+}

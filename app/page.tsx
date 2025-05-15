@@ -22,7 +22,14 @@ const frame = {
       title: "View Leaderboard",
       action: {
         type: "post_redirect",
-        url: "https://imperfectform.fun/leaderboard",
+        url: `${appUrl}/leaderboard`,
+      },
+    },
+    {
+      title: "Prediction Market",
+      action: {
+        type: "post_redirect",
+        url: `${appUrl}/predictions`,
       },
     },
   ],

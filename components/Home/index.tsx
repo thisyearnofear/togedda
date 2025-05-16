@@ -22,6 +22,7 @@ export default function Home() {
     isLoading: authLoading,
     isSignedIn,
     user,
+    error,
   } = useSignIn({
     autoSignIn: true,
   });
@@ -40,32 +41,7 @@ export default function Home() {
     "goals" | "leaderboard" | "networks" | "predictions" | "personal"
   >("personal");
 
-  // Check if Farcaster SDK is already initialized
-  useEffect(() => {
-    const initFarcaster = async () => {
-      // Skip if already initialized
-      if (typeof window !== "undefined" && window.__FARCASTER_SDK_INITIALIZED) {
-        console.log(
-          "Farcaster SDK already initialized, skipping in Home component"
-        );
-        return;
-      }
-
-      try {
-        const { sdk } = await import("@farcaster/frame-sdk");
-        // Call ready to hide the splash screen
-        await sdk.actions.ready({ disableNativeGestures: false });
-        console.log("Farcaster SDK ready called from Home component");
-
-        // Set the global flag
-        window.__FARCASTER_SDK_INITIALIZED = true;
-      } catch (error) {
-        console.error("Error calling Farcaster SDK ready from Home:", error);
-      }
-    };
-
-    initFarcaster();
-  }, []);
+  // No need to initialize Farcaster SDK here, it's handled in MiniAppProvider
 
   // Fetch data from blockchain
   useEffect(() => {
@@ -119,7 +95,7 @@ export default function Home() {
 
           {/* User Profile */}
           <div className="mb-6">
-            {isSignedIn && user && (
+            {isSignedIn && user ? (
               <div className="game-container py-3 px-4 inline-flex items-center space-x-3">
                 <Image
                   src={user.pfp_url}
@@ -139,6 +115,21 @@ export default function Home() {
                 >
                   {isLoading ? "⟳" : "⟳"}
                 </button>
+              </div>
+            ) : (
+              <div className="game-container py-3 px-4">
+                <p className="text-sm">
+                  {authLoading ? "Signing in..." : "Loading profile..."}
+                </p>
+                {error && <p className="text-xs text-red-400">{error}</p>}
+                {!authLoading && !isSignedIn && !error && (
+                  <button
+                    onClick={() => signIn()}
+                    className="mt-2 px-3 py-1 border border-white rounded hover:bg-white hover:text-black transition-colors"
+                  >
+                    Sign In
+                  </button>
+                )}
               </div>
             )}
           </div>

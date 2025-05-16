@@ -1,16 +1,19 @@
 import { MESSAGE_EXPIRATION_TIME } from "@/lib/constants";
 import { NeynarUser } from "@/lib/neynar";
 import { useAuthenticate, useMiniKit } from "@coinbase/onchainkit/minikit";
+import { useMiniApp } from "@/contexts/miniapp-context";
 import { useCallback, useEffect, useState } from "react";
 
 export const useSignIn = ({ autoSignIn = false }: { autoSignIn?: boolean }) => {
   const { context } = useMiniKit();
+  const { isInitialized } = useMiniApp();
   // this method allows for Sign in with Farcaster (SIWF)
   const { signIn } = useAuthenticate();
   const [user, setUser] = useState<NeynarUser | null>(null);
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [shouldSignIn, setShouldSignIn] = useState(autoSignIn);
 
   const handleSignIn = useCallback(async () => {
     try {
@@ -18,8 +21,10 @@ export const useSignIn = ({ autoSignIn = false }: { autoSignIn?: boolean }) => {
       setError(null);
 
       if (!context) {
-        throw new Error("No context found");
+        console.log("Context not available yet, waiting...");
+        return null;
       }
+
       let referrerFid: number | null = null;
       const result = await signIn({
         nonce: Math.random().toString(36).substring(2),
@@ -28,9 +33,11 @@ export const useSignIn = ({ autoSignIn = false }: { autoSignIn?: boolean }) => {
           Date.now() + MESSAGE_EXPIRATION_TIME
         ).toISOString(),
       });
+
       if (!result) {
         throw new Error("Sign in failed");
       }
+
       referrerFid =
         context.location?.type === "cast_embed"
           ? context.location.cast.fid
@@ -71,12 +78,31 @@ export const useSignIn = ({ autoSignIn = false }: { autoSignIn?: boolean }) => {
     }
   }, [context, signIn]);
 
+  // Wait for initialization and context before attempting sign-in
   useEffect(() => {
-    // if autoSignIn is true, sign in automatically on mount
-    if (autoSignIn) {
-      handleSignIn();
-    }
-  }, [autoSignIn, handleSignIn]);
+    const attemptSignIn = async () => {
+      if (shouldSignIn && isInitialized) {
+        if (context) {
+          try {
+            await handleSignIn();
+          } catch (err) {
+            console.error("Sign-in attempt failed:", err);
+          }
+        } else {
+          // If no context but we're initialized, set a timeout to try again
+          // This handles the case where the SDK is initialized but context isn't available yet
+          setTimeout(() => {
+            if (!isSignedIn) {
+              setShouldSignIn(true);
+            }
+          }, 2000);
+        }
+        setShouldSignIn(false);
+      }
+    };
+
+    attemptSignIn();
+  }, [shouldSignIn, isInitialized, context, handleSignIn, isSignedIn]);
 
   return { signIn: handleSignIn, isSignedIn, isLoading, error, user };
 };

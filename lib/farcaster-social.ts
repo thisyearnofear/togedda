@@ -1,7 +1,5 @@
 "use client";
 
-import { env } from "@/lib/env";
-
 // Interface for Farcaster user
 export interface FarcasterUser {
   fid: number;
@@ -30,12 +28,15 @@ export const fetchFollows = async (fid: number, limit: number = 100): Promise<nu
   }
 
   try {
+    // Use our server-side API route instead of directly accessing Neynar
     const response = await fetch(
-      `https://api.neynar.com/v2/farcaster/user/following?fid=${fid}&limit=${limit}`,
+      `/api/farcaster/follows?fid=${fid}&limit=${limit}`,
       {
+        method: 'GET',
         headers: {
-          'x-api-key': env.NEYNAR_API_KEY!,
+          'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include cookies for authentication
       }
     );
 
@@ -44,7 +45,7 @@ export const fetchFollows = async (fid: number, limit: number = 100): Promise<nu
     }
 
     const data = await response.json();
-    const follows = data.users.map((user: any) => user.fid);
+    const follows = data.follows || [];
 
     // Update cache
     followsCache.set(fid, { follows, timestamp: Date.now() });

@@ -28,18 +28,9 @@ const nextConfig = {
       },
     ];
   },
-  // Add rewrites to ensure manifest files are accessible
+  // No rewrites needed as we're using static files
   async rewrites() {
-    return [
-      {
-        source: "/.well-known/farcaster.json",
-        destination: "/api/manifest/farcaster",
-      },
-      {
-        source: "/.well-known/farcaster/manifest.json",
-        destination: "/api/manifest/farcaster",
-      },
-    ];
+    return [];
   },
 };
 

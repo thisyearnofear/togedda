@@ -10,21 +10,26 @@ export interface NeynarUser {
 }
 
 export const fetchUser = async (fid: string): Promise<NeynarUser> => {
+  // Use our server-side API route instead of directly accessing Neynar
   const response = await fetch(
-    `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`,
+    `/api/farcaster/user?fid=${fid}`,
     {
+      method: 'GET',
       headers: {
-        "x-api-key": env.NEYNAR_API_KEY!,
+        'Content-Type': 'application/json',
       },
+      credentials: 'include', // Include cookies for authentication
     }
   );
+
   if (!response.ok) {
     console.error(
-      "Failed to fetch Farcaster user on Neynar",
+      "Failed to fetch Farcaster user",
       await response.json()
     );
-    throw new Error("Failed to fetch Farcaster user on Neynar");
+    throw new Error("Failed to fetch Farcaster user");
   }
+
   const data = await response.json();
-  return data.users[0];
+  return data.user;
 };

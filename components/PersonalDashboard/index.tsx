@@ -113,6 +113,48 @@ export default function PersonalDashboard({
     // Calculate total contributions
     let allUsers: { address: string; pushups: number; squats: number }[] = [];
 
+    // Get connected addresses from Farcaster
+    let connectedAddresses: string[] = [];
+
+    try {
+      // First, add the custody address
+      if (user.custody_address) {
+        connectedAddresses.push(user.custody_address.toLowerCase());
+      }
+
+      // Then try to get verified addresses from Neynar API
+      const response = await fetch(
+        `/api/farcaster/user?fid=${user.fid}&include_verifications=true`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (
+          data.users &&
+          data.users.length > 0 &&
+          data.users[0].verifications
+        ) {
+          // Add verified addresses
+          data.users[0].verifications.forEach((address: string) => {
+            if (!connectedAddresses.includes(address.toLowerCase())) {
+              connectedAddresses.push(address.toLowerCase());
+            }
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching connected addresses:", error);
+    }
+
+    console.log("Connected addresses:", connectedAddresses);
+
     // Process each network sequentially to avoid too many API calls at once
     for (const [network, scores] of Object.entries(networkData) as [
       string,
@@ -126,52 +168,21 @@ export default function PersonalDashboard({
         };
       }
 
-      // First try to find scores by custody address
-      let userScore = scores.find(
-        (score: any) =>
-          score.user.toLowerCase() === user.custody_address.toLowerCase()
-      );
+      // Check all connected addresses for scores
+      for (const address of connectedAddresses) {
+        const addressScore = scores.find(
+          (score: any) => score.user.toLowerCase() === address
+        );
 
-      // If not found, check if any of the scores are from connected addresses
-      // by checking if the address resolves to the user's FID
-      if (!userScore) {
-        // Create a map to track which addresses we've checked
-        const checkedAddresses = new Set<string>();
-        checkedAddresses.add(user.custody_address.toLowerCase());
-
-        // Check each score to see if it belongs to the user
-        for (const score of scores as any[]) {
-          const scoreAddress = score.user.toLowerCase();
-
-          // Skip if we've already checked this address
-          if (checkedAddresses.has(scoreAddress)) continue;
-
-          try {
-            // Try to resolve the address to a FID
-            const fid = await addressToFid(scoreAddress);
-
-            // If the FID matches the user's FID, this is their score
-            if (fid && fid.toString() === user.fid) {
-              userScore = score;
-              console.log(
-                `Found connected address ${scoreAddress} for user ${user.username}`
-              );
-              break;
-            }
-
-            // Mark this address as checked
-            checkedAddresses.add(scoreAddress);
-          } catch (error) {
-            console.error(`Error checking address ${scoreAddress}:`, error);
-          }
+        if (addressScore) {
+          stats.totalPushups += addressScore.pushups;
+          stats.totalSquats += addressScore.squats;
+          stats.networkBreakdown[network].pushups += addressScore.pushups;
+          stats.networkBreakdown[network].squats += addressScore.squats;
+          console.log(
+            `Found score for address ${address} in network ${network}`
+          );
         }
-      }
-
-      if (userScore) {
-        stats.totalPushups += userScore.pushups;
-        stats.totalSquats += userScore.squats;
-        stats.networkBreakdown[network].pushups = userScore.pushups;
-        stats.networkBreakdown[network].squats = userScore.squats;
       }
 
       // Collect all users for ranking
@@ -643,85 +654,6 @@ export default function PersonalDashboard({
               )}
             </div>
           </div>
-
-          {/* Compact Network Breakdown */}
-          <div className="mb-6">
-            <h3 className="text-center mb-3">Networks</h3>
-
-            {isNewUser ? (
-              <div className="border border-gray-700 p-3 rounded-lg text-center">
-                <div className="flex justify-center space-x-4 mb-2">
-                  {Object.entries(NETWORK_COLORS).map(([network, color]) => {
-                    // Network-specific emojis
-                    let networkEmoji = "🔗";
-                    if (network === "polygon") networkEmoji = "🟣";
-                    if (network === "celo") networkEmoji = "🟡";
-                    if (network === "base") networkEmoji = "🔵";
-                    if (network === "monad") networkEmoji = "⚫";
-
-                    return (
-                      <div key={network} className="text-center">
-                        <div
-                          className="w-8 h-8 rounded-full flex items-center justify-center"
-                          style={{ backgroundColor: color }}
-                        >
-                          <span className="text-xs">{networkEmoji}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <p className="text-xs text-gray-400">
-                  Contributio tracked across networks
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-4 gap-2">
-                {Object.entries(userStats.networkBreakdown).map(
-                  ([network, stats]) => {
-                    const networkColor =
-                      NETWORK_COLORS[network as keyof typeof NETWORK_COLORS] ||
-                      "white";
-
-                    // Network-specific emojis
-                    let networkEmoji = "🔗";
-                    if (network === "polygon") networkEmoji = "🟣";
-                    if (network === "celo") networkEmoji = "🟡";
-                    if (network === "base") networkEmoji = "🔵";
-                    if (network === "monad") networkEmoji = "⚫";
-
-                    return (
-                      <div
-                        key={network}
-                        className="text-center border border-gray-700 rounded p-1"
-                      >
-                        <div className="flex items-center justify-center mb-1">
-                          <span
-                            className="w-4 h-4 rounded-full flex items-center justify-center mr-1"
-                            style={{ backgroundColor: networkColor }}
-                          >
-                            <span className="text-[10px]">{networkEmoji}</span>
-                          </span>
-                          <span className="text-xs">
-                            {getNetworkName(network)}
-                          </span>
-                        </div>
-                        <div className="text-xs">
-                          <span className="text-pink-500">
-                            {formatNumber(stats.pushups)}
-                          </span>{" "}
-                          /
-                          <span className="text-green-500">
-                            {formatNumber(stats.squats)}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  }
-                )}
-              </div>
-            )}
-          </div>
         </>
       ) : (
         <TargetsAndStreaks networkData={networkData} isLoading={isLoading} />
@@ -733,7 +665,7 @@ export default function PersonalDashboard({
           <div className="mb-4">
             <div className="border border-gray-700 p-3 rounded-lg mb-3 text-xs">
               <p className="mb-1">
-                15% of all prediction stakes go to{" "}
+                15% of all predictions go to{" "}
                 <a
                   href="https://explorer.gitcoin.co/#/round/42220/31/57"
                   target="_blank"

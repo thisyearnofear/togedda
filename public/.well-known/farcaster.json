@@ -22,6 +22,12 @@
     "ogDescription": "Track fitness goals across blockchain networks with a retro-gamified style",
     "ogImageUrl": "https://imperfectminiapp.vercel.app/og.png",
     "screenshotUrls": ["https://imperfectminiapp.vercel.app/hero.png"],
-    "noindex": false
+    "noindex": false,
+    "permissions": [
+      "notification:read",
+      "notification:write",
+      "user:read",
+      "cast:write"
+    ]
   }
 }

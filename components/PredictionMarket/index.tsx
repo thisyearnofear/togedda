@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useWriteContract } from "wagmi";
 import { toast } from "react-hot-toast";
 import {
   getAllPredictions,
@@ -9,14 +9,17 @@ import {
   PredictionStatus,
   PredictionCategory,
   PredictionOutcome,
-  voteOnPrediction,
+  PREDICTION_MARKET_ADDRESS,
 } from "@/lib/prediction-market-v2";
+import { predictionMarketABI } from "@/lib/constants";
+import { parseEther } from "viem";
 import PredictionCard from "./PredictionCard";
 import { FaLightbulb, FaCoins } from "react-icons/fa";
 import WarpcastWallet from "@/components/WarpcastWallet";
 
 const PredictionMarket: React.FC = () => {
   const { address } = useAccount();
+  const { writeContractAsync } = useWriteContract();
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showSuggestForm, setShowSuggestForm] = useState(false);
@@ -104,7 +107,16 @@ const PredictionMarket: React.FC = () => {
       setIsSubmittingSuggestion(true);
 
       // Submit the suggestion with a 1 CELO fee
-      await voteOnPrediction(0, true, 1); // Using a special ID (0) to indicate a suggestion fee
+      // We use prediction ID 0 as a special case for suggestions
+      const hash = await writeContractAsync({
+        address: PREDICTION_MARKET_ADDRESS as `0x${string}`,
+        abi: predictionMarketABI,
+        functionName: "vote",
+        args: [BigInt(0), true], // Using ID 0 to indicate a suggestion fee
+        value: parseEther("1"), // 1 CELO
+      });
+
+      console.log("Suggestion transaction sent:", hash);
 
       toast.success(
         "Thank you for your suggestion! It has been submitted for review."

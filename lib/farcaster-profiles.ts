@@ -117,25 +117,56 @@ export const batchFetchFarcasterProfiles = async (fids: number[]): Promise<Map<n
 export const resolveAddressesToProfiles = async (addresses: string[]): Promise<Map<string, FarcasterProfile>> => {
   if (addresses.length === 0) return new Map();
 
-  // Step 1: Convert addresses to FIDs
-  const addressToFidMap = await batchAddressesToFids(addresses);
-
-  // Step 2: Get unique FIDs to fetch
-  const fidsToFetch = Array.from(new Set(addressToFidMap.values()));
-
-  // Step 3: Fetch profiles for these FIDs
-  const fidToProfileMap = await batchFetchFarcasterProfiles(fidsToFetch);
-
-  // Step 4: Map addresses to profiles
+  // Create a result map
   const result = new Map<string, FarcasterProfile>();
 
-  // Convert Map entries to Array to avoid TypeScript iteration issues
-  Array.from(addressToFidMap.entries()).forEach(([address, fid]) => {
-    const profile = fidToProfileMap.get(fid);
-    if (profile) {
-      result.set(address, profile);
+  try {
+    // Limit batch size to avoid rate limiting
+    const batchSize = 10;
+    const batches = [];
+
+    // Split addresses into batches
+    for (let i = 0; i < addresses.length; i += batchSize) {
+      batches.push(addresses.slice(i, i + batchSize));
     }
-  });
+
+    // Process each batch sequentially to avoid rate limiting
+    for (const batch of batches) {
+      try {
+        // Step 1: Convert addresses to FIDs
+        const addressToFidMap = await batchAddressesToFids(batch);
+
+        if (Object.keys(addressToFidMap).length === 0) {
+          console.log("No FIDs found for batch of addresses");
+          continue;
+        }
+
+        // Step 2: Get unique FIDs to fetch
+        const fidsToFetch = Array.from(new Set(Object.values(addressToFidMap)));
+
+        // Step 3: Fetch profiles for these FIDs
+        const fidToProfileMap = await batchFetchFarcasterProfiles(fidsToFetch);
+
+        // Step 4: Map addresses to profiles
+        Object.entries(addressToFidMap).forEach(([address, fid]) => {
+          const profile = fidToProfileMap.get(fid);
+          if (profile) {
+            result.set(address.toLowerCase(), profile);
+          }
+        });
+
+        // Add a small delay between batches to avoid rate limiting
+        if (batches.length > 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      } catch (error) {
+        console.error("Error processing batch of addresses:", error);
+        // Continue with next batch even if this one fails
+      }
+    }
+  } catch (error) {
+    console.error('Error resolving addresses to profiles:', error);
+  }
 
   return result;
 };

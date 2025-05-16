@@ -113,28 +113,45 @@ export default function Leaderboard({
     loadUserData();
   }, [context?.user, getEntries]);
 
-  // Resolve wallet addresses to Farcaster profiles
+  // Resolve wallet addresses to Farcaster profiles with rate limiting and batching
   useEffect(() => {
     const resolveAddresses = async () => {
       if (isLoading || !data) return;
 
-      // Get unique addresses from the top 10 entries
+      // Get unique addresses from the entries (limit to top 10 for performance)
       const entries = getFilteredEntries().slice(0, 10);
       if (entries.length === 0) return;
 
-      const addresses = entries.map((entry) => entry.user.toLowerCase());
+      // Extract unique addresses
+      const addressSet = new Set<string>();
+      entries.forEach((entry) => {
+        addressSet.add(entry.user.toLowerCase());
+      });
+
+      const addresses = Array.from(addressSet);
+      console.log(
+        `Resolving ${addresses.length} unique addresses to Farcaster profiles`
+      );
 
       try {
-        // Resolve addresses to profiles
+        // Resolve addresses to profiles with our improved function
         const profileMap = await resolveAddressesToProfiles(addresses);
+        console.log(
+          `Successfully resolved ${profileMap.size} addresses to Farcaster profiles`
+        );
         setAddressToProfileMap(profileMap);
       } catch (error) {
         console.error("Error resolving addresses to profiles:", error);
       }
     };
 
-    resolveAddresses();
-  }, [data, isLoading, getFilteredEntries]);
+    // Use a debounce to avoid too many API calls when switching networks quickly
+    const timeoutId = setTimeout(() => {
+      resolveAddresses();
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [data, isLoading, getFilteredEntries, selectedNetwork]);
 
   // Share leaderboard position
   const shareLeaderboardPosition = async () => {

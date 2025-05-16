@@ -128,3 +128,33 @@ export const MESSAGE_EXPIRATION_TIME = 1000 * 60 * 60 * 24 * 7; // 7 days
 
 // Cache duration for leaderboard data (5 minutes)
 export const LEADERBOARD_CACHE_DURATION = 5 * 60 * 1000;
+
+// Complete ABI for the prediction market contract
+export const predictionMarketABI = [
+  // View Functions
+  "function getPrediction(uint256 _predictionId) external view returns (tuple(uint256 id, address creator, string title, string description, uint256 targetDate, uint256 targetValue, uint256 currentValue, uint8 category, string network, string emoji, uint256 totalStaked, uint256 yesVotes, uint256 noVotes, uint8 status, uint8 outcome, uint256 createdAt, bool autoResolvable))",
+  "function getUserVote(uint256 _predictionId, address _user) external view returns (tuple(bool isYes, uint256 amount, bool claimed))",
+  "function getTotalPredictions() external view returns (uint256)",
+  "function getParticipants(uint256 _predictionId) external view returns (address[])",
+  "function getTotalFeePercentage() external view returns (uint256)",
+  "function charityFeePercentage() external view returns (uint256)",
+  "function maintenanceFeePercentage() external view returns (uint256)",
+  "function charityAddress() external view returns (address)",
+  "function maintenanceAddress() external view returns (address)",
+
+  // State-Changing Functions
+  "function createPrediction(string memory _title, string memory _description, uint256 _targetDate, uint256 _targetValue, uint8 _category, string memory _network, string memory _emoji, bool _autoResolvable) external returns (uint256)",
+  "function vote(uint256 _predictionId, bool _isYes) external payable",
+  "function claimReward(uint256 _predictionId) external",
+  "function claimRefund(uint256 _predictionId) external",
+  "function autoResolvePrediction(uint256 _predictionId) external",
+
+  // Owner Functions
+  "function resolvePrediction(uint256 _predictionId, uint8 _outcome) external",
+  "function cancelPrediction(uint256 _predictionId) external",
+  "function updatePredictionValue(uint256 _predictionId, uint256 _currentValue) external",
+  "function updateFeePercentages(uint256 _newCharityFeePercentage, uint256 _newMaintenanceFeePercentage) external",
+  "function updateCharityAddress(address _newCharityAddress) external",
+  "function updateMaintenanceAddress(address _newMaintenanceAddress) external",
+  "function transferOwnership(address _newOwner) external"
+];

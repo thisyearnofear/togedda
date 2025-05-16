@@ -1,7 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useAccount } from "wagmi";
+import {
+  useAccount,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+} from "wagmi";
 import { toast } from "react-hot-toast";
 import { FaArrowUp, FaArrowDown, FaShare, FaFireAlt } from "react-icons/fa";
 import {
@@ -9,16 +13,16 @@ import {
   PredictionStatus,
   PredictionOutcome,
   calculateOdds,
-  voteOnPrediction,
   getUserVote,
-  claimReward,
   getFeeInfo,
+  PREDICTION_MARKET_ADDRESS,
 } from "@/lib/prediction-market-v2";
 import { formatDistanceToNow } from "date-fns";
 import { env } from "@/lib/env";
 import Confetti from "@/components/Confetti";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
-import { ethers } from "ethers";
+import { predictionMarketABI } from "@/lib/constants";
+import { parseEther } from "viem";
 
 interface PredictionCardProps {
   prediction: Prediction;
@@ -79,88 +83,105 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
     loadFeeInfo();
   }, [address, prediction.id]);
 
+  // Set up Wagmi hooks for contract interaction
+  const { writeContractAsync } = useWriteContract();
+  const [txHash, setTxHash] = useState<string | null>(null);
+  const { isLoading: isConfirming, isSuccess: isConfirmed } =
+    useWaitForTransactionReceipt({
+      hash: txHash as `0x${string}` | undefined,
+    });
+
+  // Watch for transaction confirmation
+  useEffect(() => {
+    if (isConfirmed && txHash) {
+      console.log(`Transaction confirmed: ${txHash}`);
+      toast.success("Transaction confirmed!");
+
+      // Refresh user vote data
+      if (address && prediction.id) {
+        getUserVote(prediction.id, address)
+          .then((vote) => {
+            if (vote) {
+              setUserVote(vote);
+            }
+          })
+          .catch((error) => {
+            console.error("Error refreshing vote data:", error);
+          });
+      }
+    }
+  }, [isConfirmed, txHash, address, prediction.id]);
+
   const handleVote = async (isYes: boolean) => {
     if (!isActive) {
       toast.error("This prediction is not active");
       return;
     }
 
+    if (!address) {
+      toast.error("Please connect your wallet");
+      return;
+    }
+
     try {
       setIsVoting(true);
 
-      // Import the SDK dynamically to avoid SSR issues
-      const { sdk } = await import("@farcaster/frame-sdk");
+      // Convert amount to Wei (CELO uses same units as ETH)
+      const amountInWei = parseEther(amount);
 
-      // Check if we have access to the Farcaster wallet
-      if (!sdk.wallet || !sdk.wallet.ethProvider) {
-        toast.error(
-          "Warpcast wallet not available. Please ensure you're using the Warpcast app."
-        );
-        return;
-      }
+      // Prepare transaction
+      console.log(
+        `Voting on prediction ${prediction.id}, isYes: ${isYes}, amount: ${amount} CELO`
+      );
 
-      // Get the current address from the provider before voting
-      const provider = new ethers.BrowserProvider(sdk.wallet.ethProvider);
-      const signer = await provider.getSigner();
-      const currentAddress = await signer.getAddress();
+      // Send transaction using Wagmi
+      const hash = await writeContractAsync({
+        address: PREDICTION_MARKET_ADDRESS as `0x${string}`,
+        abi: predictionMarketABI,
+        functionName: "vote",
+        args: [BigInt(prediction.id), isYes],
+        value: amountInWei,
+      });
 
-      try {
-        // Proceed with the vote
-        await voteOnPrediction(prediction.id, isYes, parseFloat(amount));
+      // Store transaction hash
+      setTxHash(hash);
 
-        // Show success feedback
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 3000);
+      // Show success feedback
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
 
-        toast.success(`You voted ${isYes ? "YES" : "NO"} with ${amount} CELO`);
+      toast.success(
+        `Transaction sent! You voted ${
+          isYes ? "YES" : "NO"
+        } with ${amount} CELO`
+      );
 
-        // Optimistically update the UI
-        // Create a temporary vote object to show in the UI while we wait for the blockchain to update
-        const tempVote = {
-          isYes: isYes,
-          amount: parseFloat(amount),
-          claimed: false,
-        };
-        setUserVote(tempVote);
+      // Optimistically update the UI
+      const tempVote = {
+        isYes: isYes,
+        amount: parseFloat(amount),
+        claimed: false,
+      };
+      setUserVote(tempVote);
 
-        // Notify parent component
-        onVote();
+      // Notify parent component
+      onVote();
 
-        // Try to refresh user vote after a delay to allow the blockchain to update
-        setTimeout(async () => {
-          try {
-            const vote = await getUserVote(prediction.id, currentAddress);
-            if (vote) {
-              setUserVote(vote);
-            }
-          } catch (error) {
-            console.error("Error refreshing vote data:", error);
-          }
-        }, 5000);
-
-        // Show share prompt after successful vote
-        setShowSharePrompt(true);
-        setTimeout(() => setShowSharePrompt(false), 10000); // Hide after 10 seconds
-      } catch (error: any) {
-        // Check if it's a user rejection error
-        if (
-          error.message &&
-          (error.message.includes("rejected") ||
-            error.message.includes("denied"))
-        ) {
-          toast.error("Transaction cancelled by user");
-        } else {
-          // For other errors, show the error message
-          toast.error(error.message || "Transaction failed");
-        }
-      }
+      // Show share prompt
+      setShowSharePrompt(true);
+      setTimeout(() => setShowSharePrompt(false), 10000);
     } catch (error: any) {
       console.error("Error voting:", error);
-      // Display a more user-friendly error message
-      if (error.message) {
-        toast.error(error.message);
+
+      // Check if it's a user rejection error
+      if (
+        error.message &&
+        (error.message.includes("rejected") || error.message.includes("denied"))
+      ) {
+        toast.error("Transaction cancelled by user");
       } else {
-        toast.error("Failed to vote. Please try again.");
+        // For other errors, show the error message
+        toast.error(error.message || "Transaction failed");
       }
     } finally {
       setIsVoting(false);
@@ -183,6 +204,11 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
       return;
     }
 
+    if (!address) {
+      toast.error("Please connect your wallet");
+      return;
+    }
+
     const userVotedCorrectly =
       (prediction.outcome === PredictionOutcome.YES && userVote.isYes) ||
       (prediction.outcome === PredictionOutcome.NO && !userVote.isYes);
@@ -195,101 +221,53 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
     try {
       setIsVoting(true);
 
-      // Import the SDK dynamically to avoid SSR issues
-      const { sdk } = await import("@farcaster/frame-sdk");
+      // Prepare transaction
+      console.log(`Claiming reward for prediction ${prediction.id}`);
 
-      // Check if we have access to the Farcaster wallet
-      if (!sdk.wallet || !sdk.wallet.ethProvider) {
-        toast.error(
-          "Warpcast wallet not available. Please ensure you're using the Warpcast app."
-        );
-        return;
+      // Send transaction using Wagmi
+      const hash = await writeContractAsync({
+        address: PREDICTION_MARKET_ADDRESS as `0x${string}`,
+        abi: predictionMarketABI,
+        functionName: "claimReward",
+        args: [BigInt(prediction.id)],
+      });
+
+      // Store transaction hash
+      setTxHash(hash);
+
+      // Show success feedback
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
+
+      toast.success("Transaction sent! Claiming your reward...");
+
+      // Optimistically update the UI
+      if (userVote) {
+        const updatedVote = {
+          ...userVote,
+          claimed: true,
+        };
+        setUserVote(updatedVote);
       }
 
-      // Get the current address from the provider before claiming
-      const provider = new ethers.BrowserProvider(sdk.wallet.ethProvider);
-      const signer = await provider.getSigner();
-      const currentAddress = await signer.getAddress();
+      // Notify parent component
+      onVote();
 
-      try {
-        await claimReward(prediction.id);
-
-        // Show success feedback
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 3000);
-
-        toast.success("Reward claimed successfully!");
-
-        // Optimistically update the UI
-        if (userVote) {
-          const updatedVote = {
-            ...userVote,
-            claimed: true,
-          };
-          setUserVote(updatedVote);
-        }
-
-        // Notify parent component
-        onVote();
-
-        // Try to refresh user vote after a delay to allow the blockchain to update
-        setTimeout(async () => {
-          try {
-            const vote = await getUserVote(prediction.id, currentAddress);
-            if (vote) {
-              setUserVote(vote);
-            }
-          } catch (error) {
-            console.error("Error refreshing vote data:", error);
-          }
-        }, 5000);
-
-        // Show share prompt after successful claim
-        setShowSharePrompt(true);
-        setTimeout(() => setShowSharePrompt(false), 10000); // Hide after 10 seconds
-      } catch (error: any) {
-        // Check if it's a user rejection error
-        if (
-          error.message &&
-          (error.message.includes("rejected") ||
-            error.message.includes("denied"))
-        ) {
-          toast.error("Transaction cancelled by user");
-        } else if (
-          error.message &&
-          (error.message.includes("eth_getTransactionReceipt") ||
-            error.message.includes("unsupported"))
-        ) {
-          // This is a Warpcast wallet limitation, but the transaction might have gone through
-          console.log(
-            "Warpcast wallet limitation detected, transaction may have succeeded"
-          );
-          toast.success("Transaction sent! It may take a moment to process.");
-
-          // Optimistically update the UI
-          if (userVote) {
-            const updatedVote = {
-              ...userVote,
-              claimed: true,
-            };
-            setUserVote(updatedVote);
-          }
-
-          // Show share prompt
-          setShowSharePrompt(true);
-          setTimeout(() => setShowSharePrompt(false), 10000);
-        } else {
-          // For other errors, show the error message
-          toast.error(error.message || "Transaction failed");
-        }
-      }
+      // Show share prompt
+      setShowSharePrompt(true);
+      setTimeout(() => setShowSharePrompt(false), 10000);
     } catch (error: any) {
       console.error("Error claiming reward:", error);
-      // Display a more user-friendly error message
-      if (error.message) {
-        toast.error(error.message);
+
+      // Check if it's a user rejection error
+      if (
+        error.message &&
+        (error.message.includes("rejected") || error.message.includes("denied"))
+      ) {
+        toast.error("Transaction cancelled by user");
       } else {
-        toast.error("Failed to claim reward. Please try again.");
+        // For other errors, show the error message
+        toast.error(error.message || "Transaction failed");
       }
     } finally {
       setIsVoting(false);

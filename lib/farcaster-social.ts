@@ -85,12 +85,15 @@ export const filterFollowed = async (userFid: number, fids: number[]): Promise<n
  */
 export const addressToFid = async (address: string): Promise<number | null> => {
   try {
+    // Use a server-side API route instead of directly accessing the Neynar API
     const response = await fetch(
-      `https://api.neynar.com/v2/farcaster/user/bulk-by-address?addresses=${address}`,
+      `/api/farcaster/address-to-fid?address=${address}`,
       {
+        method: 'GET',
         headers: {
-          'x-api-key': env.NEYNAR_API_KEY!,
+          'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include cookies for authentication
       }
     );
 
@@ -99,8 +102,8 @@ export const addressToFid = async (address: string): Promise<number | null> => {
     }
 
     const data = await response.json();
-    if (data.users && data.users.length > 0) {
-      return data.users[0].fid;
+    if (data.fid) {
+      return data.fid;
     }
 
     return null;
@@ -152,12 +155,15 @@ export const batchAddressesToFids = async (addresses: string[]): Promise<Map<str
     for (let i = 0; i < addressesToFetch.length; i += batchSize) {
       const batch = addressesToFetch.slice(i, i + batchSize);
 
+      // Use our server-side API route instead of directly accessing Neynar
       const response = await fetch(
-        `https://api.neynar.com/v2/farcaster/user/bulk-by-address?addresses=${batch.join(',')}`,
+        `/api/farcaster/batch-addresses-to-fids?addresses=${batch.join(',')}`,
         {
+          method: 'GET',
           headers: {
-            'x-api-key': env.NEYNAR_API_KEY!,
+            'Content-Type': 'application/json',
           },
+          credentials: 'include', // Include cookies for authentication
         }
       );
 
@@ -168,15 +174,16 @@ export const batchAddressesToFids = async (addresses: string[]): Promise<Map<str
 
       const data = await response.json();
 
-      if (data.users && data.users.length > 0) {
-        data.users.forEach((user: any) => {
-          if (user.custody_address && user.fid) {
-            const normalizedAddress = user.custody_address.toLowerCase();
-            result.set(normalizedAddress, user.fid);
+      if (data.addressToFidMap) {
+        // Process the returned map
+        Object.entries(data.addressToFidMap).forEach(([address, fid]) => {
+          if (address && fid) {
+            const normalizedAddress = address.toLowerCase();
+            result.set(normalizedAddress, fid as number);
 
             // Update cache
             batchAddressCache.set(normalizedAddress, {
-              fid: user.fid,
+              fid: fid as number,
               timestamp: Date.now()
             });
           }

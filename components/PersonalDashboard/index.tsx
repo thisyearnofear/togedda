@@ -7,7 +7,7 @@ import { NETWORK_COLORS } from "@/lib/constants";
 import { formatNumber, getNetworkName } from "@/lib/utils";
 import { useNotification } from "@coinbase/onchainkit/minikit";
 import Image from "next/image";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import TargetsAndStreaks from "@/components/TargetsAndStreaks";
 import Confetti from "@/components/Confetti";
 import { toast } from "react-hot-toast";
@@ -62,178 +62,200 @@ export default function PersonalDashboard({
     isLoading: streaksLoading,
     updateStreak,
   } = useStreaks(user?.fid || null);
+  // Use useMemo to prevent unnecessary rerenders when setting userStats
   const [userStats, setUserStats] = useState<UserStats | null>(null);
+  // Use a ref to track if we've already calculated stats to prevent multiple calculations
+  const statsCalculatedRef = useRef<boolean>(false);
   const [shareableImage, setShareableImage] = useState<string | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showTargetsAndStreaks, setShowTargetsAndStreaks] = useState(false);
   const sendNotification = useNotification();
 
-  // Update streak when component mounts
+  // Update streak when component mounts - only once
   useEffect(() => {
     if (user?.fid) {
-      updateStreak();
-    }
-  }, [user?.fid, updateStreak]);
+      // Reset the stats calculated flag when the user changes
+      statsCalculatedRef.current = false;
 
-  // Define calculateStats function with useCallback
+      // Use a ref to track if we've already updated the streak
+      const streakUpdateTimeout = setTimeout(() => {
+        updateStreak();
+      }, 1000); // Add a small delay to avoid immediate API calls
+
+      return () => clearTimeout(streakUpdateTimeout);
+    }
+  }, [user?.fid]); // Remove updateStreak from dependencies
+
+  // Define calculateStats function with useCallback and memoize expensive calculations
   const calculateStats = useCallback(async () => {
-    if (!isLoading && networkData && user) {
-      const stats: UserStats = {
-        totalPushups: 0,
-        totalSquats: 0,
-        networkBreakdown: {},
-        predictions: {
-          total: 0,
-          correct: 0,
-          pending: 0,
-          staked: 0,
-        },
-        rank: {
+    // Only run if we have the necessary data and aren't already loading
+    if (isLoading || !networkData || !user) return;
+
+    // Create a new stats object
+    const stats: UserStats = {
+      totalPushups: 0,
+      totalSquats: 0,
+      networkBreakdown: {},
+      predictions: {
+        total: 0,
+        correct: 0,
+        pending: 0,
+        staked: 0,
+      },
+      rank: {
+        pushups: 0,
+        squats: 0,
+        overall: 0,
+      },
+    };
+
+    // Calculate total contributions
+    let allUsers: { address: string; pushups: number; squats: number }[] = [];
+
+    // Process each network sequentially to avoid too many API calls at once
+    for (const [network, scores] of Object.entries(networkData) as [
+      string,
+      any[]
+    ][]) {
+      // Initialize network in breakdown if not exists
+      if (!stats.networkBreakdown[network]) {
+        stats.networkBreakdown[network] = {
           pushups: 0,
           squats: 0,
-          overall: 0,
-        },
-      };
-
-      // Calculate total contributions
-      let allUsers: { address: string; pushups: number; squats: number }[] = [];
-
-      // Process each network sequentially to avoid too many API calls at once
-      for (const [network, scores] of Object.entries(networkData) as [
-        string,
-        any[]
-      ][]) {
-        // Initialize network in breakdown if not exists
-        if (!stats.networkBreakdown[network]) {
-          stats.networkBreakdown[network] = {
-            pushups: 0,
-            squats: 0,
-          };
-        }
-
-        // First try to find scores by custody address
-        let userScore = scores.find(
-          (score: any) =>
-            score.user.toLowerCase() === user.custody_address.toLowerCase()
-        );
-
-        // If not found, check if any of the scores are from connected addresses
-        // by checking if the address resolves to the user's FID
-        if (!userScore) {
-          // Create a map to track which addresses we've checked
-          const checkedAddresses = new Set<string>();
-          checkedAddresses.add(user.custody_address.toLowerCase());
-
-          // Check each score to see if it belongs to the user
-          for (const score of scores as any[]) {
-            const scoreAddress = score.user.toLowerCase();
-
-            // Skip if we've already checked this address
-            if (checkedAddresses.has(scoreAddress)) continue;
-
-            try {
-              // Try to resolve the address to a FID
-              const fid = await addressToFid(scoreAddress);
-
-              // If the FID matches the user's FID, this is their score
-              if (fid && fid.toString() === user.fid) {
-                userScore = score;
-                console.log(
-                  `Found connected address ${scoreAddress} for user ${user.username}`
-                );
-                break;
-              }
-
-              // Mark this address as checked
-              checkedAddresses.add(scoreAddress);
-            } catch (error) {
-              console.error(`Error checking address ${scoreAddress}:`, error);
-            }
-          }
-        }
-
-        if (userScore) {
-          stats.totalPushups += userScore.pushups;
-          stats.totalSquats += userScore.squats;
-          stats.networkBreakdown[network].pushups = userScore.pushups;
-          stats.networkBreakdown[network].squats = userScore.squats;
-        }
-
-        // Collect all users for ranking
-        scores.forEach((score: any) => {
-          const existingUser = allUsers.find(
-            (u) => u.address.toLowerCase() === score.user.toLowerCase()
-          );
-
-          if (existingUser) {
-            existingUser.pushups += score.pushups;
-            existingUser.squats += score.squats;
-          } else {
-            allUsers.push({
-              address: score.user,
-              pushups: score.pushups,
-              squats: score.squats,
-            });
-          }
-        });
-      } // End of for loop
-
-      // Calculate rankings
-      if (allUsers.length > 0) {
-        // Sort by pushups
-        const pushupsRanking = [...allUsers].sort(
-          (a, b) => b.pushups - a.pushups
-        );
-        const userPushupsRank =
-          pushupsRanking.findIndex(
-            (u) =>
-              u.address.toLowerCase() === user.custody_address.toLowerCase()
-          ) + 1;
-
-        // Sort by squats
-        const squatsRanking = [...allUsers].sort((a, b) => b.squats - a.squats);
-        const userSquatsRank =
-          squatsRanking.findIndex(
-            (u) =>
-              u.address.toLowerCase() === user.custody_address.toLowerCase()
-          ) + 1;
-
-        // Sort by total (pushups + squats)
-        const totalRanking = [...allUsers].sort(
-          (a, b) => b.pushups + b.squats - (a.pushups + a.squats)
-        );
-        const userTotalRank =
-          totalRanking.findIndex(
-            (u) =>
-              u.address.toLowerCase() === user.custody_address.toLowerCase()
-          ) + 1;
-
-        stats.rank = {
-          pushups: userPushupsRank || allUsers.length,
-          squats: userSquatsRank || allUsers.length,
-          overall: userTotalRank || allUsers.length,
         };
       }
 
-      // TODO: Add prediction stats when available
-      stats.predictions = {
-        total: 5,
-        correct: 3,
-        pending: 1,
-        staked: 120,
-      };
+      // First try to find scores by custody address
+      let userScore = scores.find(
+        (score: any) =>
+          score.user.toLowerCase() === user.custody_address.toLowerCase()
+      );
 
-      setUserStats(stats);
+      // If not found, check if any of the scores are from connected addresses
+      // by checking if the address resolves to the user's FID
+      if (!userScore) {
+        // Create a map to track which addresses we've checked
+        const checkedAddresses = new Set<string>();
+        checkedAddresses.add(user.custody_address.toLowerCase());
+
+        // Check each score to see if it belongs to the user
+        for (const score of scores as any[]) {
+          const scoreAddress = score.user.toLowerCase();
+
+          // Skip if we've already checked this address
+          if (checkedAddresses.has(scoreAddress)) continue;
+
+          try {
+            // Try to resolve the address to a FID
+            const fid = await addressToFid(scoreAddress);
+
+            // If the FID matches the user's FID, this is their score
+            if (fid && fid.toString() === user.fid) {
+              userScore = score;
+              console.log(
+                `Found connected address ${scoreAddress} for user ${user.username}`
+              );
+              break;
+            }
+
+            // Mark this address as checked
+            checkedAddresses.add(scoreAddress);
+          } catch (error) {
+            console.error(`Error checking address ${scoreAddress}:`, error);
+          }
+        }
+      }
+
+      if (userScore) {
+        stats.totalPushups += userScore.pushups;
+        stats.totalSquats += userScore.squats;
+        stats.networkBreakdown[network].pushups = userScore.pushups;
+        stats.networkBreakdown[network].squats = userScore.squats;
+      }
+
+      // Collect all users for ranking
+      scores.forEach((score: any) => {
+        const existingUser = allUsers.find(
+          (u) => u.address.toLowerCase() === score.user.toLowerCase()
+        );
+
+        if (existingUser) {
+          existingUser.pushups += score.pushups;
+          existingUser.squats += score.squats;
+        } else {
+          allUsers.push({
+            address: score.user,
+            pushups: score.pushups,
+            squats: score.squats,
+          });
+        }
+      });
+    } // End of for loop
+
+    // Calculate rankings
+    if (allUsers.length > 0) {
+      // Sort by pushups
+      const pushupsRanking = [...allUsers].sort(
+        (a, b) => b.pushups - a.pushups
+      );
+      const userPushupsRank =
+        pushupsRanking.findIndex(
+          (u) => u.address.toLowerCase() === user.custody_address.toLowerCase()
+        ) + 1;
+
+      // Sort by squats
+      const squatsRanking = [...allUsers].sort((a, b) => b.squats - a.squats);
+      const userSquatsRank =
+        squatsRanking.findIndex(
+          (u) => u.address.toLowerCase() === user.custody_address.toLowerCase()
+        ) + 1;
+
+      // Sort by total (pushups + squats)
+      const totalRanking = [...allUsers].sort(
+        (a, b) => b.pushups + b.squats - (a.pushups + a.squats)
+      );
+      const userTotalRank =
+        totalRanking.findIndex(
+          (u) => u.address.toLowerCase() === user.custody_address.toLowerCase()
+        ) + 1;
+
+      stats.rank = {
+        pushups: userPushupsRank || allUsers.length,
+        squats: userSquatsRank || allUsers.length,
+        overall: userTotalRank || allUsers.length,
+      };
     }
+
+    // TODO: Add prediction stats when available
+    stats.predictions = {
+      total: 5,
+      correct: 3,
+      pending: 1,
+      staked: 120,
+    };
+
+    setUserStats(stats);
   }, [isLoading, networkData, user]);
 
-  // Call calculateStats when dependencies change
+  // Call calculateStats when dependencies change, with debounce to prevent excessive calls
   useEffect(() => {
-    if (!isLoading && networkData && user) {
+    // Skip if we don't have the necessary data
+    if (isLoading || !networkData || !user) return;
+
+    // Skip if we've already calculated stats and have data
+    if (statsCalculatedRef.current && userStats) return;
+
+    // Use a timeout to debounce multiple rapid changes
+    const statsTimeout = setTimeout(() => {
       calculateStats();
-    }
-  }, [calculateStats, isLoading, networkData, user]);
+      // Mark stats as calculated
+      statsCalculatedRef.current = true;
+    }, 500);
+
+    // Clean up the timeout if dependencies change before it fires
+    return () => clearTimeout(statsTimeout);
+  }, [isLoading, networkData, user, userStats]); // Add userStats to dependencies
 
   const generateShareableImage = async () => {
     if (!userStats || !user) return;
@@ -301,10 +323,23 @@ export default function PersonalDashboard({
       });
     } catch (error) {
       console.error("Error sharing to Farcaster:", error);
-      sendNotification({
-        title: "Sharing Failed",
-        body: "Could not share your stats. Please try again.",
-      });
+
+      // Check if it's a user rejection error
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      if (
+        errorMessage.includes("rejected") ||
+        errorMessage.includes("denied")
+      ) {
+        // User rejected the action - show a more specific message
+        toast.error("Sharing cancelled by user");
+      } else {
+        // Other error - show a generic message
+        sendNotification({
+          title: "Sharing Failed",
+          body: "Could not share your stats. Please try again.",
+        });
+      }
     }
   };
 

@@ -15,9 +15,27 @@ export const useStreaks = (userId: string | null) => {
     setError(null);
 
     try {
-      const response = await fetch("/api/streaks");
+      const response = await fetch("/api/streaks", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // Include cookies for authentication
+      });
 
       if (!response.ok) {
+        // If unauthorized, don't throw an error, just return default data
+        if (response.status === 401) {
+          console.log("User not authenticated for streak data, using defaults");
+          setStreakData({
+            userId: userId,
+            currentStreak: 0,
+            longestStreak: 0,
+            lastActivityDate: '',
+            activityDates: []
+          });
+          return;
+        }
         throw new Error("Failed to fetch streak data");
       }
 
@@ -26,6 +44,14 @@ export const useStreaks = (userId: string | null) => {
     } catch (err) {
       console.error("Error fetching streak data:", err);
       setError(err instanceof Error ? err.message : "Unknown error");
+      // Set default data on error
+      setStreakData({
+        userId: userId,
+        currentStreak: 0,
+        longestStreak: 0,
+        lastActivityDate: '',
+        activityDates: []
+      });
     } finally {
       setIsLoading(false);
     }
@@ -44,9 +70,23 @@ export const useStreaks = (userId: string | null) => {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Include cookies for authentication
       });
 
       if (!response.ok) {
+        // If unauthorized, don't throw an error, just return default data
+        if (response.status === 401) {
+          console.log("User not authenticated for streak update, using defaults");
+          const defaultStreak = {
+            userId: userId,
+            currentStreak: 0,
+            longestStreak: 0,
+            lastActivityDate: '',
+            activityDates: []
+          };
+          setStreakData(defaultStreak);
+          return defaultStreak;
+        }
         throw new Error("Failed to update streak");
       }
 
@@ -62,7 +102,17 @@ export const useStreaks = (userId: string | null) => {
     } catch (err) {
       console.error("Error updating streak:", err);
       setError(err instanceof Error ? err.message : "Unknown error");
-      return null;
+
+      // Set default data on error
+      const defaultStreak = {
+        userId: userId,
+        currentStreak: 0,
+        longestStreak: 0,
+        lastActivityDate: '',
+        activityDates: []
+      };
+      setStreakData(defaultStreak);
+      return defaultStreak;
     } finally {
       setIsLoading(false);
     }

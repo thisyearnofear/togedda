@@ -6,6 +6,9 @@ import {
 import { createPublicClient, http } from "viem";
 import { optimism } from "viem/chains";
 
+// Mark this route as dynamic to avoid static optimization errors
+export const dynamic = 'force-dynamic';
+
 const KEY_REGISTRY_ADDRESS = "0x00000000Fc1237824fb747aBDE0FF18990E59b7e";
 
 const KEY_REGISTRY_ABI = [

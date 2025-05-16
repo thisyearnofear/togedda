@@ -4,6 +4,9 @@ import * as jose from "jose";
 import { NextRequest, NextResponse } from "next/server";
 import { verifyMessage } from "viem";
 
+// Mark this route as dynamic to avoid static optimization errors
+export const dynamic = 'force-dynamic';
+
 export const POST = async (req: NextRequest) => {
   try {
     const body = await req.json();

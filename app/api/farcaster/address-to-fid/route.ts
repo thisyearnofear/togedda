@@ -1,6 +1,9 @@
 import { env } from "@/lib/env";
 import { NextRequest, NextResponse } from "next/server";
 
+// Mark this route as dynamic to avoid static optimization errors
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/farcaster/address-to-fid
  * Convert an Ethereum address to a Farcaster ID
@@ -37,7 +40,7 @@ export async function GET(req: NextRequest) {
     }
 
     const data = await response.json();
-    
+
     if (data.users && data.users.length > 0) {
       return NextResponse.json({ fid: data.users[0].fid });
     }

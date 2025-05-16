@@ -1,6 +1,9 @@
 import { env } from "@/lib/env";
 import { NextRequest, NextResponse } from "next/server";
 
+// Mark this route as dynamic to avoid static optimization errors
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/farcaster/follows
  * Fetch follows for a Farcaster user
@@ -38,7 +41,7 @@ export async function GET(req: NextRequest) {
     }
 
     const data = await response.json();
-    
+
     // Extract FIDs from the response
     const follows = data.users.map((user: any) => user.fid);
 

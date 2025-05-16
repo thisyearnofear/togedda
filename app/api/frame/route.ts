@@ -1,6 +1,9 @@
 import { env } from "@/lib/env";
 import { NextRequest, NextResponse } from "next/server";
 
+// Mark this route as dynamic to avoid static optimization errors
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const appUrl = env.NEXT_PUBLIC_URL;

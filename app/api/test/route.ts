@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Mark this route as dynamic to avoid static optimization errors
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   const authToken = req.cookies.get("auth_token");
 

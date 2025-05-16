@@ -1,6 +1,9 @@
 import { getUserStreak, updateUserStreak, initializeDatabase } from "@/lib/streaks-service-pg";
 import { NextRequest, NextResponse } from "next/server";
 
+// Mark this route as dynamic to avoid static optimization errors
+export const dynamic = 'force-dynamic';
+
 // Initialize the database schema
 initializeDatabase().catch(console.error);
 

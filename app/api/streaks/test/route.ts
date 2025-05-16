@@ -1,6 +1,9 @@
 import { getUserStreak, updateUserStreak } from "@/lib/streaks-service-pg";
 import { NextRequest, NextResponse } from "next/server";
 
+// Mark this route as dynamic to avoid static optimization errors
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/streaks/test
  * Test endpoint to get all streak data for a user

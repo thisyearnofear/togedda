@@ -1,6 +1,9 @@
 import { sendFrameNotification } from "@/lib/notification-client";
 import { NextResponse } from "next/server";
 
+// Mark this route as dynamic to avoid static optimization errors
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();

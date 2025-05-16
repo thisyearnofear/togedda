@@ -99,28 +99,61 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
         return;
       }
 
-      // Proceed with the vote
-      await voteOnPrediction(prediction.id, isYes, parseFloat(amount));
-
-      // Show success feedback
-      setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 3000);
-
-      toast.success(`You voted ${isYes ? "YES" : "NO"} with ${amount} CELO`);
-      onVote();
-
-      // Get the current address from the provider
+      // Get the current address from the provider before voting
       const provider = new ethers.BrowserProvider(sdk.wallet.ethProvider);
       const signer = await provider.getSigner();
       const currentAddress = await signer.getAddress();
 
-      // Refresh user vote
-      const vote = await getUserVote(prediction.id, currentAddress);
-      setUserVote(vote);
+      try {
+        // Proceed with the vote
+        await voteOnPrediction(prediction.id, isYes, parseFloat(amount));
 
-      // Show share prompt after successful vote
-      setShowSharePrompt(true);
-      setTimeout(() => setShowSharePrompt(false), 10000); // Hide after 10 seconds
+        // Show success feedback
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
+
+        toast.success(`You voted ${isYes ? "YES" : "NO"} with ${amount} CELO`);
+
+        // Optimistically update the UI
+        // Create a temporary vote object to show in the UI while we wait for the blockchain to update
+        const tempVote = {
+          isYes: isYes,
+          amount: parseFloat(amount),
+          claimed: false,
+        };
+        setUserVote(tempVote);
+
+        // Notify parent component
+        onVote();
+
+        // Try to refresh user vote after a delay to allow the blockchain to update
+        setTimeout(async () => {
+          try {
+            const vote = await getUserVote(prediction.id, currentAddress);
+            if (vote) {
+              setUserVote(vote);
+            }
+          } catch (error) {
+            console.error("Error refreshing vote data:", error);
+          }
+        }, 5000);
+
+        // Show share prompt after successful vote
+        setShowSharePrompt(true);
+        setTimeout(() => setShowSharePrompt(false), 10000); // Hide after 10 seconds
+      } catch (error: any) {
+        // Check if it's a user rejection error
+        if (
+          error.message &&
+          (error.message.includes("rejected") ||
+            error.message.includes("denied"))
+        ) {
+          toast.error("Transaction cancelled by user");
+        } else {
+          // For other errors, show the error message
+          toast.error(error.message || "Transaction failed");
+        }
+      }
     } catch (error: any) {
       console.error("Error voting:", error);
       // Display a more user-friendly error message
@@ -173,27 +206,83 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
         return;
       }
 
-      await claimReward(prediction.id);
-
-      // Show success feedback
-      setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 3000);
-
-      toast.success("Reward claimed successfully!");
-      onVote();
-
-      // Get the current address from the provider
+      // Get the current address from the provider before claiming
       const provider = new ethers.BrowserProvider(sdk.wallet.ethProvider);
       const signer = await provider.getSigner();
       const currentAddress = await signer.getAddress();
 
-      // Refresh user vote
-      const vote = await getUserVote(prediction.id, currentAddress);
-      setUserVote(vote);
+      try {
+        await claimReward(prediction.id);
 
-      // Show share prompt after successful claim
-      setShowSharePrompt(true);
-      setTimeout(() => setShowSharePrompt(false), 10000); // Hide after 10 seconds
+        // Show success feedback
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
+
+        toast.success("Reward claimed successfully!");
+
+        // Optimistically update the UI
+        if (userVote) {
+          const updatedVote = {
+            ...userVote,
+            claimed: true,
+          };
+          setUserVote(updatedVote);
+        }
+
+        // Notify parent component
+        onVote();
+
+        // Try to refresh user vote after a delay to allow the blockchain to update
+        setTimeout(async () => {
+          try {
+            const vote = await getUserVote(prediction.id, currentAddress);
+            if (vote) {
+              setUserVote(vote);
+            }
+          } catch (error) {
+            console.error("Error refreshing vote data:", error);
+          }
+        }, 5000);
+
+        // Show share prompt after successful claim
+        setShowSharePrompt(true);
+        setTimeout(() => setShowSharePrompt(false), 10000); // Hide after 10 seconds
+      } catch (error: any) {
+        // Check if it's a user rejection error
+        if (
+          error.message &&
+          (error.message.includes("rejected") ||
+            error.message.includes("denied"))
+        ) {
+          toast.error("Transaction cancelled by user");
+        } else if (
+          error.message &&
+          (error.message.includes("eth_getTransactionReceipt") ||
+            error.message.includes("unsupported"))
+        ) {
+          // This is a Warpcast wallet limitation, but the transaction might have gone through
+          console.log(
+            "Warpcast wallet limitation detected, transaction may have succeeded"
+          );
+          toast.success("Transaction sent! It may take a moment to process.");
+
+          // Optimistically update the UI
+          if (userVote) {
+            const updatedVote = {
+              ...userVote,
+              claimed: true,
+            };
+            setUserVote(updatedVote);
+          }
+
+          // Show share prompt
+          setShowSharePrompt(true);
+          setTimeout(() => setShowSharePrompt(false), 10000);
+        } else {
+          // For other errors, show the error message
+          toast.error(error.message || "Transaction failed");
+        }
+      }
     } catch (error: any) {
       console.error("Error claiming reward:", error);
       // Display a more user-friendly error message

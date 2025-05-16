@@ -356,6 +356,48 @@ const markUserAsReferred = (address: string): void => {
   }
 };
 
+// Check if the provider is Warpcast wallet
+const isWarpcastProvider = async (provider: ethers.BrowserProvider): Promise<boolean> => {
+  try {
+    // Try to detect Warpcast wallet by checking if it's available in window
+    if (typeof window !== 'undefined') {
+      // Check if we're in a Farcaster frame context
+      try {
+        const { sdk } = await import("@farcaster/frame-sdk");
+        if (sdk && sdk.wallet && sdk.wallet.ethProvider) {
+          console.log('Detected Farcaster frame context');
+          return true;
+        }
+      } catch (error) {
+        console.error('Error importing frame-sdk:', error);
+      }
+
+      // Try to detect by checking for specific methods that Warpcast doesn't support
+      try {
+        // Make a test call to a method that Warpcast doesn't support
+        await provider.send('eth_getTransactionReceipt', ['0x0000000000000000000000000000000000000000000000000000000000000000']);
+        // If we get here, it's not Warpcast
+        return false;
+      } catch (error: any) {
+        // If the error message mentions Warpcast or unsupported method, it's likely Warpcast
+        if (error.message && (
+          error.message.includes('Warpcast') ||
+          error.message.includes('unsupported') ||
+          error.message.includes('not support')
+        )) {
+          console.log('Detected Warpcast wallet by unsupported method');
+          return true;
+        }
+      }
+    }
+
+    return false;
+  } catch (error) {
+    console.error('Error detecting Warpcast wallet:', error);
+    return false;
+  }
+};
+
 // Vote on a prediction with Divvi referral tracking
 export const voteOnPrediction = async (
   predictionId: number,
@@ -377,7 +419,9 @@ export const voteOnPrediction = async (
 
     try {
       let tx;
-      let receipt;
+
+      // Check if we're using Warpcast wallet
+      const isWarpcastWallet = await isWarpcastProvider(provider);
 
       if (isFirstTransaction) {
         // Get the Divvi referral data suffix
@@ -403,21 +447,26 @@ export const voteOnPrediction = async (
 
         console.log('Transaction sent:', tx.hash);
 
-        // Wait for transaction confirmation
-        receipt = await tx.wait();
-        console.log('Transaction confirmed:', receipt);
+        // For Warpcast wallet, we don't wait for receipt as it doesn't support eth_getTransactionReceipt
+        if (!isWarpcastWallet) {
+          const receipt = await tx.wait();
+          console.log('Transaction confirmed:', receipt);
 
-        if (receipt) {
-          // Submit the referral to Divvi
-          const chainId = (await provider.getNetwork()).chainId;
-          await submitReferral({
-            txHash: receipt.hash as `0x${string}`,
-            chainId: Number(chainId),
-          });
+          if (receipt && receipt.hash) {
+            // Submit the referral to Divvi
+            const chainId = (await provider.getNetwork()).chainId;
+            await submitReferral({
+              txHash: receipt.hash as `0x${string}`,
+              chainId: Number(chainId),
+            });
+          }
+        } else {
+          // For Warpcast wallet, we just mark the user as referred without waiting for receipt
+          console.log('Warpcast wallet detected, skipping receipt wait');
 
-          // Mark user as referred
+          // We can't submit the referral without a receipt, but we can mark the user as referred
           markUserAsReferred(userAddress);
-          console.log('User referred successfully:', userAddress);
+          console.log('User marked as referred (Warpcast wallet):', userAddress);
         }
       } else {
         // Regular transaction for returning users with increased gas limit
@@ -427,19 +476,33 @@ export const voteOnPrediction = async (
         });
 
         console.log('Transaction sent:', tx.hash);
-        receipt = await tx.wait();
-        console.log('Transaction confirmed:', receipt);
+
+        // For Warpcast wallet, we don't wait for receipt
+        if (!isWarpcastWallet) {
+          const receipt = await tx.wait();
+          console.log('Transaction confirmed:', receipt);
+        } else {
+          console.log('Warpcast wallet detected, skipping receipt wait');
+        }
       }
+
+      // Return without waiting for receipt if using Warpcast wallet
+      return;
+
     } catch (txError: any) {
       console.error('Transaction error:', txError);
 
       // Provide more user-friendly error messages
-      if (txError.message.includes('user rejected')) {
+      if (txError.message.includes('user rejected') || txError.message.includes('rejected')) {
         throw new Error('Transaction was rejected by the user.');
       } else if (txError.message.includes('insufficient funds')) {
         throw new Error('Insufficient funds. Please make sure you have enough CELO to complete this transaction.');
       } else if (txError.message.includes('gas required exceeds')) {
         throw new Error('Transaction requires more gas than available. Try a smaller amount.');
+      } else if (txError.message.includes('eth_getTransactionReceipt') || txError.message.includes('unsupported')) {
+        // This is a Warpcast wallet limitation, but the transaction might have gone through
+        console.log('Warpcast wallet limitation detected, transaction may have succeeded');
+        return; // Return without error as the transaction might have succeeded
       } else {
         throw new Error(`Transaction failed: ${txError.message || 'Unknown error'}`);
       }
@@ -469,6 +532,10 @@ export const updatePredictionValue = async (
 export const claimReward = async (predictionId: number): Promise<void> => {
   try {
     const contract = await getPredictionMarketContract(true);
+    const provider = await getBrowserProvider();
+
+    // Check if we're using Warpcast wallet
+    const isWarpcastWallet = await isWarpcastProvider(provider);
 
     // Add gas limit for Warpcast wallet
     const tx = await contract.claimReward(predictionId, {
@@ -476,18 +543,32 @@ export const claimReward = async (predictionId: number): Promise<void> => {
     });
 
     console.log('Claim reward transaction sent:', tx.hash);
-    const receipt = await tx.wait();
-    console.log('Claim reward transaction confirmed:', receipt);
+
+    // For Warpcast wallet, we don't wait for receipt
+    if (!isWarpcastWallet) {
+      const receipt = await tx.wait();
+      console.log('Claim reward transaction confirmed:', receipt);
+    } else {
+      console.log('Warpcast wallet detected, skipping receipt wait');
+    }
+
+    // Return without waiting for receipt if using Warpcast wallet
+    return;
+
   } catch (txError: any) {
     console.error('Error claiming reward:', txError);
 
     // Provide more user-friendly error messages
-    if (txError.message.includes('user rejected')) {
+    if (txError.message.includes('user rejected') || txError.message.includes('rejected')) {
       throw new Error('Transaction was rejected by the user.');
     } else if (txError.message.includes('insufficient funds')) {
       throw new Error('Insufficient funds. Please make sure you have enough CELO to complete this transaction.');
     } else if (txError.message.includes('gas required exceeds')) {
       throw new Error('Transaction requires more gas than available.');
+    } else if (txError.message.includes('eth_getTransactionReceipt') || txError.message.includes('unsupported')) {
+      // This is a Warpcast wallet limitation, but the transaction might have gone through
+      console.log('Warpcast wallet limitation detected, transaction may have succeeded');
+      return; // Return without error as the transaction might have succeeded
     } else {
       throw new Error(`Transaction failed: ${txError.message || 'Unknown error'}`);
     }

@@ -60,18 +60,33 @@ export const POST = async (req: NextRequest) => {
       .setExpirationTime("7d")
       .sign(secret);
 
+    // Get the domain from the request
+    const requestUrl = new URL(req.url);
+    const domain = requestUrl.hostname;
+
+    console.log("Setting auth cookie for domain:", domain);
+
     // Create the response
     const response = NextResponse.json({ success: true, user });
 
     // Set the auth cookie with the JWT token
+    // Note: In Farcaster mini app environment, cookies need special handling
     response.cookies.set({
       name: "auth_token",
       value: token,
       httpOnly: true,
       secure: true,
-      sameSite: "none",
+      sameSite: "none", // Required for cross-site iframe usage
       maxAge: 7 * 24 * 60 * 60, // 7 days
       path: "/",
+      // Don't set domain explicitly, let the browser handle it
+    });
+
+    // Log the cookie being set for debugging
+    console.log("Auth cookie set:", {
+      name: "auth_token",
+      tokenLength: token.length,
+      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     });
 
     return response;

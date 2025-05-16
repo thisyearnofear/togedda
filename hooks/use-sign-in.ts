@@ -14,6 +14,48 @@ export const useSignIn = ({ autoSignIn = false }: { autoSignIn?: boolean }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shouldSignIn, setShouldSignIn] = useState(autoSignIn);
+  const [signInAttempts, setSignInAttempts] = useState(0);
+
+  // Check if we already have a valid session
+  useEffect(() => {
+    const checkSession = async () => {
+      if (isSignedIn || !isInitialized) return;
+
+      try {
+        // Try to fetch user data from a test endpoint
+        const res = await fetch("/api/test", {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (res.ok) {
+          // We have a valid session
+          console.log("Valid session detected");
+          setIsSignedIn(true);
+
+          // Try to get user data
+          if (context?.user?.fid) {
+            const userRes = await fetch(`/api/farcaster/user?fid=${context.user.fid}`, {
+              credentials: "include",
+            });
+
+            if (userRes.ok) {
+              const userData = await userRes.json();
+              if (userData.users && userData.users.length > 0) {
+                setUser(userData.users[0]);
+              }
+            }
+          }
+        } else {
+          console.log("No valid session, will need to sign in");
+        }
+      } catch (err) {
+        console.error("Error checking session:", err);
+      }
+    };
+
+    checkSession();
+  }, [isInitialized, isSignedIn, context]);
 
   const handleSignIn = useCallback(async () => {
     try {
@@ -25,6 +67,8 @@ export const useSignIn = ({ autoSignIn = false }: { autoSignIn?: boolean }) => {
         return null;
       }
 
+      console.log("Starting sign-in process with FID:", context.user.fid);
+
       let referrerFid: number | null = null;
       const result = await signIn({
         nonce: Math.random().toString(36).substring(2),
@@ -35,8 +79,13 @@ export const useSignIn = ({ autoSignIn = false }: { autoSignIn?: boolean }) => {
       });
 
       if (!result) {
-        throw new Error("Sign in failed");
+        throw new Error("Sign in failed - no result from signIn()");
       }
+
+      console.log("Got signature from Farcaster", {
+        messageLength: result.message.length,
+        signatureLength: result.signature.length
+      });
 
       referrerFid =
         context.location?.type === "cast_embed"
@@ -48,7 +97,7 @@ export const useSignIn = ({ autoSignIn = false }: { autoSignIn?: boolean }) => {
         headers: {
           "Content-Type": "application/json",
         },
-        credentials: "include",
+        credentials: "include", // Important for cookies
         body: JSON.stringify({
           signature: result.signature,
           message: result.message,
@@ -59,18 +108,19 @@ export const useSignIn = ({ autoSignIn = false }: { autoSignIn?: boolean }) => {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        console.error(errorData);
-        throw new Error(errorData.message || "Sign in failed");
+        console.error("Sign-in API error:", errorData);
+        throw new Error(errorData.error || "Sign in failed");
       }
 
       const data = await res.json();
-      console.log("data", data);
+      console.log("Sign-in successful:", data);
       setUser(data.user);
       setIsSignedIn(true);
       return data;
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Sign in failed";
+      console.error("Sign-in error:", errorMessage);
       setError(errorMessage);
       throw err;
     } finally {
@@ -81,28 +131,38 @@ export const useSignIn = ({ autoSignIn = false }: { autoSignIn?: boolean }) => {
   // Wait for initialization and context before attempting sign-in
   useEffect(() => {
     const attemptSignIn = async () => {
-      if (shouldSignIn && isInitialized) {
+      if (shouldSignIn && isInitialized && !isSignedIn && signInAttempts < 3) {
         if (context) {
           try {
+            console.log("Attempting sign-in, attempt #", signInAttempts + 1);
             await handleSignIn();
           } catch (err) {
             console.error("Sign-in attempt failed:", err);
+            // Increment attempt counter
+            setSignInAttempts(prev => prev + 1);
+
+            // Try again after a delay if we haven't exceeded max attempts
+            if (signInAttempts < 2) {
+              setTimeout(() => {
+                setShouldSignIn(true);
+              }, 3000);
+            }
           }
         } else {
           // If no context but we're initialized, set a timeout to try again
-          // This handles the case where the SDK is initialized but context isn't available yet
+          console.log("No context available yet, will retry");
           setTimeout(() => {
             if (!isSignedIn) {
               setShouldSignIn(true);
             }
-          }, 2000);
+          }, 3000);
         }
         setShouldSignIn(false);
       }
     };
 
     attemptSignIn();
-  }, [shouldSignIn, isInitialized, context, handleSignIn, isSignedIn]);
+  }, [shouldSignIn, isInitialized, context, handleSignIn, isSignedIn, signInAttempts]);
 
   return { signIn: handleSignIn, isSignedIn, isLoading, error, user };
 };

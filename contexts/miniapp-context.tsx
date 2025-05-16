@@ -49,8 +49,20 @@ export function MiniAppProvider({ children }: { children: ReactNode }) {
             window.location.href.includes("?miniApp=true") ||
             window.parent !== window);
 
+        console.log("Initializing Farcaster SDK, environment check:", {
+          isFarcasterEnvironment,
+          url: typeof window !== "undefined" ? window.location.href : "SSR",
+        });
+
         // Import the SDK dynamically to avoid SSR issues
         const { sdk } = await import("@farcaster/frame-sdk");
+
+        // Check if wallet is available
+        if (sdk.wallet) {
+          console.log("Warpcast wallet is available");
+        } else {
+          console.log("Warpcast wallet is not available");
+        }
 
         // Call ready to hide the splash screen
         await sdk.actions.ready();
@@ -62,6 +74,11 @@ export function MiniAppProvider({ children }: { children: ReactNode }) {
         // Set frame as ready
         if (!isFrameReady) {
           setFrameReady();
+        }
+
+        // Store SDK in window for debugging
+        if (typeof window !== "undefined") {
+          (window as any).farcasterSDK = sdk;
         }
       } catch (error) {
         console.error("Error initializing Farcaster SDK:", error);

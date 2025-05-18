@@ -121,13 +121,45 @@ export const resolveAddressesToProfiles = async (addresses: string[]): Promise<M
   const result = new Map<string, FarcasterProfile>();
 
   try {
+    // Normalize all addresses to lowercase for consistent lookup
+    const normalizedAddresses = addresses.map(addr => addr.toLowerCase());
+
+    // Check cache first to avoid unnecessary API calls
+    const cachedProfiles = new Map<string, FarcasterProfile>();
+    const addressesToFetch: string[] = [];
+
+    // First pass: check cache
+    for (const address of normalizedAddresses) {
+      // Check if we already have this address in the result map
+      if (result.has(address)) continue;
+
+      // Check module-level cache in Web3Profile component
+      // This is a simplified approach - in a real implementation, you'd access the actual cache
+      const cachedProfile = (window as any).__profileCache?.get?.(address);
+      if (cachedProfile && Date.now() - cachedProfile.timestamp < 30 * 60 * 1000) {
+        cachedProfiles.set(address, cachedProfile);
+      } else {
+        addressesToFetch.push(address);
+      }
+    }
+
+    // Add cached profiles to result
+    for (const [address, profile] of cachedProfiles.entries()) {
+      result.set(address, profile);
+    }
+
+    // If all addresses were in cache, return early
+    if (addressesToFetch.length === 0) {
+      return result;
+    }
+
     // Limit batch size to avoid rate limiting
-    const batchSize = 10;
+    const batchSize = 5; // Reduced batch size for better reliability
     const batches = [];
 
     // Split addresses into batches
-    for (let i = 0; i < addresses.length; i += batchSize) {
-      batches.push(addresses.slice(i, i + batchSize));
+    for (let i = 0; i < addressesToFetch.length; i += batchSize) {
+      batches.push(addressesToFetch.slice(i, i + batchSize));
     }
 
     // Process each batch sequentially to avoid rate limiting
@@ -136,28 +168,36 @@ export const resolveAddressesToProfiles = async (addresses: string[]): Promise<M
         // Step 1: Convert addresses to FIDs
         const addressToFidMap = await batchAddressesToFids(batch);
 
-        if (Object.keys(addressToFidMap).length === 0) {
+        if (addressToFidMap.size === 0) {
           console.log("No FIDs found for batch of addresses");
           continue;
         }
 
         // Step 2: Get unique FIDs to fetch
-        const fidsToFetch = Array.from(new Set(Object.values(addressToFidMap)));
+        const fidsToFetch = Array.from(new Set(Array.from(addressToFidMap.values())));
 
         // Step 3: Fetch profiles for these FIDs
         const fidToProfileMap = await batchFetchFarcasterProfiles(fidsToFetch);
 
         // Step 4: Map addresses to profiles
-        Object.entries(addressToFidMap).forEach(([address, fid]) => {
+        for (const [address, fid] of addressToFidMap.entries()) {
           const profile = fidToProfileMap.get(fid);
           if (profile) {
             result.set(address.toLowerCase(), profile);
+
+            // Update the module-level cache in Web3Profile component
+            if ((window as any).__profileCache) {
+              (window as any).__profileCache.set(address.toLowerCase(), {
+                ...profile,
+                timestamp: Date.now()
+              });
+            }
           }
-        });
+        }
 
         // Add a small delay between batches to avoid rate limiting
         if (batches.length > 1) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 800)); // Increased delay
         }
       } catch (error) {
         console.error("Error processing batch of addresses:", error);

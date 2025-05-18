@@ -7,10 +7,8 @@ import { useEffect, useState, useCallback } from "react";
 import Web3Profile from "@/components/Web3Profile";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
 import { fetchFollows } from "@/lib/farcaster-social";
-import {
-  FarcasterProfile,
-  resolveAddressesToProfiles,
-} from "@/lib/farcaster-profiles";
+import { FarcasterProfile } from "@/lib/farcaster-profiles";
+import { useAddressToFarcaster } from "@/hooks/use-address-to-farcaster";
 import { FaShare, FaUserFriends } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import Confetti from "@/components/Confetti";
@@ -34,9 +32,12 @@ export default function Leaderboard({
   const [userFid, setUserFid] = useState<number | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [userPosition, setUserPosition] = useState<number | null>(null);
-  const [addressToProfileMap, setAddressToProfileMap] = useState<
-    Map<string, FarcasterProfile>
-  >(new Map());
+  // Use our new hook for address to Farcaster profile mapping
+  const {
+    mapAddressesToProfiles,
+    addressToProfileMap,
+    isLoading: profilesLoading,
+  } = useAddressToFarcaster();
 
   // Toggle sort order
   const toggleSort = (field: "pushups" | "squats") => {
@@ -113,13 +114,13 @@ export default function Leaderboard({
     loadUserData();
   }, [context?.user, getEntries]);
 
-  // Resolve wallet addresses to Farcaster profiles with rate limiting and batching
+  // Resolve wallet addresses to Farcaster profiles using our new hook
   useEffect(() => {
     const resolveAddresses = async () => {
       if (isLoading || !data) return;
 
-      // Get unique addresses from the entries (limit to top 10 for performance)
-      const entries = getFilteredEntries().slice(0, 10);
+      // Get unique addresses from the entries (limit to top 20 for performance)
+      const entries = getFilteredEntries().slice(0, 20);
       if (entries.length === 0) return;
 
       // Extract unique addresses
@@ -134,12 +135,10 @@ export default function Leaderboard({
       );
 
       try {
-        // Resolve addresses to profiles with our improved function
-        const profileMap = await resolveAddressesToProfiles(addresses);
-        console.log(
-          `Successfully resolved ${profileMap.size} addresses to Farcaster profiles`
-        );
-        setAddressToProfileMap(profileMap);
+        // Use our new hook to map addresses to profiles
+        // This will handle both primary custody addresses and verified addresses
+        await mapAddressesToProfiles(addresses);
+        console.log(`Successfully mapped addresses to Farcaster profiles`);
       } catch (error) {
         console.error("Error resolving addresses to profiles:", error);
       }
@@ -151,7 +150,13 @@ export default function Leaderboard({
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [data, isLoading, getFilteredEntries, selectedNetwork]);
+  }, [
+    data,
+    isLoading,
+    getFilteredEntries,
+    selectedNetwork,
+    mapAddressesToProfiles,
+  ]);
 
   // Share leaderboard position
   const shareLeaderboardPosition = async () => {
@@ -204,10 +209,15 @@ export default function Leaderboard({
   });
 
   // Show loading state
-  if (isLoading) {
+  if (isLoading || profilesLoading) {
     return (
       <div className="flex justify-center items-center p-8">
         <div className="loading-spinner"></div>
+        <span className="ml-3 text-sm text-gray-400">
+          {profilesLoading
+            ? "Resolving Farcaster profiles..."
+            : "Loading data..."}
+        </span>
       </div>
     );
   }
@@ -295,9 +305,9 @@ export default function Leaderboard({
         </div>
       )}
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto -mx-4 sm:mx-0">
         {sortedEntries.length > 0 ? (
-          <div className="space-y-4">
+          <div className="space-y-4 px-4 sm:px-0">
             {sortedEntries.slice(0, 10).map((entry, index) => {
               // Determine medal and styling
               let medalClass = "";
@@ -328,7 +338,7 @@ export default function Leaderboard({
               return (
                 <div
                   key={`${entry.user}-${index}`}
-                  className={`flex items-center p-3 rounded-lg border ${
+                  className={`flex flex-wrap items-center p-3 rounded-lg border ${
                     isFollowed ? "border-blue-500" : "border-gray-700"
                   } ${rowClass} transition-colors leaderboard-item ${
                     isFollowed ? "bg-blue-900 bg-opacity-20" : ""
@@ -340,26 +350,27 @@ export default function Leaderboard({
                     {medalEmoji || index + 1}
                   </div>
 
-                  <div className="flex-1 flex items-center">
+                  <div className="flex-1 flex items-center min-w-0 overflow-hidden">
                     <Web3Profile
                       address={entry.user}
                       farcasterProfile={addressToProfileMap.get(
                         entry.user.toLowerCase()
                       )}
+                      className="truncate max-w-full"
                     />
                     {isFollowed && (
-                      <span className="ml-2 text-blue-400 text-xs bg-blue-900 bg-opacity-30 px-2 py-1 rounded">
+                      <span className="ml-2 text-blue-400 text-xs bg-blue-900 bg-opacity-30 px-2 py-1 rounded whitespace-nowrap">
                         <FaUserFriends className="inline mr-1" /> Follow
                       </span>
                     )}
                   </div>
 
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2 sm:space-x-4 mt-2 sm:mt-0 w-full sm:w-auto justify-end">
                     <div className="flex flex-col items-end">
                       <div className="flex items-center">
                         <span className="text-xs mr-1">💪</span>
                         <span
-                          className={`font-bold ${
+                          className={`font-bold text-sm sm:text-base ${
                             sortBy === "pushups" ? "text-pink-500" : ""
                           }`}
                         >
@@ -372,7 +383,7 @@ export default function Leaderboard({
                       <div className="flex items-center">
                         <span className="text-xs mr-1">🏃</span>
                         <span
-                          className={`font-bold ${
+                          className={`font-bold text-sm sm:text-base ${
                             sortBy === "squats" ? "text-green-500" : ""
                           }`}
                         >
@@ -384,7 +395,7 @@ export default function Leaderboard({
                     <div className="flex flex-col items-end ml-2 pl-2 border-l border-gray-700">
                       <div className="flex items-center">
                         <span className="text-xs mr-1">🏆</span>
-                        <span className="font-bold text-yellow-400">
+                        <span className="font-bold text-sm sm:text-base text-yellow-400">
                           {formatNumber(calculateTotal(entry))}
                         </span>
                       </div>

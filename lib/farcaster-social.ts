@@ -133,12 +133,32 @@ export const batchAddressesToFids = async (addresses: string[]): Promise<Map<str
   const addressesToFetch: string[] = [];
   const result = new Map<string, number>();
 
+  // First check if we have a global cache from Web3Profile component
+  const globalCache = typeof window !== 'undefined' ? (window as any).__profileCache : null;
+
   normalizedAddresses.forEach(address => {
+    // First check the batch address cache
     const cached = batchAddressCache.get(address);
     if (cached && Date.now() - cached.timestamp < BATCH_CACHE_DURATION) {
       // Use cached value
       result.set(address, cached.fid);
-    } else {
+    }
+    // Then check the global profile cache if available
+    else if (globalCache && globalCache.has(address)) {
+      const profile = globalCache.get(address);
+      if (profile && profile.fid) {
+        result.set(address, profile.fid);
+
+        // Also update our local cache
+        batchAddressCache.set(address, {
+          fid: profile.fid,
+          timestamp: Date.now()
+        });
+      } else {
+        addressesToFetch.push(address);
+      }
+    }
+    else {
       // Need to fetch this address
       addressesToFetch.push(address);
     }
@@ -150,8 +170,8 @@ export const batchAddressesToFids = async (addresses: string[]): Promise<Map<str
   }
 
   try {
-    // Split into batches of 20 addresses (Neynar API limit)
-    const batchSize = 20;
+    // Split into batches of 10 addresses (reduced for better reliability)
+    const batchSize = 10;
 
     for (let i = 0; i < addressesToFetch.length; i += batchSize) {
       const batch = addressesToFetch.slice(i, i + batchSize);
@@ -189,6 +209,11 @@ export const batchAddressesToFids = async (addresses: string[]): Promise<Map<str
             });
           }
         });
+      }
+
+      // Add a small delay between batches to avoid rate limiting
+      if (i + batchSize < addressesToFetch.length) {
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
 

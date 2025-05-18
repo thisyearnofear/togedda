@@ -503,16 +503,22 @@ export default function PersonalDashboard({
               {isNewUser ? (
                 <div className="text-center mb-4">
                   <div className="flex justify-between mb-4">
-                    <div className="text-center">
-                      <div className="text-pink-500 text-2xl mb-1">0</div>
+                    <div className="text-center flex-1">
+                      <div className="text-pink-500 text-xl sm:text-2xl mb-1">
+                        0
+                      </div>
                       <div className="text-xs">Push-ups</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-green-500 text-2xl mb-1">0</div>
+                    <div className="text-center flex-1">
+                      <div className="text-green-500 text-xl sm:text-2xl mb-1">
+                        0
+                      </div>
                       <div className="text-xs">Squats</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-yellow-500 text-2xl mb-1">0</div>
+                    <div className="text-center flex-1">
+                      <div className="text-yellow-500 text-xl sm:text-2xl mb-1">
+                        0
+                      </div>
                       <div className="text-xs">Total</div>
                     </div>
                   </div>
@@ -535,20 +541,20 @@ export default function PersonalDashboard({
               ) : (
                 <>
                   <div className="flex justify-between mb-4">
-                    <div className="text-center">
-                      <div className="text-pink-500 text-2xl mb-1">
+                    <div className="text-center flex-1">
+                      <div className="text-pink-500 text-xl sm:text-2xl mb-1">
                         {formatNumber(userStats.totalPushups)}
                       </div>
                       <div className="text-xs">Push-ups</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-green-500 text-2xl mb-1">
+                    <div className="text-center flex-1">
+                      <div className="text-green-500 text-xl sm:text-2xl mb-1">
                         {formatNumber(userStats.totalSquats)}
                       </div>
                       <div className="text-xs">Squats</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-yellow-500 text-2xl mb-1">
+                    <div className="text-center flex-1">
+                      <div className="text-yellow-500 text-xl sm:text-2xl mb-1">
                         {formatNumber(
                           userStats.totalPushups + userStats.totalSquats
                         )}
@@ -559,7 +565,7 @@ export default function PersonalDashboard({
 
                   <div className="text-center">
                     <div className="text-xs mb-1">Your Rank</div>
-                    <div className="flex justify-center space-x-4">
+                    <div className="flex justify-center space-x-2 sm:space-x-4">
                       <div className="text-center">
                         <div className="text-pink-500">
                           {userStats.rank.pushups || "-"}
@@ -591,16 +597,22 @@ export default function PersonalDashboard({
               {isNewUser || userStats.predictions.total === 0 ? (
                 <div className="text-center mb-4">
                   <div className="flex justify-between mb-4">
-                    <div className="text-center">
-                      <div className="text-blue-500 text-2xl mb-1">0</div>
+                    <div className="text-center flex-1">
+                      <div className="text-blue-500 text-xl sm:text-2xl mb-1">
+                        0
+                      </div>
                       <div className="text-xs">Total</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-green-500 text-2xl mb-1">0</div>
+                    <div className="text-center flex-1">
+                      <div className="text-green-500 text-xl sm:text-2xl mb-1">
+                        0
+                      </div>
                       <div className="text-xs">Correct</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-yellow-500 text-2xl mb-1">0</div>
+                    <div className="text-center flex-1">
+                      <div className="text-yellow-500 text-xl sm:text-2xl mb-1">
+                        0
+                      </div>
                       <div className="text-xs">Pending</div>
                     </div>
                   </div>
@@ -624,20 +636,20 @@ export default function PersonalDashboard({
               ) : (
                 <>
                   <div className="flex justify-between mb-4">
-                    <div className="text-center">
-                      <div className="text-blue-500 text-2xl mb-1">
+                    <div className="text-center flex-1">
+                      <div className="text-blue-500 text-xl sm:text-2xl mb-1">
                         {userStats.predictions.total}
                       </div>
                       <div className="text-xs">Total</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-green-500 text-2xl mb-1">
+                    <div className="text-center flex-1">
+                      <div className="text-green-500 text-xl sm:text-2xl mb-1">
                         {userStats.predictions.correct}
                       </div>
                       <div className="text-xs">Correct</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-yellow-500 text-2xl mb-1">
+                    <div className="text-center flex-1">
+                      <div className="text-yellow-500 text-xl sm:text-2xl mb-1">
                         {userStats.predictions.pending}
                       </div>
                       <div className="text-xs">Pending</div>

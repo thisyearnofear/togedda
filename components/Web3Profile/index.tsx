@@ -23,6 +23,11 @@ interface CachedFarcasterProfile extends FarcasterProfile {
 const profileCache = new Map<string, CachedFarcasterProfile | null>();
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
+// Expose the cache globally for other components to use
+if (typeof window !== "undefined") {
+  (window as any).__profileCache = profileCache;
+}
+
 export default function Web3Profile({
   address,
   className = "",
@@ -154,12 +159,12 @@ export default function Web3Profile({
     <div className={`flex items-center space-x-2 ${className}`}>
       <Avatar />
       {farcasterProfile ? (
-        <div className="flex flex-col">
-          <span className="text-sm font-medium">
+        <div className="flex flex-col min-w-0">
+          <span className="text-sm font-medium truncate">
             {farcasterProfile.displayName || farcasterProfile.username}
           </span>
           {farcasterProfile.username && (
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-gray-400 truncate">
               @{farcasterProfile.username}
             </span>
           )}

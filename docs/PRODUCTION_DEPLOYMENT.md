@@ -8,7 +8,7 @@ This guide will help you deploy your Imperfect Form Farcaster mini app to produc
    - Factory Contract: `0x668331bC0F8fAC8F7F79b3874197d6255de2Ccf9`
    - Prediction Market Contract: `0x28461Aeb1af60D059D9aD07051df4fB70C5C1921`
 
-2. You have a domain for your mini app (e.g., `imperfectform.xyz`)
+2. You have a domain for your mini app (e.g., `imperfectform.fun`)
 
 3. You have a Vercel account or another hosting provider
 

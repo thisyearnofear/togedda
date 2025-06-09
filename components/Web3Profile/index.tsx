@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { addressToFid } from "@/lib/farcaster-social";
 import { fetchUser } from "@/lib/neynar";
 import { FarcasterProfile } from "@/lib/farcaster-profiles";
+import { useAddressDisplay } from "@/hooks/use-address-resolution";
 import Image from "next/image";
 
 interface Web3ProfileProps {
@@ -11,6 +12,7 @@ interface Web3ProfileProps {
   className?: string;
   avatarOnly?: boolean;
   farcasterProfile?: FarcasterProfile | null;
+  useUnifiedResolution?: boolean; // New prop to enable unified resolution
 }
 
 // For internal use only - extends FarcasterProfile with timestamp
@@ -33,10 +35,20 @@ export default function Web3Profile({
   className = "",
   avatarOnly = false,
   farcasterProfile: providedProfile = null,
+  useUnifiedResolution = true, // Default to new unified resolution
 }: Web3ProfileProps) {
   const [resolvedProfile, setResolvedProfile] =
     useState<FarcasterProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Use new unified resolution hook
+  const {
+    profile: unifiedProfile,
+    displayName: unifiedDisplayName,
+    hasProfile: hasUnifiedProfile,
+    isLoading: unifiedLoading,
+    source,
+  } = useAddressDisplay(useUnifiedResolution ? address : undefined);
 
   // Use the provided profile or the resolved one
   const farcasterProfile = providedProfile || resolvedProfile;
@@ -47,8 +59,8 @@ export default function Web3Profile({
   const addressColor = `#${address.slice(2, 8)}`;
 
   useEffect(() => {
-    // If a profile was provided via props, no need to resolve
-    if (providedProfile) {
+    // If using unified resolution or a profile was provided via props, no need to resolve with legacy method
+    if (useUnifiedResolution || providedProfile) {
       return;
     }
 
@@ -114,16 +126,38 @@ export default function Web3Profile({
     };
 
     resolveAddress();
-  }, [address, isLoading, providedProfile]);
+  }, [address, isLoading, providedProfile, useUnifiedResolution]);
 
-  // Avatar component - shows Farcaster profile pic or address-based avatar
+  // Determine which profile data to use - prioritize unified resolution when enabled
+  const effectiveProfile =
+    useUnifiedResolution && unifiedProfile
+      ? {
+          pfpUrl: unifiedProfile.avatar || unifiedProfile.farcaster?.pfp_url,
+          displayName:
+            unifiedProfile.displayName ||
+            unifiedProfile.farcaster?.display_name,
+          username:
+            unifiedProfile.username || unifiedProfile.farcaster?.username,
+        }
+      : useUnifiedResolution
+      ? null // Don't use legacy profile when unified resolution is enabled
+      : farcasterProfile;
+
+  const effectiveLoading = useUnifiedResolution ? unifiedLoading : isLoading;
+  const effectiveDisplayName = useUnifiedResolution
+    ? unifiedDisplayName
+    : effectiveProfile?.displayName ||
+      effectiveProfile?.username ||
+      truncatedAddress;
+
+  // Avatar component - shows profile pic or address-based avatar
   const Avatar = () => {
-    if (farcasterProfile?.pfpUrl) {
+    if (effectiveProfile?.pfpUrl) {
       return (
         <div className="w-8 h-8 relative">
           <Image
-            src={farcasterProfile.pfpUrl}
-            alt={farcasterProfile.displayName || truncatedAddress}
+            src={effectiveProfile.pfpUrl}
+            alt={effectiveProfile.displayName || truncatedAddress}
             width={32}
             height={32}
             className="w-8 h-8 rounded-full border border-white object-cover"
@@ -147,7 +181,7 @@ export default function Web3Profile({
     return (
       <div className={`relative ${className}`}>
         <Avatar />
-        {isLoading && (
+        {effectiveLoading && (
           <div className="absolute inset-0 bg-black bg-opacity-30 rounded-full" />
         )}
       </div>
@@ -158,19 +192,21 @@ export default function Web3Profile({
   return (
     <div className={`flex items-center space-x-2 ${className}`}>
       <Avatar />
-      {farcasterProfile ? (
+      {effectiveProfile ? (
         <div className="flex flex-col min-w-0">
           <span className="text-sm font-medium truncate">
-            {farcasterProfile.displayName || farcasterProfile.username}
+            {effectiveDisplayName}
           </span>
-          {farcasterProfile.username && (
+          {effectiveProfile.username && (
             <span className="text-xs text-gray-400 truncate">
-              @{farcasterProfile.username}
+              @{effectiveProfile.username}
             </span>
           )}
         </div>
       ) : (
-        <span className="text-sm font-medium truncate">{truncatedAddress}</span>
+        <span className="text-sm font-medium truncate">
+          {effectiveDisplayName}
+        </span>
       )}
     </div>
   );

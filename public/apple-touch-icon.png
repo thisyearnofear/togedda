@@ -1,0 +1,59 @@
+I understand you want me to create an apple-touch-icon.png file, but I cannot generate binary image files through text output. 
+
+Instead, I can help you in a few ways:
+
+1. Create a simple SVG icon that you can convert to PNG
+2. Provide you with a script to generate the icons
+3. Give you instructions on where to get appropriate icons
+
+For now, let me create a simple HTML file that generates a canvas-based icon you can save:
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate Icon</title>
+</head>
+<body>
+    <canvas id="icon" width="180" height="180" style="border: 1px solid #ccc;"></canvas>
+    <br>
+    <button onclick="downloadIcon()">Download as PNG</button>
+    
+    <script>
+        const canvas = document.getElementById('icon');
+        const ctx = canvas.getContext('2d');
+        
+        // Black background
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, 180, 180);
+        
+        // White text
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 24px "Press Start 2P", monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // Draw "IF" for Imperfect Form
+        ctx.fillText('IF', 90, 70);
+        
+        // Add pixels for retro look
+        ctx.fillStyle = '#00FF00';
+        ctx.fillRect(60, 100, 8, 8);
+        ctx.fillRect(76, 100, 8, 8);
+        ctx.fillRect(92, 100, 8, 8);
+        ctx.fillRect(108, 100, 8, 8);
+        ctx.fillRect(124, 100, 8, 8);
+        
+        // Add subtitle
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '12px "Press Start 2P", monospace';
+        ctx.fillText('FITNESS', 90, 130);
+        
+        function downloadIcon() {
+            const link = document.createElement('a');
+            link.download = 'apple-touch-icon.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+    </script>
+</body>
+</html>

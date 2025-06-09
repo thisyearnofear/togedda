@@ -1,21 +1,25 @@
 {
-  "name": "app-router-template",
-  "version": "0.1.0",
+  "name": "imperfect-form-miniapp",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "frames": "frames"
+    "lint:fix": "next lint --fix",
+    "type-check": "tsc --noEmit",
+    "frames": "frames",
+    "clean": "rm -rf .next",
+    "test": "echo \"No tests specified\" && exit 0"
   },
   "dependencies": {
-    "@coinbase/onchainkit": "^0.38.8",
+    "@coinbase/onchainkit": "^0.39.0",
     "@divvi/referral-sdk": "^1.0.0",
     "@farcaster/auth-client": "^0.3.0",
     "@farcaster/frame-node": "^0.0.21",
-    "@farcaster/frame-sdk": "^0.0.41",
-    "@farcaster/frame-wagmi-connector": "^0.0.32",
+    "@farcaster/frame-sdk": "^0.1.0",
+    "@farcaster/frame-wagmi-connector": "^0.1.0",
     "@frames.js/debugger": "^0.5.0",
     "@t3-oss/env-nextjs": "^0.12.0",
     "@tanstack/react-query": "^5.64.2",
@@ -23,14 +27,14 @@
     "@vercel/kv": "^1.0.1",
     "eruda": "^3.2.3",
     "ethers": "^6.11.1",
-    "jiti": "1.21.7",
+    "jiti": "^2.0.0",
     "jose": "^5.9.6",
-    "next": "14.2.6",
+    "next": "^15.0.0",
     "pg": "^8.16.0",
     "pino-pretty": "^13.0.0",
-    "react": "^18",
+    "react": "^18.3.0",
     "react-confetti": "^6.4.0",
-    "react-dom": "^18",
+    "react-dom": "^18.3.0",
     "react-hot-toast": "^2.5.2",
     "react-icons": "^5.5.0",
     "viem": "^2.27.2",
@@ -38,13 +42,17 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "eslint": "^8",
-    "eslint-config-next": "14.2.6",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^15.0.0",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.14",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=18.17.0",
+    "npm": ">=9.0.0"
   }
 }

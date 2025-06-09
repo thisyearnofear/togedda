@@ -57,7 +57,7 @@ export const useAddressToFarcaster = () => {
       });
       
       // Update reverse lookup cache
-      addresses.forEach(address => {
+      addresses.forEach((address: string) => {
         addressToFidCache.set(address.toLowerCase(), {
           fid,
           timestamp: Date.now()
@@ -197,7 +197,7 @@ export const useAddressToFarcaster = () => {
       // Now fetch verified addresses for each FID and map them to profiles
       const fidToAddressesMapUpdated = new Map<number, string[]>();
       
-      for (const fid of fidProfiles.keys()) {
+      for (const fid of Array.from(fidProfiles.keys())) {
         const verifiedAddresses = await fetchVerifiedAddresses(fid);
         fidToAddressesMapUpdated.set(fid, verifiedAddresses);
         

@@ -7,6 +7,7 @@ jiti("./lib/env");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Optimize images with enhanced configuration
   images: {
     remotePatterns: [
       {
@@ -14,24 +15,79 @@ const nextConfig = {
         hostname: "**",
       },
     ],
+    formats: ["image/webp", "image/avif"],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
-  // Ensure .well-known directory is accessible
+
+  // Enhanced headers for security and caching
   async headers() {
     return [
       {
         source: "/.well-known/:path*",
         headers: [
           { key: "Access-Control-Allow-Origin", value: "*" },
-          { key: "Access-Control-Allow-Methods", value: "GET" },
+          { key: "Access-Control-Allow-Methods", value: "GET, OPTIONS" },
           { key: "Access-Control-Allow-Headers", value: "Content-Type" },
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+      {
+        source: "/manifest.json",
+        headers: [
+          { key: "Content-Type", value: "application/manifest+json" },
+          { key: "Cache-Control", value: "public, max-age=86400" },
+        ],
+      },
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Content-Type", value: "application/javascript" },
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+        ],
+      },
+      {
+        source: "/:path*.(ico|png|jpg|jpeg|gif|webp|svg)",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+      {
+        source: "/:path*.(js|css|woff|woff2|ttf|eot)",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
         ],
       },
     ];
   },
-  // No rewrites needed as we're using static files
-  async rewrites() {
-    return [];
+
+  // Webpack optimizations
+  webpack: (config, { dev, isServer }) => {
+    // Optimize bundle size
+    if (!dev && !isServer) {
+      // Removed custom splitChunks to restore Next.js defaults and fix RSC chunking issues.
+    }
+
+    return config;
   },
+
+  // Experimental features for better performance
+  experimental: {
+    optimizePackageImports: ['@farcaster/frame-sdk', '@coinbase/onchainkit'],
+    webVitalsAttribution: ['CLS', 'LCP'],
+  },
+
+  // Compiler options
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production" ? {
+      exclude: ["error", "warn"],
+    } : false,
+  },
+
+  // Production optimizations
+  distDir: '.next',
+  generateEtags: false,
+  poweredByHeader: false,
 };
 
 export default nextConfig;

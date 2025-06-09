@@ -3,22 +3,15 @@
 import { useSignIn } from "@/hooks/use-sign-in";
 import { useStreaks } from "@/hooks/use-streaks";
 import { NetworkData } from "@/lib/blockchain";
-import { NETWORK_COLORS } from "@/lib/constants";
-import { formatNumber, getNetworkName } from "@/lib/utils";
+import { formatNumber } from "@/lib/utils";
 import { useNotification } from "@coinbase/onchainkit/minikit";
 import Image from "next/image";
 import { useEffect, useState, useCallback, useRef } from "react";
 import TargetsAndStreaks from "@/components/TargetsAndStreaks";
 import Confetti from "@/components/Confetti";
 import { toast } from "react-hot-toast";
-import { addressToFid } from "@/lib/farcaster-social";
-import {
-  FaShare,
-  FaArrowRight,
-  FaFire,
-  FaTrophy,
-  FaMedal,
-} from "react-icons/fa";
+import { useAccount } from "wagmi";
+import { FaShare, FaArrowRight, FaFire, FaMedal } from "react-icons/fa";
 
 interface PersonalDashboardProps {
   networkData: NetworkData;
@@ -51,17 +44,26 @@ export default function PersonalDashboard({
   networkData,
   isLoading,
 }: PersonalDashboardProps) {
-  // Use autoSignIn: true to automatically sign in with Farcaster
+  const { address, isConnected } = useAccount();
+
+  // Only try Farcaster sign-in in mini app mode
   const {
     user,
     isSignedIn,
     isLoading: authLoading,
-  } = useSignIn({ autoSignIn: true });
+  } = useSignIn({ autoSignIn: false });
+
+  // Determine user type and available features
+  const isFarcasterUser = isSignedIn && user?.fid;
+  const isWalletOnlyUser = isConnected && !isFarcasterUser;
+  const hasAnyAuth = isFarcasterUser || isWalletOnlyUser;
+
+  // Only use streaks for Farcaster users (requires persistent identity)
   const {
     streakData,
     isLoading: streaksLoading,
     updateStreak,
-  } = useStreaks(user?.fid || null);
+  } = useStreaks(isFarcasterUser ? user?.fid?.toString() : null);
   // Use useMemo to prevent unnecessary rerenders when setting userStats
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   // Use a ref to track if we've already calculated stats to prevent multiple calculations
@@ -72,9 +74,9 @@ export default function PersonalDashboard({
   const [showTargetsAndStreaks, setShowTargetsAndStreaks] = useState(false);
   const sendNotification = useNotification();
 
-  // Update streak when component mounts - only once
+  // Update streak when component mounts - only for Farcaster users
   useEffect(() => {
-    if (user?.fid) {
+    if (isFarcasterUser) {
       // Reset the stats calculated flag when the user changes
       statsCalculatedRef.current = false;
 
@@ -85,12 +87,12 @@ export default function PersonalDashboard({
 
       return () => clearTimeout(streakUpdateTimeout);
     }
-  }, [user?.fid]); // Remove updateStreak from dependencies
+  }, [isFarcasterUser, updateStreak]);
 
   // Define calculateStats function with useCallback and memoize expensive calculations
   const calculateStats = useCallback(async () => {
     // Only run if we have the necessary data and aren't already loading
-    if (isLoading || !networkData || !user) return;
+    if (isLoading || !networkData || !hasAnyAuth) return;
 
     // Create a new stats object
     const stats: UserStats = {
@@ -113,44 +115,51 @@ export default function PersonalDashboard({
     // Calculate total contributions
     let allUsers: { address: string; pushups: number; squats: number }[] = [];
 
-    // Get connected addresses from Farcaster
+    // Get connected addresses - different logic for Farcaster vs wallet users
     let connectedAddresses: string[] = [];
 
     try {
-      // First, add the custody address
-      if (user.custody_address) {
+      if (isFarcasterUser && user?.custody_address) {
+        // Farcaster user - get custody and verified addresses
         connectedAddresses.push(user.custody_address.toLowerCase());
-      }
 
-      // Then try to get verified addresses from Neynar API
-      const response = await fetch(
-        `/api/farcaster/user?fid=${user.fid}&include_verifications=true`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-        }
-      );
+        // Try to get verified addresses from Neynar API
+        const response = await fetch(
+          `/api/farcaster/user?fid=${user.fid}&include_verifications=true`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+          }
+        );
 
-      if (response.ok) {
-        const data = await response.json();
-        if (
-          data.users &&
-          data.users.length > 0 &&
-          data.users[0].verifications
-        ) {
-          // Add verified addresses
-          data.users[0].verifications.forEach((address: string) => {
-            if (!connectedAddresses.includes(address.toLowerCase())) {
-              connectedAddresses.push(address.toLowerCase());
-            }
-          });
+        if (response.ok) {
+          const data = await response.json();
+          if (
+            data.users &&
+            data.users.length > 0 &&
+            data.users[0].verifications
+          ) {
+            // Add verified addresses
+            data.users[0].verifications.forEach((address: string) => {
+              if (!connectedAddresses.includes(address.toLowerCase())) {
+                connectedAddresses.push(address.toLowerCase());
+              }
+            });
+          }
         }
+      } else if (isWalletOnlyUser && address) {
+        // Wallet-only user - use connected wallet address only
+        connectedAddresses.push(address.toLowerCase());
       }
     } catch (error) {
       console.error("Error fetching connected addresses:", error);
+      // Fallback to current address if available
+      if (address) {
+        connectedAddresses = [address.toLowerCase()];
+      }
     }
 
     console.log("Connected addresses:", connectedAddresses);
@@ -210,16 +219,21 @@ export default function PersonalDashboard({
       const pushupsRanking = [...allUsers].sort(
         (a, b) => b.pushups - a.pushups
       );
+      // Use appropriate address for ranking lookup
+      const userAddress = isFarcasterUser
+        ? (user?.custody_address || "").toLowerCase()
+        : (address || "").toLowerCase();
+
       const userPushupsRank =
         pushupsRanking.findIndex(
-          (u) => u.address.toLowerCase() === user.custody_address.toLowerCase()
+          (u) => u.address.toLowerCase() === userAddress
         ) + 1;
 
       // Sort by squats
       const squatsRanking = [...allUsers].sort((a, b) => b.squats - a.squats);
       const userSquatsRank =
         squatsRanking.findIndex(
-          (u) => u.address.toLowerCase() === user.custody_address.toLowerCase()
+          (u) => u.address.toLowerCase() === userAddress
         ) + 1;
 
       // Sort by total (pushups + squats)
@@ -227,9 +241,8 @@ export default function PersonalDashboard({
         (a, b) => b.pushups + b.squats - (a.pushups + a.squats)
       );
       const userTotalRank =
-        totalRanking.findIndex(
-          (u) => u.address.toLowerCase() === user.custody_address.toLowerCase()
-        ) + 1;
+        totalRanking.findIndex((u) => u.address.toLowerCase() === userAddress) +
+        1;
 
       stats.rank = {
         pushups: userPushupsRank || allUsers.length,
@@ -247,7 +260,15 @@ export default function PersonalDashboard({
     };
 
     setUserStats(stats);
-  }, [isLoading, networkData, user]);
+  }, [
+    isLoading,
+    networkData,
+    hasAnyAuth,
+    isFarcasterUser,
+    isWalletOnlyUser,
+    user,
+    address,
+  ]);
 
   // Call calculateStats when dependencies change, with debounce to prevent excessive calls
   useEffect(() => {
@@ -266,7 +287,7 @@ export default function PersonalDashboard({
 
     // Clean up the timeout if dependencies change before it fires
     return () => clearTimeout(statsTimeout);
-  }, [isLoading, networkData, user, userStats]); // Add userStats to dependencies
+  }, [isLoading, networkData, user, userStats, calculateStats]); // Add calculateStats to dependencies
 
   const generateShareableImage = async () => {
     if (!userStats || !user) return;
@@ -363,13 +384,119 @@ export default function PersonalDashboard({
     );
   }
 
-  // If not signed in after loading completes, show sign-in prompt
-  if (!isSignedIn) {
+  // Handle different user authentication states
+  if (!hasAnyAuth) {
     return (
       <div className="game-container my-8 text-center">
         <h2 className="retro-heading text-xl mb-6">My Dashboard</h2>
-        <p className="mb-4">Connecting to Farcaster...</p>
+        <p className="mb-4">Connect your account to view your fitness stats</p>
         <p className="text-xs text-gray-400">Beauty is imperfect</p>
+      </div>
+    );
+  }
+
+  // Show wallet-only user experience
+  if (isWalletOnlyUser) {
+    return (
+      <div className="space-y-6">
+        {/* Wallet Stats */}
+        {userStats && (
+          <div className="game-container">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="retro-heading text-xl">My Wallet Stats</h2>
+              <div className="text-xs text-gray-400">
+                {address?.slice(0, 6)}...{address?.slice(-4)}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="text-center p-4 bg-pink-900/20 border border-pink-600 rounded">
+                <div className="text-3xl font-bold text-pink-400 mb-1">
+                  {formatNumber(userStats.totalPushups)}
+                </div>
+                <div className="text-sm text-gray-300">💪 Push-ups</div>
+                {userStats.rank.pushups > 0 && (
+                  <div className="text-xs text-gray-400 mt-1">
+                    Rank #{userStats.rank.pushups}
+                  </div>
+                )}
+              </div>
+              <div className="text-center p-4 bg-green-900/20 border border-green-600 rounded">
+                <div className="text-3xl font-bold text-green-400 mb-1">
+                  {formatNumber(userStats.totalSquats)}
+                </div>
+                <div className="text-sm text-gray-300">🏃 Squats</div>
+                {userStats.rank.squats > 0 && (
+                  <div className="text-xs text-gray-400 mt-1">
+                    Rank #{userStats.rank.squats}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Network Breakdown */}
+            <div className="mb-6">
+              <h3 className="text-lg mb-3">Network Breakdown</h3>
+              <div className="space-y-2">
+                {Object.entries(userStats.networkBreakdown).map(
+                  ([network, stats]) => {
+                    const total = stats.pushups + stats.squats;
+                    if (total === 0) return null;
+
+                    return (
+                      <div
+                        key={network}
+                        className="flex items-center justify-between p-2 bg-gray-800 rounded"
+                      >
+                        <div className="flex items-center">
+                          <div
+                            className={`w-4 h-4 rounded-full mr-2 bg-${network}`}
+                          ></div>
+                          <span className="text-sm capitalize">{network}</span>
+                        </div>
+                        <div className="text-sm">
+                          {stats.pushups}💪 + {stats.squats}🏃 = {total}
+                        </div>
+                      </div>
+                    );
+                  }
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Farcaster Upsell - Compact */}
+        <div className="game-container text-center">
+          <div className="bg-blue-900/20 border border-blue-600 rounded p-4">
+            <h3 className="text-blue-300 font-bold mb-2">
+              🟣 Unlock More Features
+            </h3>
+            <p className="text-sm text-blue-200 mb-3">
+              Connect with Farcaster for streaks, social features, and
+              cross-chain identity
+            </p>
+            <a
+              href="https://www.farcaster.xyz/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="retro-button text-sm px-4 py-2 inline-block"
+            >
+              Get Farcaster →
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Farcaster user loading state
+  if (isFarcasterUser && authLoading) {
+    return (
+      <div className="game-container my-8 text-center">
+        <h2 className="retro-heading text-xl mb-6">My Dashboard</h2>
+        <p className="mb-4">Loading your Farcaster data...</p>
+        <div className="loading-spinner mx-auto"></div>
       </div>
     );
   }

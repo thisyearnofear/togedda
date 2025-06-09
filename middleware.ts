@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { env } from "./lib/env";
 
 export const config = {
-  matcher: ["/api/:path*"],
+  matcher: ["/api/((?!auth|test|manifest|og|webhook|farcaster|ens|web3bio|ensdata|resolve).*)"],
 };
 
 export default async function middleware(req: NextRequest) {
@@ -21,7 +21,11 @@ export default async function middleware(req: NextRequest) {
     req.nextUrl.pathname.includes("/api/webhook") ||
     req.nextUrl.pathname.includes("/api/farcaster") ||
     req.nextUrl.pathname.includes("/api/manifest") ||
-    req.nextUrl.pathname.includes("/api/test") // Allow test endpoint without auth for session checking
+    req.nextUrl.pathname.includes("/api/test") ||
+    req.nextUrl.pathname.includes("/api/ens") ||
+    req.nextUrl.pathname.includes("/api/web3bio") ||
+    req.nextUrl.pathname.includes("/api/ensdata") ||
+    req.nextUrl.pathname.includes("/api/resolve")
   ) {
     console.log(`Skipping auth check for: ${req.nextUrl.pathname}`);
     return NextResponse.next();
@@ -32,6 +36,13 @@ export default async function middleware(req: NextRequest) {
 
   if (!token) {
     console.log(`No auth_token cookie found for: ${req.nextUrl.pathname}`);
+    // For development, be more permissive with certain endpoints
+    if (process.env.NODE_ENV === "development" && 
+        (req.nextUrl.pathname.includes("/api/streaks") || 
+         req.nextUrl.pathname.includes("/api/notify"))) {
+      console.log("Development mode: allowing access without auth");
+      return NextResponse.next();
+    }
     return NextResponse.json(
       { error: "Authentication required" },
       { status: 401 }

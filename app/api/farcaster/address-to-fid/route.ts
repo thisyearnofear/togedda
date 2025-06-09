@@ -9,12 +9,41 @@ export const dynamic = 'force-dynamic';
 const addressCache = new Map<string, { fid: number | null, timestamp: number }>();
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
+// Failure tracking to prevent excessive retries for non-existent addresses
+const failureCache = new Map<string, { count: number, lastAttempt: number }>();
+const MAX_FAILURES = 2; // Max failures before giving up for a while
+const FAILURE_COOLDOWN = 60 * 60 * 1000; // 1 hour cooldown after max failures
+
+// Cleanup function to prevent memory leaks
+function cleanupCaches() {
+  const now = Date.now();
+
+  // Clean up old failure entries
+  for (const [address, failure] of failureCache.entries()) {
+    if (now - failure.lastAttempt > FAILURE_COOLDOWN * 2) {
+      failureCache.delete(address);
+    }
+  }
+
+  // Clean up old cache entries
+  for (const [address, cached] of addressCache.entries()) {
+    if (now - cached.timestamp > CACHE_DURATION) {
+      addressCache.delete(address);
+    }
+  }
+}
+
 /**
  * GET /api/farcaster/address-to-fid
  * Convert an Ethereum address to a Farcaster ID with rate limiting and caching
  */
 export async function GET(req: NextRequest) {
   try {
+    // Periodic cleanup (run occasionally)
+    if (Math.random() < 0.1) { // 10% chance to run cleanup
+      cleanupCaches();
+    }
+
     // Get the address from the query parameters
     const { searchParams } = new URL(req.url);
     const address = searchParams.get("address");
@@ -28,6 +57,14 @@ export async function GET(req: NextRequest) {
 
     // Normalize the address (lowercase)
     const normalizedAddress = address.toLowerCase();
+
+    // Check failure cache first - if this address has failed too many times recently, don't retry
+    const failures = failureCache.get(normalizedAddress);
+    if (failures && failures.count >= MAX_FAILURES &&
+        Date.now() - failures.lastAttempt < FAILURE_COOLDOWN) {
+      console.log(`Skipping lookup for ${normalizedAddress} - too many recent failures (${failures.count})`);
+      return NextResponse.json({ fid: null });
+    }
 
     // Check cache first
     const cachedResult = addressCache.get(normalizedAddress);
@@ -133,6 +170,13 @@ export async function GET(req: NextRequest) {
 
         console.log(`No FID found for address ${normalizedAddress}`);
 
+        // Track failure
+        const currentFailures = failureCache.get(normalizedAddress) || { count: 0, lastAttempt: 0 };
+        failureCache.set(normalizedAddress, {
+          count: currentFailures.count + 1,
+          lastAttempt: Date.now()
+        });
+
         // Cache negative results too
         addressCache.set(normalizedAddress, {
           fid: null,
@@ -142,6 +186,14 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ fid: null });
       } catch (error) {
         console.error("Error converting address to FID:", error);
+
+        // Track failure for API errors too
+        const currentFailures = failureCache.get(normalizedAddress) || { count: 0, lastAttempt: 0 };
+        failureCache.set(normalizedAddress, {
+          count: currentFailures.count + 1,
+          lastAttempt: Date.now()
+        });
+
         return NextResponse.json(
           {
             error: "Internal server error",

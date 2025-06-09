@@ -8,7 +8,8 @@ import Web3Profile from "@/components/Web3Profile";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
 import { fetchFollows } from "@/lib/farcaster-social";
 import { FarcasterProfile } from "@/lib/farcaster-profiles";
-import { useAddressToFarcaster } from "@/hooks/use-address-to-farcaster";
+
+import { useLeaderboardAddresses } from "@/hooks/use-address-resolution";
 import { FaShare, FaUserFriends } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import Confetti from "@/components/Confetti";
@@ -32,12 +33,25 @@ export default function Leaderboard({
   const [userFid, setUserFid] = useState<number | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [userPosition, setUserPosition] = useState<number | null>(null);
-  // Use our new hook for address to Farcaster profile mapping
+  // Get unique addresses for unified resolution
+  const uniqueAddresses = data
+    ? Array.from(
+        new Set(
+          Object.values(data).flatMap((scores) =>
+            scores.map((score) => score.user.toLowerCase())
+          )
+        )
+      ).slice(0, 50)
+    : []; // Limit to top 50 for performance
+
+  // Use new unified resolution system only
   const {
-    mapAddressesToProfiles,
-    addressToProfileMap,
-    isLoading: profilesLoading,
-  } = useAddressToFarcaster();
+    getDisplayNameForAddress,
+    getProfileForAddress,
+    isLoading: unifiedLoading,
+    resolved: resolvedCount,
+    total: totalAddresses,
+  } = useLeaderboardAddresses(uniqueAddresses);
 
   // Toggle sort order
   const toggleSort = (field: "pushups" | "squats") => {
@@ -114,49 +128,7 @@ export default function Leaderboard({
     loadUserData();
   }, [context?.user, getEntries]);
 
-  // Resolve wallet addresses to Farcaster profiles using our new hook
-  useEffect(() => {
-    const resolveAddresses = async () => {
-      if (isLoading || !data) return;
-
-      // Get unique addresses from the entries (limit to top 20 for performance)
-      const entries = getFilteredEntries().slice(0, 20);
-      if (entries.length === 0) return;
-
-      // Extract unique addresses
-      const addressSet = new Set<string>();
-      entries.forEach((entry) => {
-        addressSet.add(entry.user.toLowerCase());
-      });
-
-      const addresses = Array.from(addressSet);
-      console.log(
-        `Resolving ${addresses.length} unique addresses to Farcaster profiles`
-      );
-
-      try {
-        // Use our new hook to map addresses to profiles
-        // This will handle both primary custody addresses and verified addresses
-        await mapAddressesToProfiles(addresses);
-        console.log(`Successfully mapped addresses to Farcaster profiles`);
-      } catch (error) {
-        console.error("Error resolving addresses to profiles:", error);
-      }
-    };
-
-    // Use a debounce to avoid too many API calls when switching networks quickly
-    const timeoutId = setTimeout(() => {
-      resolveAddresses();
-    }, 300);
-
-    return () => clearTimeout(timeoutId);
-  }, [
-    data,
-    isLoading,
-    getFilteredEntries,
-    selectedNetwork,
-    mapAddressesToProfiles,
-  ]);
+  // Address resolution is now handled automatically by the unified system in Web3Profile components
 
   // Share leaderboard position
   const shareLeaderboardPosition = async () => {
@@ -209,15 +181,11 @@ export default function Leaderboard({
   });
 
   // Show loading state
-  if (isLoading || profilesLoading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center p-8">
         <div className="loading-spinner"></div>
-        <span className="ml-3 text-sm text-gray-400">
-          {profilesLoading
-            ? "Resolving Farcaster profiles..."
-            : "Loading data..."}
-        </span>
+        <span className="ml-3 text-sm text-gray-400">Loading data...</span>
       </div>
     );
   }
@@ -353,9 +321,7 @@ export default function Leaderboard({
                   <div className="flex-1 flex items-center min-w-0 overflow-hidden">
                     <Web3Profile
                       address={entry.user}
-                      farcasterProfile={addressToProfileMap.get(
-                        entry.user.toLowerCase()
-                      )}
+                      useUnifiedResolution={true}
                       className="truncate max-w-full"
                     />
                     {isFollowed && (

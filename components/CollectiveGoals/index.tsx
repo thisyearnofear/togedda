@@ -2,22 +2,38 @@
 
 import { CollectiveGoals } from "@/lib/blockchain";
 import { formatNumber } from "@/lib/utils";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 interface CollectiveGoalsProps {
   goals: CollectiveGoals;
   isLoading: boolean;
+  onRefresh?: () => void;
 }
 
 export default function CollectiveGoalsComponent({
   goals,
   isLoading,
+  onRefresh,
 }: CollectiveGoalsProps) {
   const [mountOlympusWidth, setMountOlympusWidth] = useState("0%");
   const [kenyaRunWidth, setKenyaRunWidth] = useState("0%");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Handle refresh with loading state
+  const handleRefresh = useCallback(async () => {
+    if (!onRefresh || isRefreshing) return;
+
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      // Add a small delay to show the refresh animation
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  }, [onRefresh, isRefreshing]);
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && !isRefreshing) {
       // Animate progress bars
       setTimeout(() => {
         setMountOlympusWidth(
@@ -28,7 +44,7 @@ export default function CollectiveGoalsComponent({
         );
       }, 300);
     }
-  }, [goals, isLoading]);
+  }, [goals, isLoading, isRefreshing]);
 
   if (isLoading) {
     return (
@@ -40,7 +56,24 @@ export default function CollectiveGoalsComponent({
 
   return (
     <div className="game-container my-8">
-      <h2 className="retro-heading text-xl mb-6">Collective Goals</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="retro-heading text-xl">Collective Goals</h2>
+        {onRefresh && (
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing || isLoading}
+            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:opacity-50 text-white text-xs rounded-lg transition-colors flex items-center space-x-1"
+            title="Refresh collective goals data"
+          >
+            <span className={`${isRefreshing ? "animate-spin" : ""}`}>
+              {isRefreshing ? "⟳" : "🔄"}
+            </span>
+            <span className="hidden sm:inline">
+              {isRefreshing ? "Refreshing..." : "Refresh"}
+            </span>
+          </button>
+        )}
+      </div>
 
       <div className="text-center mb-6">
         <p className="text-sm mb-4">Join forces to achieve epic milestones!</p>
@@ -49,6 +82,11 @@ export default function CollectiveGoalsComponent({
             🏆 Every rep makes a difference!
           </span>
         </div>
+        {onRefresh && (
+          <div className="text-xs text-gray-400 mt-2">
+            Data refreshes every 5 minutes • Click refresh for latest
+          </div>
+        )}
       </div>
 
       {/* Mount Olympus Challenge */}

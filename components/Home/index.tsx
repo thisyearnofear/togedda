@@ -39,7 +39,17 @@ export default function Home() {
   const { disconnect } = useDisconnect();
 
   // State variables
-  const [selectedTab, setSelectedTab] = useState<Tab>("goals");
+  const [selectedTab, setSelectedTabInternal] = useState<Tab>("goals");
+
+  // Wrap setSelectedTab for potential debugging
+  const setSelectedTab = useCallback((tab: Tab) => {
+    setSelectedTabInternal(tab);
+  }, []);
+
+  // Tab change tracking (for debugging if needed)
+  // useEffect(() => {
+  //   console.log(`[DEBUG] Tab changed to: ${selectedTab}`);
+  // }, [selectedTab]);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [showContent, setShowContent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -57,34 +67,70 @@ export default function Home() {
   const currentUser = user;
 
   // Lazy load blockchain data only when user interacts or is authenticated
-  const loadBlockchainData = useCallback(async () => {
-    if (dataLoaded || isLoading) return;
+  const loadBlockchainData = useCallback(
+    async (forceRefresh = false) => {
+      if (!forceRefresh && (dataLoaded || isLoading)) return;
 
+      console.log("Starting to load blockchain data...", { forceRefresh });
+      setIsLoading(true);
+      try {
+        // Use forceRefresh to get latest data, especially for collective goals
+        const data = await fetchAllNetworksData(forceRefresh);
+        console.log("Fetched network data:", data);
+        setNetworkData(data);
+
+        const calculatedGoals = calculateCollectiveGoals(data);
+        console.log("Calculated goals:", calculatedGoals);
+        if (calculatedGoals) {
+          setGoals(calculatedGoals);
+        } else {
+          console.error("Failed to calculate goals from data:", data);
+        }
+        if (!dataLoaded) setDataLoaded(true);
+      } catch (error) {
+        console.error("Error fetching blockchain data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [dataLoaded, isLoading]
+  );
+
+  // Refresh function for collective goals - uses server-side API for freshest data
+  const refreshCollectiveGoals = useCallback(async () => {
+    console.log("Refreshing collective goals with server-side API...");
     setIsLoading(true);
     try {
-      const data = await fetchAllNetworksData();
-      setNetworkData(data);
-
-      const calculatedGoals = calculateCollectiveGoals(data);
-      console.log("Calculated goals:", calculatedGoals);
-      console.log("Network data:", data);
-      if (calculatedGoals) {
-        setGoals(calculatedGoals);
+      const response = await fetch("/api/collective-goals?force=true");
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setGoals(result.goals);
+          setNetworkData(result.networkData);
+          console.log("Collective goals refreshed via API:", result.goals);
+        } else {
+          throw new Error("API returned unsuccessful result");
+        }
       } else {
-        console.error("Failed to calculate goals from data:", data);
+        throw new Error(`API request failed: ${response.status}`);
       }
-      setDataLoaded(true);
     } catch (error) {
-      console.error("Error fetching blockchain data:", error);
+      console.error(
+        "Failed to refresh via API, falling back to client-side:",
+        error
+      );
+      // Fallback to client-side refresh
+      await loadBlockchainData(true);
     } finally {
       setIsLoading(false);
     }
-  }, [dataLoaded, isLoading]);
+  }, [loadBlockchainData]);
 
   // Load blockchain data immediately for collective goals (public data)
+  // Use force refresh on initial load to ensure fresh data
   useEffect(() => {
     if (!dataLoaded && !isLoading) {
-      loadBlockchainData();
+      loadBlockchainData(true); // Force refresh on initial load
     }
   }, [dataLoaded, isLoading, loadBlockchainData]);
 
@@ -136,21 +182,12 @@ export default function Home() {
       setShowContent(true);
       setHasInteracted(true);
       setShowOnboarding(false);
-      // Default wallet users to a more meaningful tab
-      if (!isFarcasterUser) {
-        setSelectedTab("goals");
-      }
+      // Don't force tab changes - let users choose their own tabs
     }
-  }, [isConnected, showContent, isFarcasterUser]);
+  }, [isConnected, showContent]);
 
-  // Set appropriate default tab based on user type (only on initial load)
-  useEffect(() => {
-    // Only set default tab if user hasn't explicitly chosen one
-    if (isWalletOnlyUser && selectedTab === "stats") {
-      setSelectedTab("goals"); // Wallet users start with collective goals
-    }
-    // Let users freely navigate between tabs - no forced redirections
-  }, [isWalletOnlyUser, selectedTab]);
+  // Remove automatic tab switching - users can freely choose any tab
+  // The default tab is set to "goals" in useState, which is appropriate for all users
 
   return (
     <div className="retro-arcade min-h-screen p-4">
@@ -453,6 +490,7 @@ export default function Home() {
                     <CollectiveGoalsComponent
                       goals={goals}
                       isLoading={isLoading}
+                      onRefresh={refreshCollectiveGoals}
                     />
                   ) : (
                     <div className="game-container py-8 text-center">

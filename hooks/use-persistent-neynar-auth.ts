@@ -74,13 +74,24 @@ export function usePersistentNeynarAuth() {
         custody_address: contextUser.custody_address,
         verifications: contextUser.verifications,
       };
-      setPersistedUser(convertedUser);
+      
+      // Store in localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(NEYNAR_USER_KEY, JSON.stringify(convertedUser));
+        localStorage.setItem(NEYNAR_AUTH_TIMESTAMP_KEY, Date.now().toString());
+        console.log("[NeynarAuth] User data saved to localStorage:", convertedUser.username);
+      }
+      
+      // Only update state if it's different to avoid infinite loops
+      if (JSON.stringify(persistedUser) !== JSON.stringify(convertedUser)) {
+        setPersistedUser(convertedUser);
+      }
     } else if (!contextUser && persistedUser) {
       // Context user is null but we have persisted user
       // This might happen on page refresh before context loads
       console.log("Context user is null, keeping persisted user");
     }
-  }, [contextUser, persistedUser]);
+  }, [contextUser]); // Remove persistedUser from dependencies
 
   // Clear persisted user when signing out
   const clearPersistedUser = () => {

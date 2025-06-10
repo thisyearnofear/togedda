@@ -133,7 +133,10 @@ export default function AuthFlow({
     async (user: any) => {
       try {
         setIsAuthenticating(true);
-        console.log("Neynar auth success, setting up session:", user);
+        console.log(
+          "[AuthFlow] Neynar auth success, setting up session:",
+          user ? { fid: user.fid, username: user.username } : null
+        );
 
         // Call our sign-in endpoint to create the auth_token cookie
         // We need to create a signature for this user
@@ -141,21 +144,57 @@ export default function AuthFlow({
 
         // For Neynar users, we'll use a simplified auth flow
         // since we already have verified user data from Neynar
-        const response = await fetch("/api/auth/neynar-signin", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            user,
-            message,
-          }),
-        });
+        console.log("[AuthFlow] Calling /api/auth/neynar-signin");
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || "Failed to create session");
+        try {
+          const response = await fetch("/api/auth/neynar-signin", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include", // Important for cookies
+            body: JSON.stringify({
+              user,
+              message,
+            }),
+          });
+
+          console.log(
+            "[AuthFlow] Neynar signin response status:",
+            response.status
+          );
+
+          // Log response headers for debugging
+          const headers: Record<string, string> = {};
+          response.headers.forEach((value, key) => {
+            headers[key] = value;
+          });
+          console.log("[AuthFlow] Response headers:", headers);
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error("[AuthFlow] Neynar signin failed:", errorData);
+            throw new Error(errorData.error || "Failed to create session");
+          }
+
+          const responseData = await response.json();
+          console.log("[AuthFlow] Neynar signin successful:", responseData);
+
+          // Check if cookies were set
+          if (document.cookie.includes("auth_token")) {
+            console.log("[AuthFlow] auth_token cookie was set successfully");
+          } else {
+            console.warn(
+              "[AuthFlow] auth_token cookie was NOT found after signin"
+            );
+          }
+        } catch (fetchError) {
+          console.error("[AuthFlow] Fetch error during signin:", fetchError);
+          throw new Error(
+            `API request failed: ${
+              fetchError instanceof Error ? fetchError.message : "Unknown error"
+            }`
+          );
         }
 
         setNeynarUser(user);

@@ -55,6 +55,7 @@ export function useFitnessStreaks(): UseFitnessStreaksReturn {
     setError(null);
 
     try {
+      console.log("[useFitnessStreaks] Syncing fitness data...");
       const response = await fetch("/api/sync-fitness", {
         method: "POST",
         headers: {
@@ -65,15 +66,32 @@ export function useFitnessStreaks(): UseFitnessStreaksReturn {
       });
 
       if (!response.ok) {
+        console.error(`[useFitnessStreaks] Sync response not OK: ${response.status}`);
         throw new Error(`Failed to sync fitness data: ${response.status}`);
       }
 
       const result = await response.json();
+      console.log("[useFitnessStreaks] Sync result:", result);
       
       if (result.success) {
+        // If we have fitnessData in the response, update our state directly
+        if (result.fitnessData) {
+          console.log("[useFitnessStreaks] Got fitness data directly:", result.fitnessData);
+          
+          // Update streakData with the fitness data
+          setStreakData(prevData => {
+            if (!prevData) return null;
+            return {
+              ...prevData,
+              fitnessData: result.fitnessData
+            };
+          });
+        }
+        
         // Refresh streaks after successful sync
         await refreshStreaks(false);
       } else {
+        console.warn("[useFitnessStreaks] Sync failed:", result.message);
         throw new Error(result.message || "Sync failed");
       }
     } catch (err) {

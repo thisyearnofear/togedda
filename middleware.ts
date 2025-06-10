@@ -35,17 +35,40 @@ export default async function middleware(req: NextRequest) {
 
   // Get token from auth_token cookie
   const token = req.cookies.get("auth_token")?.value;
+  
+  // Log all cookie details for debugging
+  const allCookieDetails = req.cookies.getAll().map(cookie => ({
+    name: cookie.name,
+    value: cookie.name === "auth_token" ? 
+      (cookie.value ? `${cookie.value.substring(0, 10)}...` : "undefined") : 
+      "hidden"
+    // RequestCookie type doesn't have these properties in Next.js middleware
+    // We can only access name and value
+  }));
+  console.log(`Cookie details for ${req.nextUrl.pathname}:`, allCookieDetails);
 
   if (!token) {
     console.log(`No auth_token cookie found for: ${req.nextUrl.pathname}`);
+    console.log(`Request origin: ${req.headers.get("origin")}`);
+    console.log(`Request referer: ${req.headers.get("referer")}`);
 
     // For development, be more permissive with certain endpoints
     if (process.env.NODE_ENV === "development" &&
         (req.nextUrl.pathname.includes("/api/streaks") ||
          req.nextUrl.pathname.includes("/api/notify") ||
-         req.nextUrl.pathname.includes("/api/test"))) {
+         req.nextUrl.pathname.includes("/api/test") ||
+         req.nextUrl.pathname.includes("/api/sync-fitness"))) {
       console.log("Development mode: allowing access without auth");
-      return NextResponse.next();
+
+      // Set a default FID for development testing
+      const requestHeaders = new Headers(req.headers);
+      requestHeaders.set("x-user-fid", "5254"); // Test user FID
+
+      return NextResponse.next({
+        request: {
+          headers: requestHeaders,
+        },
+      });
     }
 
     // For production, check if this is a test endpoint and allow it

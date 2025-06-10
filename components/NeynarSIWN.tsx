@@ -19,7 +19,7 @@ export default function NeynarSIWN({
   // Handle auth success when user changes
   React.useEffect(() => {
     if (user && onAuthSuccess) {
-      console.log("Neynar auth successful:", user);
+      console.log("[NeynarSIWN] Neynar auth successful:", user);
       onAuthSuccess(user);
     }
   }, [user, onAuthSuccess]);

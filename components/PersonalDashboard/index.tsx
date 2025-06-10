@@ -70,6 +70,21 @@ export default function PersonalDashboard({
   const [showTargetsAndStreaks, setShowTargetsAndStreaks] = useState(false);
   const sendNotification = useNotification();
 
+  // Debug logging for fitness data
+  useEffect(() => {
+    if (streakData?.fitnessData) {
+      console.log(
+        "[PersonalDashboard] Fitness data from streakData:",
+        streakData.fitnessData
+      );
+    }
+  }, [streakData]);
+
+  // Debug logging for userStats
+  useEffect(() => {
+    console.log("[PersonalDashboard] Current userStats:", userStats);
+  }, [userStats]);
+
   // Update streak when component mounts - only for Farcaster users
   useEffect(() => {
     if (isFarcasterUser) {
@@ -84,6 +99,71 @@ export default function PersonalDashboard({
       return () => clearTimeout(streakUpdateTimeout);
     }
   }, [isFarcasterUser, syncFitnessData]);
+
+  // Helper function to calculate rankings
+  const calculateRankings = useCallback((stats: UserStats) => {
+    if (!networkData) return;
+
+    let allUsers: { address: string; pushups: number; squats: number }[] = [];
+
+    // Collect all users for ranking
+    for (const [network, scores] of Object.entries(networkData)) {
+      const scoresArray = scores as any[];
+      scoresArray.forEach((score: any) => {
+        const existingUser = allUsers.find(
+          (u) => u.address.toLowerCase() === score.user.toLowerCase()
+        );
+
+        if (existingUser) {
+          existingUser.pushups += score.pushups;
+          existingUser.squats += score.squats;
+        } else {
+          allUsers.push({
+            address: score.user,
+            pushups: score.pushups,
+            squats: score.squats,
+          });
+        }
+      });
+    }
+
+    if (allUsers.length > 0) {
+      // Use appropriate address for ranking lookup
+      const userAddress = isFarcasterUser
+        ? (user?.custody_address || "").toLowerCase()
+        : (address || "").toLowerCase();
+
+      // Sort by pushups
+      const pushupsRanking = [...allUsers].sort(
+        (a, b) => b.pushups - a.pushups
+      );
+      const userPushupsRank =
+        pushupsRanking.findIndex(
+          (u) => u.address.toLowerCase() === userAddress
+        ) + 1;
+
+      // Sort by squats
+      const squatsRanking = [...allUsers].sort((a, b) => b.squats - a.squats);
+      const userSquatsRank =
+        squatsRanking.findIndex(
+          (u) => u.address.toLowerCase() === userAddress
+        ) + 1;
+
+      // Sort by total (pushups + squats)
+      const totalRanking = [...allUsers].sort(
+        (a, b) => b.pushups + b.squats - (a.pushups + a.squats)
+      );
+      const userTotalRank =
+        totalRanking.findIndex((u) => u.address.toLowerCase() === userAddress) +
+        1;
+
+      stats.rank = {
+        pushups: userPushupsRank || allUsers.length,
+        squats: userSquatsRank || allUsers.length,
+        overall: userTotalRank || allUsers.length,
+      };
+    }
+  }, [networkData, isFarcasterUser, user?.custody_address, address]);
 
   // Define calculateStats function with useCallback and memoize expensive calculations
   const calculateStats = useCallback(async () => {
@@ -107,6 +187,32 @@ export default function PersonalDashboard({
         overall: 0,
       },
     };
+
+    // If we have fitness data from streakData, use it directly
+    if (streakData?.fitnessData) {
+      console.log(
+        "[PersonalDashboard] Using fitness data from streakData:",
+        streakData.fitnessData
+      );
+      stats.totalPushups = streakData.fitnessData.totalPushups || 0;
+      stats.totalSquats = streakData.fitnessData.totalSquats || 0;
+
+      // Initialize network breakdown
+      if (streakData.fitnessData.networks) {
+        streakData.fitnessData.networks.forEach((network) => {
+          stats.networkBreakdown[network] = {
+            pushups: 0,
+            squats: 0,
+          };
+        });
+      }
+
+      // Calculate rankings
+      calculateRankings(stats);
+
+      setUserStats(stats);
+      return;
+    }
 
     // Calculate total contributions
     let allUsers: { address: string; pushups: number; squats: number }[] = [];
@@ -210,42 +316,7 @@ export default function PersonalDashboard({
     } // End of for loop
 
     // Calculate rankings
-    if (allUsers.length > 0) {
-      // Sort by pushups
-      const pushupsRanking = [...allUsers].sort(
-        (a, b) => b.pushups - a.pushups
-      );
-      // Use appropriate address for ranking lookup
-      const userAddress = isFarcasterUser
-        ? (user?.custody_address || "").toLowerCase()
-        : (address || "").toLowerCase();
-
-      const userPushupsRank =
-        pushupsRanking.findIndex(
-          (u) => u.address.toLowerCase() === userAddress
-        ) + 1;
-
-      // Sort by squats
-      const squatsRanking = [...allUsers].sort((a, b) => b.squats - a.squats);
-      const userSquatsRank =
-        squatsRanking.findIndex(
-          (u) => u.address.toLowerCase() === userAddress
-        ) + 1;
-
-      // Sort by total (pushups + squats)
-      const totalRanking = [...allUsers].sort(
-        (a, b) => b.pushups + b.squats - (a.pushups + a.squats)
-      );
-      const userTotalRank =
-        totalRanking.findIndex((u) => u.address.toLowerCase() === userAddress) +
-        1;
-
-      stats.rank = {
-        pushups: userPushupsRank || allUsers.length,
-        squats: userSquatsRank || allUsers.length,
-        overall: userTotalRank || allUsers.length,
-      };
-    }
+    calculateRankings(stats);
 
     // TODO: Add prediction stats when available
     stats.predictions = {
@@ -264,6 +335,8 @@ export default function PersonalDashboard({
     isWalletOnlyUser,
     user,
     address,
+    streakData,
+    calculateRankings,
   ]);
 
   // Call calculateStats when dependencies change, with debounce to prevent excessive calls
@@ -314,10 +387,8 @@ export default function PersonalDashboard({
       const { sdk } = await import("@farcaster/frame-sdk");
       const appUrl = process.env.NEXT_PUBLIC_URL || "https://imperfectform.fun";
 
-      // Create a cast with the stats information
-      const totalExercises = userStats
-        ? userStats.totalPushups + userStats.totalSquats
-        : 0;
+      // Create a cast with the stats information using derived fitness values
+      const totalExercises = fitnessPushups + fitnessSquats;
 
       // Include streak information if available
       let streakInfo = "";
@@ -328,11 +399,7 @@ export default function PersonalDashboard({
         }
       }
 
-      const castText = `My fitness stats on Imperfect Form:\n\n${
-        userStats?.totalPushups || 0
-      } Push-ups\n${
-        userStats?.totalSquats || 0
-      } Squats\n${totalExercises} Total${streakInfo}\n\nStay Hard! 💪`;
+      const castText = `My fitness stats on Imperfect Form:\n\n${fitnessPushups} Push-ups\n${fitnessSquats} Squats\n${totalExercises} Total${streakInfo}\n\nStay Hard! 💪`;
 
       // Share to Farcaster using composeCast
       await sdk.actions.composeCast({
@@ -371,6 +438,10 @@ export default function PersonalDashboard({
     }
   };
 
+  // Derive pushups/squats from on-chain data if available, else from userStats
+  const fitnessPushups = streakData?.fitnessData?.totalPushups ?? userStats?.totalPushups ?? 0;
+  const fitnessSquats = streakData?.fitnessData?.totalSquats ?? userStats?.totalSquats ?? 0;
+
   // Show loading state if either auth, data, or streaks are loading
   if (authLoading || isLoading || streaksLoading) {
     return (
@@ -408,7 +479,7 @@ export default function PersonalDashboard({
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div className="text-center p-4 bg-pink-900/20 border border-pink-600 rounded">
                 <div className="text-3xl font-bold text-pink-400 mb-1">
-                  {formatNumber(userStats.totalPushups)}
+                  {formatNumber(fitnessPushups)}
                 </div>
                 <div className="text-sm text-gray-300">💪 Push-ups</div>
                 {userStats.rank.pushups > 0 && (
@@ -419,7 +490,7 @@ export default function PersonalDashboard({
               </div>
               <div className="text-center p-4 bg-green-900/20 border border-green-600 rounded">
                 <div className="text-3xl font-bold text-green-400 mb-1">
-                  {formatNumber(userStats.totalSquats)}
+                  {formatNumber(fitnessSquats)}
                 </div>
                 <div className="text-sm text-gray-300">🏃 Squats</div>
                 {userStats.rank.squats > 0 && (
@@ -499,28 +570,67 @@ export default function PersonalDashboard({
 
   // Initialize default stats for new users
   if (!userStats) {
-    const emptyStats: UserStats = {
-      totalPushups: 0,
-      totalSquats: 0,
-      networkBreakdown: {
-        celo: { pushups: 0, squats: 0 },
-        polygon: { pushups: 0, squats: 0 },
-        base: { pushups: 0, squats: 0 },
-        monad: { pushups: 0, squats: 0 },
-      },
-      predictions: {
-        total: 0,
-        correct: 0,
-        pending: 0,
-        staked: 0,
-      },
-      rank: {
-        pushups: 0,
-        squats: 0,
-        overall: 0,
-      },
-    };
-    setUserStats(emptyStats);
+    // If we have fitness data from streakData, use it to initialize stats
+    if (streakData?.fitnessData) {
+      console.log(
+        "[PersonalDashboard] Initializing userStats with fitness data:",
+        streakData.fitnessData
+      );
+
+      const initialStats: UserStats = {
+        totalPushups: streakData.fitnessData.totalPushups || 0,
+        totalSquats: streakData.fitnessData.totalSquats || 0,
+        networkBreakdown: {},
+        predictions: {
+          total: 0,
+          correct: 0,
+          pending: 0,
+          staked: 0,
+        },
+        rank: {
+          pushups: 0,
+          squats: 0,
+          overall: 0,
+        },
+      };
+
+      // Initialize network breakdown
+      if (streakData.fitnessData.networks) {
+        streakData.fitnessData.networks.forEach((network) => {
+          initialStats.networkBreakdown[network] = {
+            pushups: 0,
+            squats: 0,
+          };
+        });
+      }
+
+      setUserStats(initialStats);
+    } else {
+      // No fitness data, use empty stats
+      const emptyStats: UserStats = {
+        totalPushups: 0,
+        totalSquats: 0,
+        networkBreakdown: {
+          celo: { pushups: 0, squats: 0 },
+          polygon: { pushups: 0, squats: 0 },
+          base: { pushups: 0, squats: 0 },
+          monad: { pushups: 0, squats: 0 },
+        },
+        predictions: {
+          total: 0,
+          correct: 0,
+          pending: 0,
+          staked: 0,
+        },
+        rank: {
+          pushups: 0,
+          squats: 0,
+          overall: 0,
+        },
+      };
+      setUserStats(emptyStats);
+    }
+
     return (
       <div className="flex justify-center items-center p-8">
         <div className="loading-spinner"></div>
@@ -528,8 +638,15 @@ export default function PersonalDashboard({
     );
   }
 
-  // Check if user is new (has no contributions)
-  const isNewUser = userStats.totalPushups === 0 && userStats.totalSquats === 0;
+  // Check if user is new (has no recorded fitness)
+  const isNewUser = fitnessPushups === 0 && fitnessSquats === 0;
+  console.log("[PersonalDashboard] isNewUser check:", {
+    isNewUser,
+    fitnessPushups,
+    fitnessSquats,
+    fromStreakData: !!streakData?.fitnessData,
+    userStatsTotal: userStats?.totalPushups + userStats?.totalSquats,
+  });
 
   return (
     <div className="game-container my-8">
@@ -580,42 +697,65 @@ export default function PersonalDashboard({
           </div>
 
           {/* Compact Streak Display */}
-          {streakData && streakData.currentStreak > 0 && (
-            <div className="flex items-center justify-between p-3 border-2 border-yellow-500 rounded-lg mb-4 bg-yellow-900 bg-opacity-10">
-              <div className="flex items-center">
-                <FaFire className="text-red-500 mr-2" size={20} />
-                <div>
-                  <span className="font-bold">
-                    {streakData.currentStreak}-day streak
-                  </span>
-                  {streakData.currentStreak >= 7 && (
-                    <span className="ml-2 text-yellow-400 text-xs">
-                      <FaMedal className="inline-block mr-1" />
-                      Achievement!
+          <div className="flex items-center justify-between p-3 border-2 border-blue-500 rounded-lg mb-4 bg-blue-900 bg-opacity-10">
+            <div className="flex items-center">
+              {streakData && streakData.currentStreak > 0 ? (
+                <>
+                  <FaFire className="text-red-500 mr-2" size={20} />
+                  <div>
+                    <span className="font-bold">
+                      {streakData.currentStreak}-day streak
                     </span>
-                  )}
+                    {streakData.currentStreak >= 7 && (
+                      <span className="ml-2 text-yellow-400 text-xs">
+                        <FaMedal className="inline-block mr-1" />
+                        Achievement!
+                      </span>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="text-sm">
+                  Fitness data:{" "}
+                  {streakData?.fitnessData ? "Available" : "Not found"}
                 </div>
-              </div>
+              )}
+            </div>
 
-              <div className="flex items-center">
-                <span className="text-xs text-gray-400 mr-2">
+            <div className="flex items-center space-x-2">
+              {streakData && (
+                <span className="text-xs text-gray-400">
                   Best:{" "}
                   <span className="text-yellow-400">
                     {streakData.longestStreak}d
                   </span>
                 </span>
-                <button
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs"
-                  onClick={() => {
-                    syncFitnessData();
-                    toast.success("Syncing fitness data...");
-                  }}
-                >
-                  Update
-                </button>
-              </div>
+              )}
+              <button
+                className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs"
+                onClick={() => {
+                  // Reset the stats calculated flag to force recalculation
+                  statsCalculatedRef.current = false;
+                  syncFitnessData();
+                  toast.success("Syncing fitness data...");
+                }}
+              >
+                Update
+              </button>
+              <button
+                className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs"
+                onClick={() => {
+                  // Force a complete refresh
+                  statsCalculatedRef.current = false;
+                  setUserStats(null);
+                  syncFitnessData();
+                  toast.success("Force refreshing data...");
+                }}
+              >
+                Force Refresh
+              </button>
             </div>
-          )}
+          </div>
 
           {/* Stats Overview */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -666,21 +806,19 @@ export default function PersonalDashboard({
                   <div className="flex justify-between mb-4">
                     <div className="text-center flex-1">
                       <div className="text-pink-500 text-xl sm:text-2xl mb-1">
-                        {formatNumber(userStats.totalPushups)}
+                        {formatNumber(fitnessPushups)}
                       </div>
                       <div className="text-xs">Push-ups</div>
                     </div>
                     <div className="text-center flex-1">
                       <div className="text-green-500 text-xl sm:text-2xl mb-1">
-                        {formatNumber(userStats.totalSquats)}
+                        {formatNumber(fitnessSquats)}
                       </div>
                       <div className="text-xs">Squats</div>
                     </div>
                     <div className="text-center flex-1">
                       <div className="text-yellow-500 text-xl sm:text-2xl mb-1">
-                        {formatNumber(
-                          userStats.totalPushups + userStats.totalSquats
-                        )}
+                        {formatNumber(fitnessPushups + fitnessSquats)}
                       </div>
                       <div className="text-xs">Total</div>
                     </div>

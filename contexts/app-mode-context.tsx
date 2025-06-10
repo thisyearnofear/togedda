@@ -64,41 +64,90 @@ export function AppModeProvider({ children }: { children: ReactNode }) {
       return { ...initialState, mode: "unknown" };
     }
 
-    const userAgent = navigator.userAgent;
+    const userAgent = navigator.userAgent || "";
     const currentUrl = window.location.href;
     const hasParent = window.parent !== window;
     const urlParams = new URLSearchParams(window.location.search);
+    const referrer = document.referrer || "";
 
-    // Enhanced Farcaster environment detection
-    const isFarcasterEnvironment =
+    // Debug logging for development
+    if (process.env.NODE_ENV === "development") {
+      console.log("[AppMode] Detection Debug:", {
+        userAgent,
+        currentUrl,
+        referrer,
+        hasParent,
+        urlParams: Object.fromEntries(urlParams.entries()),
+        windowMiniKit: !!window.MiniKit,
+        windowFarcaster: !!window.farcaster,
+        windowFc: !!window.fc,
+        ancestorOrigins: window.location.ancestorOrigins
+          ? Array.from(window.location.ancestorOrigins)
+          : null,
+      });
+    }
+
+    // Enhanced Farcaster environment detection with more robust checks
+    const checks = {
       // URL parameters that indicate Farcaster
-      urlParams.has("miniApp") ||
-      urlParams.has("fc_frame") ||
-      urlParams.has("farcaster") ||
-      currentUrl.includes("?miniApp=true") ||
-      currentUrl.includes("fc_frame=true") ||
-      currentUrl.includes("farcaster=true") ||
+      urlParams:
+        urlParams.has("miniApp") ||
+        urlParams.has("fc_frame") ||
+        urlParams.has("farcaster") ||
+        currentUrl.includes("?miniApp=true") ||
+        currentUrl.includes("fc_frame=true") ||
+        currentUrl.includes("farcaster=true"),
+
       // Referrer from Farcaster clients
-      document.referrer.includes("farcaster.xyz") ||
-      document.referrer.includes("warpcast.com") ||
-      document.referrer.includes("supercast.xyz") ||
-      document.referrer.includes("herocast.xyz") ||
+      referrer:
+        referrer.includes("farcaster.xyz") ||
+        referrer.includes("warpcast.com") ||
+        referrer.includes("supercast.xyz") ||
+        referrer.includes("herocast.xyz") ||
+        referrer.includes("farcaster") ||
+        referrer.includes("warpcast"),
+
       // User agent indicators (Farcaster clients use custom user agents)
-      userAgent.includes("Farcaster") ||
-      userAgent.includes("Warpcast") ||
-      userAgent.includes("Supercast") ||
-      userAgent.includes("Herocast") ||
-      // Running in iframe (common for mini apps) - but be more specific
-      (hasParent &&
-        (document.referrer.includes("farcaster") ||
-          document.referrer.includes("warpcast") ||
+      userAgent:
+        userAgent.includes("Farcaster") ||
+        userAgent.includes("Warpcast") ||
+        userAgent.includes("Supercast") ||
+        userAgent.includes("Herocast") ||
+        userAgent.toLowerCase().includes("farcaster") ||
+        userAgent.toLowerCase().includes("warpcast"),
+
+      // Running in iframe with Farcaster context
+      iframe:
+        hasParent &&
+        (referrer.includes("farcaster") ||
+          referrer.includes("warpcast") ||
           window.location.ancestorOrigins?.[0]?.includes("farcaster") ||
-          window.location.ancestorOrigins?.[0]?.includes("warpcast"))) ||
+          window.location.ancestorOrigins?.[0]?.includes("warpcast")),
+
       // Check for Farcaster-specific window properties
-      "farcaster" in window ||
-      "fc" in window ||
-      // Check for MiniKit availability
-      (typeof window !== "undefined" && window.MiniKit);
+      windowProps: "farcaster" in window || "fc" in window,
+
+      // Check for MiniKit availability (most reliable indicator)
+      miniKit: typeof window !== "undefined" && !!window.MiniKit,
+
+      // Additional checks for Farcaster Frame context
+      frameContext:
+        hasParent &&
+        (currentUrl.includes("frame") ||
+          referrer.includes("frame") ||
+          urlParams.has("frame")),
+    };
+
+    const isFarcasterEnvironment = Object.values(checks).some((check) => check);
+
+    // Debug logging for development
+    if (process.env.NODE_ENV === "development") {
+      console.log("[AppMode] Detection Checks:", checks);
+      console.log(
+        "[AppMode] Is Farcaster Environment:",
+        isFarcasterEnvironment
+      );
+    }
 
     // Check if running as standalone PWA
     const isStandalone =
@@ -106,18 +155,27 @@ export function AppModeProvider({ children }: { children: ReactNode }) {
       ("standalone" in navigator && (navigator as any).standalone) ||
       currentUrl.includes("?standalone=true");
 
+    // Check for manual override (for testing)
+    const manualOverride = urlParams.get("appMode") as AppMode | null;
+
     // Determine mode
     let mode: AppMode = "webapp"; // Default to web app
 
-    if (isFarcasterEnvironment) {
+    if (manualOverride && ["miniapp", "webapp"].includes(manualOverride)) {
+      mode = manualOverride;
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AppMode] Manual override detected:", manualOverride);
+      }
+    } else if (isFarcasterEnvironment) {
       mode = "miniapp";
     }
 
-    // Can use MiniKit features if in Farcaster environment
+    // Can use MiniKit features if in Farcaster environment or manual override to miniapp
     const canUseMiniKitFeatures =
-      isFarcasterEnvironment && typeof window !== "undefined";
+      (isFarcasterEnvironment || mode === "miniapp") &&
+      typeof window !== "undefined";
 
-    return {
+    const result = {
       mode,
       isFarcasterEnvironment,
       isStandalone,
@@ -125,6 +183,13 @@ export function AppModeProvider({ children }: { children: ReactNode }) {
       userAgent,
       canUseMiniKitFeatures,
     };
+
+    // Debug logging for development
+    if (process.env.NODE_ENV === "development") {
+      console.log("[AppMode] Final Detection Result:", result);
+    }
+
+    return result;
   };
 
   // Update state helper
@@ -163,6 +228,28 @@ export function AppModeProvider({ children }: { children: ReactNode }) {
     // Set initial state
     const initialDetection = detectAppMode();
     setState(initialDetection);
+
+    // If initial detection didn't find MiniKit, check again after a delay
+    // This handles cases where MiniKit loads asynchronously
+    if (
+      !initialDetection.canUseMiniKitFeatures &&
+      typeof window !== "undefined"
+    ) {
+      const recheckTimeout = setTimeout(() => {
+        const recheckDetection = detectAppMode();
+        if (
+          recheckDetection.canUseMiniKitFeatures !==
+          initialDetection.canUseMiniKitFeatures
+        ) {
+          if (process.env.NODE_ENV === "development") {
+            console.log("[AppMode] MiniKit detected on recheck, updating mode");
+          }
+          setState(recheckDetection);
+        }
+      }, 1000); // Check again after 1 second
+
+      return () => clearTimeout(recheckTimeout);
+    }
   }, []); // Empty dependency array to run only once on mount
 
   // Set up event listeners in a separate effect to avoid infinite loops
@@ -346,7 +433,13 @@ export function StandaloneOnly({ children }: { children: ReactNode }) {
 
 // App mode indicator component
 export function AppModeIndicator({ className = "" }: { className?: string }) {
-  const { mode, isStandalone, isFarcasterEnvironment } = useAppMode();
+  const {
+    mode,
+    isStandalone,
+    isFarcasterEnvironment,
+    canUseMiniKitFeatures,
+    userAgent,
+  } = useAppMode();
 
   if (process.env.NODE_ENV !== "development") {
     return null;
@@ -361,12 +454,29 @@ export function AppModeIndicator({ className = "" }: { className?: string }) {
   return (
     <div className={`fixed top-2 left-2 z-50 ${className}`}>
       <div
-        className={`px-2 py-1 rounded text-xs text-white ${modeColors[mode]}`}
+        className={`px-2 py-1 rounded text-xs text-white ${modeColors[mode]} cursor-pointer`}
+        title={`Click to see debug info. User Agent: ${userAgent}`}
+        onClick={() => {
+          console.log("[AppMode] Current State:", {
+            mode,
+            isFarcasterEnvironment,
+            isStandalone,
+            canUseMiniKitFeatures,
+            userAgent,
+            url: window.location.href,
+            referrer: document.referrer,
+            hasParent: window.parent !== window,
+            windowMiniKit: !!window.MiniKit,
+            windowFarcaster: !!window.farcaster,
+            windowFc: !!window.fc,
+          });
+        }}
       >
         <div className="font-bold">{mode.toUpperCase()}</div>
         <div className="text-xs opacity-75">
           {isStandalone && "📱 "}
           {isFarcasterEnvironment && "🟣 "}
+          {canUseMiniKitFeatures && "⚡ "}
           {mode === "webapp" && "🌐 "}
         </div>
       </div>

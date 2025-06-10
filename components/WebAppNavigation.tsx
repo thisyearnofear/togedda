@@ -206,6 +206,7 @@ export default function WebAppNavigation({
                     </>
                   )}
                 </button>
+                {/* Only show Farcaster signup link in web app context */}
                 <div className="text-center">
                   <a
                     href="https://www.farcaster.xyz/"

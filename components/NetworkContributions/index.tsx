@@ -41,12 +41,9 @@ export default function NetworkContributions({
       </h2>
 
       <div className="text-center mb-6">
-        <p className="text-sm mb-4">
-          Build that BASE u M(on)AD one. Saggy buns? PolyGONE.{" "}
-        </p>
-        <div className="inline-block border-2 border-white p-3 rounded-lg bg-black bg-opacity-50">
-          <span className="text-yellow-400 font-bold">
-            CELObrate vim & vigour: use it or lose it
+        <div className="inline-block border-2 border-white p-2 rounded-lg bg-black bg-opacity-50">
+          <span className="text-yellow-400 text-sm">
+            🏆 Cross-chain competition
           </span>
         </div>
       </div>
@@ -202,27 +199,20 @@ export default function NetworkContributions({
       </div>
 
       <div className="mt-8 text-center">
-        <div className="inline-block border-2 border-white p-4 rounded-lg bg-black bg-opacity-50">
-          <h3 className="text-lg mb-2">How to COOK</h3>
-          <p className="text-sm mb-4">
-            Do reps on any chain, raise dosh for charity. Feel good, Look good,
-            do Good.
-          </p>
-          <div className="flex justify-center space-x-4">
-            {Object.entries(NETWORK_COLORS).map(([network, color]) => (
-              <div key={network} className="text-center">
-                <div
-                  className="w-10 h-10 rounded-full mx-auto mb-1 flex items-center justify-center"
-                  style={{ backgroundColor: color }}
-                >
-                  <span className="text-xs">
-                    {network.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <div className="text-xs">{getNetworkName(network)}</div>
+        <div className="flex justify-center space-x-4">
+          {Object.entries(NETWORK_COLORS).map(([network, color]) => (
+            <div key={network} className="text-center">
+              <div
+                className="w-8 h-8 rounded-full mx-auto mb-1 flex items-center justify-center"
+                style={{ backgroundColor: color }}
+              >
+                <span className="text-xs">
+                  {network.charAt(0).toUpperCase()}
+                </span>
               </div>
-            ))}
-          </div>
+              <div className="text-xs">{getNetworkName(network)}</div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

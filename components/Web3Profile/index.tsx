@@ -78,26 +78,13 @@ export default function Web3Profile({
     );
   }
 
-  // Full profile display
+  // Full profile display - simplified to show only one name
   return (
     <div className={`flex items-center space-x-2 ${className}`}>
       <Avatar />
-      {effectiveProfile ? (
-        <div className="flex flex-col min-w-0">
-          <span className="text-sm font-medium truncate">
-            {effectiveDisplayName}
-          </span>
-          {effectiveProfile.username && (
-            <span className="text-xs text-gray-400 truncate">
-              @{effectiveProfile.username}
-            </span>
-          )}
-        </div>
-      ) : (
-        <span className="text-sm font-medium truncate">
-          {effectiveDisplayName}
-        </span>
-      )}
+      <span className="text-sm font-medium truncate">
+        {effectiveDisplayName}
+      </span>
     </div>
   );
 }

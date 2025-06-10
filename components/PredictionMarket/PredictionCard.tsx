@@ -345,8 +345,7 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
           </div>
         )}
 
-        <h2 className="text-lg font-bold mb-2">{prediction.title}</h2>
-        <p className="text-sm text-gray-300 mb-3">{prediction.description}</p>
+        <h2 className="text-base font-bold mb-3">{prediction.title}</h2>
 
         <div className="flex justify-between mb-3">
           <div className="text-center">

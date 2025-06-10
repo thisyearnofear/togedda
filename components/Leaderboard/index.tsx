@@ -258,17 +258,12 @@ export default function Leaderboard({
         </div>
       </div>
 
-      {/* User position indicator */}
+      {/* User position indicator - simplified */}
       {userPosition && (
-        <div className="bg-yellow-600 bg-opacity-20 border border-yellow-500 rounded-lg p-3 mb-4 text-center">
-          <p>
-            You&apos;re ranked{" "}
-            <span className="font-bold text-yellow-400">#{userPosition}</span>{" "}
-            on the{" "}
-            {selectedNetwork === "all"
-              ? "Global"
-              : getNetworkName(selectedNetwork)}{" "}
-            Leaderboard!
+        <div className="bg-yellow-600 bg-opacity-20 border border-yellow-500 rounded-lg p-2 mb-4 text-center">
+          <p className="text-sm">
+            Rank{" "}
+            <span className="font-bold text-yellow-400">#{userPosition}</span>
           </p>
         </div>
       )}

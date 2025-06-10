@@ -11,6 +11,7 @@ import TargetsAndStreaks from "@/components/TargetsAndStreaks";
 import Confetti from "@/components/Confetti";
 import { toast } from "react-hot-toast";
 import { FaShare, FaArrowRight, FaFire, FaMedal } from "react-icons/fa";
+import { WebAppOnly } from "@/contexts/app-mode-context";
 
 interface PersonalDashboardProps {
   networkData: NetworkData;
@@ -44,13 +45,13 @@ export default function PersonalDashboard({
   isLoading,
 }: PersonalDashboardProps) {
   // Use simple user management
-  const { 
-    user, 
-    isFarcasterUser, 
-    isWalletUser, 
-    isAuthenticated, 
+  const {
+    user,
+    isFarcasterUser,
+    isWalletUser,
+    isAuthenticated,
     isLoading: authLoading,
-    getFid 
+    getFid,
   } = useSimpleUser();
 
   // Only use fitness streaks for Farcaster users (requires persistent identity)
@@ -102,69 +103,73 @@ export default function PersonalDashboard({
   }, [isFarcasterUser, getFid, syncFitnessData]); // Include syncFitnessData dependency
 
   // Helper function to calculate rankings
-  const calculateRankings = useCallback((stats: UserStats) => {
-    if (!networkData) return;
+  const calculateRankings = useCallback(
+    (stats: UserStats) => {
+      if (!networkData) return;
 
-    let allUsers: { address: string; pushups: number; squats: number }[] = [];
+      let allUsers: { address: string; pushups: number; squats: number }[] = [];
 
-    // Collect all users for ranking
-    for (const [network, scores] of Object.entries(networkData)) {
-      const scoresArray = scores as any[];
-      scoresArray.forEach((score: any) => {
-        const existingUser = allUsers.find(
-          (u) => u.address.toLowerCase() === score.user.toLowerCase()
+      // Collect all users for ranking
+      for (const [network, scores] of Object.entries(networkData)) {
+        const scoresArray = scores as any[];
+        scoresArray.forEach((score: any) => {
+          const existingUser = allUsers.find(
+            (u) => u.address.toLowerCase() === score.user.toLowerCase()
+          );
+
+          if (existingUser) {
+            existingUser.pushups += score.pushups;
+            existingUser.squats += score.squats;
+          } else {
+            allUsers.push({
+              address: score.user,
+              pushups: score.pushups,
+              squats: score.squats,
+            });
+          }
+        });
+      }
+
+      if (allUsers.length > 0) {
+        // Use appropriate address for ranking lookup
+        const userAddress = isFarcasterUser
+          ? (user?.custody_address || "").toLowerCase()
+          : (user?.address || "").toLowerCase();
+
+        // Sort by pushups
+        const pushupsRanking = [...allUsers].sort(
+          (a, b) => b.pushups - a.pushups
         );
+        const userPushupsRank =
+          pushupsRanking.findIndex(
+            (u) => u.address.toLowerCase() === userAddress
+          ) + 1;
 
-        if (existingUser) {
-          existingUser.pushups += score.pushups;
-          existingUser.squats += score.squats;
-        } else {
-          allUsers.push({
-            address: score.user,
-            pushups: score.pushups,
-            squats: score.squats,
-          });
-        }
-      });
-    }
+        // Sort by squats
+        const squatsRanking = [...allUsers].sort((a, b) => b.squats - a.squats);
+        const userSquatsRank =
+          squatsRanking.findIndex(
+            (u) => u.address.toLowerCase() === userAddress
+          ) + 1;
 
-    if (allUsers.length > 0) {
-      // Use appropriate address for ranking lookup
-      const userAddress = isFarcasterUser
-        ? (user?.custody_address || "").toLowerCase()
-        : (user?.address || "").toLowerCase();
+        // Sort by total (pushups + squats)
+        const totalRanking = [...allUsers].sort(
+          (a, b) => b.pushups + b.squats - (a.pushups + a.squats)
+        );
+        const userTotalRank =
+          totalRanking.findIndex(
+            (u) => u.address.toLowerCase() === userAddress
+          ) + 1;
 
-      // Sort by pushups
-      const pushupsRanking = [...allUsers].sort(
-        (a, b) => b.pushups - a.pushups
-      );
-      const userPushupsRank =
-        pushupsRanking.findIndex(
-          (u) => u.address.toLowerCase() === userAddress
-        ) + 1;
-
-      // Sort by squats
-      const squatsRanking = [...allUsers].sort((a, b) => b.squats - a.squats);
-      const userSquatsRank =
-        squatsRanking.findIndex(
-          (u) => u.address.toLowerCase() === userAddress
-        ) + 1;
-
-      // Sort by total (pushups + squats)
-      const totalRanking = [...allUsers].sort(
-        (a, b) => b.pushups + b.squats - (a.pushups + a.squats)
-      );
-      const userTotalRank =
-        totalRanking.findIndex((u) => u.address.toLowerCase() === userAddress) +
-        1;
-
-      stats.rank = {
-        pushups: userPushupsRank || allUsers.length,
-        squats: userSquatsRank || allUsers.length,
-        overall: userTotalRank || allUsers.length,
-      };
-    }
-  }, [networkData, isFarcasterUser, user?.custody_address, user?.address]);
+        stats.rank = {
+          pushups: userPushupsRank || allUsers.length,
+          squats: userSquatsRank || allUsers.length,
+          overall: userTotalRank || allUsers.length,
+        };
+      }
+    },
+    [networkData, isFarcasterUser, user?.custody_address, user?.address]
+  );
 
   // Define calculateStats function with useCallback and memoize expensive calculations
   const calculateStats = useCallback(async () => {
@@ -439,8 +444,14 @@ export default function PersonalDashboard({
   };
 
   // Derive pushups/squats from on-chain data if available, else from userStats
-  const fitnessPushups = useMemo(() => streakData?.fitnessData?.totalPushups ?? userStats?.totalPushups ?? 0, [streakData?.fitnessData?.totalPushups, userStats?.totalPushups]);
-  const fitnessSquats = useMemo(() => streakData?.fitnessData?.totalSquats ?? userStats?.totalSquats ?? 0, [streakData?.fitnessData?.totalSquats, userStats?.totalSquats]);
+  const fitnessPushups = useMemo(
+    () => streakData?.fitnessData?.totalPushups ?? userStats?.totalPushups ?? 0,
+    [streakData?.fitnessData?.totalPushups, userStats?.totalPushups]
+  );
+  const fitnessSquats = useMemo(
+    () => streakData?.fitnessData?.totalSquats ?? userStats?.totalSquats ?? 0,
+    [streakData?.fitnessData?.totalSquats, userStats?.totalSquats]
+  );
 
   // Show loading state if either auth, data, or streaks are loading
   if (authLoading || isLoading || streaksLoading) {
@@ -533,26 +544,28 @@ export default function PersonalDashboard({
           </div>
         )}
 
-        {/* Farcaster Upsell - Compact */}
-        <div className="game-container text-center">
-          <div className="bg-blue-900/20 border border-blue-600 rounded p-4">
-            <h3 className="text-blue-300 font-bold mb-2">
-              🟣 Unlock More Features
-            </h3>
-            <p className="text-sm text-blue-200 mb-3">
-              Connect with Farcaster for streaks, social features, and
-              cross-chain identity
-            </p>
-            <a
-              href="https://www.farcaster.xyz/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="retro-button text-sm px-4 py-2 inline-block"
-            >
-              Get Farcaster →
-            </a>
+        {/* Farcaster Upsell - Only show in web app context */}
+        <WebAppOnly>
+          <div className="game-container text-center">
+            <div className="bg-blue-900/20 border border-blue-600 rounded p-4">
+              <h3 className="text-blue-300 font-bold mb-2">
+                🟣 Unlock More Features
+              </h3>
+              <p className="text-sm text-blue-200 mb-3">
+                Connect with Farcaster for streaks, social features, and
+                cross-chain identity
+              </p>
+              <a
+                href="https://www.farcaster.xyz/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="retro-button text-sm px-4 py-2 inline-block"
+              >
+                Get Farcaster →
+              </a>
+            </div>
           </div>
-        </div>
+        </WebAppOnly>
       </div>
     );
   }

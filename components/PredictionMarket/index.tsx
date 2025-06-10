@@ -237,42 +237,36 @@ const PredictionMarket: React.FC = () => {
         <h2 className="retro-heading text-xl mb-6">Prediction Markets</h2>
 
         <div className="text-center mb-6">
-          <p className="text-sm mb-4">
-            Stake CELO on fitness goals. 15% of all stakes go to charity.
-          </p>
-          <div className="inline-block border-2 border-white p-3 rounded-lg bg-black bg-opacity-50">
-            <span className="text-yellow-400">🏆 Do well by doing good!</span>
+          <div className="inline-block border-2 border-white p-2 rounded-lg bg-black bg-opacity-50">
+            <span className="text-yellow-400 text-sm">
+              🏆 Stake CELO, help charity
+            </span>
           </div>
         </div>
 
-        <div className="bg-green-900 bg-opacity-20 border border-green-800 rounded-lg p-4 mb-6">
-          <h2 className="text-xl font-bold text-green-400 mb-2">
-            Charitable Impact
-          </h2>
-          <p className="text-gray-300">
-            15% of all stakes go directly to{" "}
-            <a
-              href="https://explorer.gitcoin.co/#/round/42220/31/57"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-green-400 underline"
-            >
-              Greenpill Kenya
-            </a>{" "}
-            - a network-society that exports regenerative digital infrastructure
-            to the world.
-          </p>
-          <p className="text-gray-300 mt-2">
-            Follow them on Farcaster:{" "}
-            <a
-              href="https://warpcast.com/greenpillnetwork"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-green-400 underline"
-            >
-              @greenpillnetwork
-            </a>
-          </p>
+        <div className="bg-green-900 bg-opacity-20 border border-green-800 rounded-lg p-3 mb-6">
+          <div className="text-center">
+            <p className="text-sm text-gray-300">
+              15% to{" "}
+              <a
+                href="https://explorer.gitcoin.co/#/round/42220/31/57"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-green-400 underline"
+              >
+                Greenpill Kenya
+              </a>{" "}
+              •{" "}
+              <a
+                href="https://warpcast.com/greenpillnetwork"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-green-400 underline"
+              >
+                @greenpillnetwork
+              </a>
+            </p>
+          </div>
         </div>
 
         {isLoading ? (

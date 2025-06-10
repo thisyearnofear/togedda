@@ -238,10 +238,6 @@ export default function Home() {
               <span className="h-3 w-3 md:h-4 md:w-4 rounded-full bg-base-chain"></span>
               <span className="h-3 w-3 md:h-4 md:w-4 rounded-full bg-monad"></span>
             </div>
-
-            <div className="text-xs text-gray-400 mt-2">
-              Cross-chain fitness tracking
-            </div>
           </div>
 
           {/* User Profile / Authentication */}
@@ -249,33 +245,25 @@ export default function Home() {
             {showOnboarding && !isAuthenticated && (
               <div className="space-y-4">
                 {/* Main Hero Section */}
-                <div className="game-container py-4 px-4 md:py-6 md:px-6 text-center bg-gradient-to-b from-gray-900 to-black border-2 border-white">
+                <div className="game-container py-4 px-4 text-center bg-gradient-to-b from-gray-900 to-black border-2 border-white">
                   <div className="mb-4">
-                    <h2 className="text-lg md:text-xl mb-2 md:mb-3">
-                      🎮 Welcome to Imperfect Form!
+                    <h2 className="text-lg mb-3">
+                      🎮 Cross-chain fitness tracking
                     </h2>
-                    <p className="text-sm text-gray-300 mb-3 md:mb-4">
-                      Track workouts, compete with friends, and earn rewards
-                      across multiple blockchain networks.
-                    </p>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-4 text-xs">
-                    <div className="bg-gray-800 p-2 md:p-3 rounded">
-                      <div className="text-base md:text-lg mb-1">💪</div>
-                      <div className="text-xs">Track Workouts</div>
+                  <div className="grid grid-cols-4 gap-2 mb-4 text-xs">
+                    <div className="bg-gray-800 p-2 rounded">
+                      <div className="text-lg mb-1">💪</div>
                     </div>
-                    <div className="bg-gray-800 p-2 md:p-3 rounded">
-                      <div className="text-base md:text-lg mb-1">🏆</div>
-                      <div className="text-xs">Compete</div>
+                    <div className="bg-gray-800 p-2 rounded">
+                      <div className="text-lg mb-1">🏆</div>
                     </div>
-                    <div className="bg-gray-800 p-2 md:p-3 rounded">
-                      <div className="text-base md:text-lg mb-1">🌐</div>
-                      <div className="text-xs">Multi-Chain</div>
+                    <div className="bg-gray-800 p-2 rounded">
+                      <div className="text-lg mb-1">🌐</div>
                     </div>
-                    <div className="bg-gray-800 p-2 md:p-3 rounded">
-                      <div className="text-base md:text-lg mb-1">🎯</div>
-                      <div className="text-xs">Earn Rewards</div>
+                    <div className="bg-gray-800 p-2 rounded">
+                      <div className="text-lg mb-1">🎯</div>
                     </div>
                   </div>
 
@@ -287,9 +275,9 @@ export default function Home() {
                         setShowAuthFlow(true);
                       }}
                       disabled={isAuthenticating}
-                      className="retro-button px-6 py-3 w-full text-base md:text-lg mb-3"
+                      className="retro-button px-6 py-3 w-full text-base"
                     >
-                      🟣 Sign in with Farcaster
+                      🟣 Farcaster Sign In
                     </button>
                   </MiniAppOnly>
 
@@ -301,16 +289,16 @@ export default function Home() {
                           setShowAuthFlow(true);
                         }}
                         disabled={isAuthenticating}
-                        className="retro-button px-6 py-3 w-full text-base md:text-lg"
+                        className="retro-button px-6 py-3 w-full text-base"
                       >
-                        🟣 Sign in with Farcaster
+                        🟣 Farcaster Sign In
                       </button>
                       <button
                         onClick={() => {
                           setHasInteracted(true);
                           setShowAuthFlow(true);
                         }}
-                        className="retro-button px-6 py-3 w-full text-base md:text-lg opacity-75"
+                        className="retro-button px-6 py-3 w-full text-base opacity-75"
                       >
                         Connect Wallet
                       </button>
@@ -327,19 +315,12 @@ export default function Home() {
                   </WebAppOnly>
                 </div>
 
-                {/* Farcaster Upsell for Web Users */}
+                {/* Simplified Farcaster Upsell for Web Users */}
                 <WebAppOnly>
-                  <div className="game-container py-3 px-4 text-center bg-blue-900/20 border border-blue-600">
-                    <div className="text-blue-300 text-sm font-bold mb-2">
-                      💡 Why Farcaster?
-                    </div>
-                    <p className="text-xs text-blue-200 mb-3">
-                      Farcaster sign-in unlocks: streak tracking, social
-                      features, cross-chain identity, and sharing
+                  <div className="game-container py-2 px-4 text-center bg-blue-900/20 border border-blue-600">
+                    <p className="text-xs text-blue-200">
+                      Farcaster unlocks: streaks, social features, sharing
                     </p>
-                    <div className="text-xs text-gray-400">
-                      Wallet connection gives basic stats only
-                    </div>
                   </div>
                 </WebAppOnly>
               </div>
@@ -371,16 +352,19 @@ export default function Home() {
                           @{user.username}
                         </p>
                       )}
-                      {isWalletOnlyUser && address && (
-                        <Web3Profile
-                          address={address}
-                          useUnifiedResolution={true}
-                        />
-                      )}
+                      {/* Only show wallet address for wallet-only users in web app */}
+                      <WebAppOnly>
+                        {isWalletOnlyUser && address && (
+                          <Web3Profile
+                            address={address}
+                            useUnifiedResolution={true}
+                          />
+                        )}
+                      </WebAppOnly>
                     </div>
                   </div>
 
-                  {/* Disconnect/Change Button */}
+                  {/* Disconnect/Change Button - Only in web app */}
                   <WebAppOnly>
                     <div className="flex space-x-2">
                       {isWalletOnlyUser && (
@@ -437,7 +421,7 @@ export default function Home() {
               isWalletOnlyUser={isWalletOnlyUser}
             />
 
-            {/* Mini App Navigation - Simple tabs for Farcaster */}
+            {/* Mini App Navigation - Icon-only tabs for mobile */}
             <MiniAppOnly>
               <div className="mb-6">
                 <div className="bg-gray-900 rounded-lg p-2">
@@ -452,8 +436,9 @@ export default function Home() {
                       <button
                         key={tab.id}
                         onClick={() => setSelectedTab(tab.id as Tab)}
+                        title={tab.label} // Show label on hover/long press
                         className={`
-                          relative flex flex-col items-center justify-center p-3 rounded-lg transition-all
+                          relative flex items-center justify-center p-4 rounded-lg transition-all
                           ${
                             selectedTab === tab.id
                               ? "bg-white text-black shadow-lg transform scale-105"
@@ -461,10 +446,7 @@ export default function Home() {
                           }
                         `}
                       >
-                        <span className="text-lg mb-1">{tab.icon}</span>
-                        <span className="text-xs font-medium truncate w-full text-center">
-                          {tab.label}
-                        </span>
+                        <span className="text-xl">{tab.icon}</span>
                         {selectedTab === tab.id && (
                           <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-500 rounded-full"></div>
                         )}

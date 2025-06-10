@@ -57,6 +57,28 @@ export const useMiniKitAuth = ({ autoSignIn = false }: { autoSignIn?: boolean })
           }
         } else {
           console.log("No valid session found, status:", res.status);
+          // In mini app context, if we have context but no session,
+          // we should still try to get user data directly
+          if (context?.user?.fid) {
+            console.log("Attempting to fetch user data directly from context");
+            try {
+              const userRes = await fetch(`/api/farcaster/user?fid=${context.user.fid}`, {
+                credentials: "include",
+                signal: controller.signal,
+              });
+
+              if (userRes.ok) {
+                const userData = await userRes.json();
+                if (userData.users && userData.users.length > 0) {
+                  setUser(userData.users[0]);
+                  setIsSignedIn(true);
+                  console.log("Successfully fetched user data from context");
+                }
+              }
+            } catch (userError) {
+              console.error("Error fetching user data from context:", userError);
+            }
+          }
         }
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') {

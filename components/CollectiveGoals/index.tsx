@@ -76,17 +76,9 @@ export default function CollectiveGoalsComponent({
       </div>
 
       <div className="text-center mb-6">
-        <p className="text-sm mb-4">Join forces to achieve epic milestones!</p>
-        <div className="inline-block border-2 border-white p-3 rounded-lg bg-black bg-opacity-50">
-          <span className="text-yellow-400">
-            🏆 Every rep makes a difference!
-          </span>
+        <div className="inline-block border-2 border-white p-2 rounded-lg bg-black bg-opacity-50">
+          <span className="text-yellow-400 text-sm">🏆 Every rep counts!</span>
         </div>
-        {onRefresh && (
-          <div className="text-xs text-gray-400 mt-2">
-            Data refreshes every 5 minutes • Click refresh for latest
-          </div>
-        )}
       </div>
 
       {/* Mount Olympus Challenge */}
@@ -135,9 +127,8 @@ export default function CollectiveGoalsComponent({
         </div>
 
         <div className="text-center">
-          <p className="text-xs mt-2 max-w-md mx-auto">
-            Each push-up = 1kg of force lifted. Together we&apos;re lifting
-            Mount Olympus (2917m × 100kg)!
+          <p className="text-xs mt-2 text-gray-400">
+            Lifting Mount Olympus together!
           </p>
         </div>
       </div>
@@ -188,9 +179,8 @@ export default function CollectiveGoalsComponent({
         </div>
 
         <div className="text-center">
-          <p className="text-xs mt-2 max-w-md mx-auto">
-            1 squat = 1 meter. We&apos;re running from Mandera to Lunga Lunga
-            (1,030 kilometers)!
+          <p className="text-xs mt-2 text-gray-400">
+            Running the length of Kenya!
           </p>
         </div>
       </div>
@@ -202,10 +192,10 @@ export default function CollectiveGoalsComponent({
           rel="noopener noreferrer"
           className="retro-button pulse-button"
         >
-          Visit imperfectform.fun 💪
+          Carry The Boats 🚣🌊
         </a>
-        <p className="text-xs mt-4">
-          Log your workouts at imperfectform.fun to contribute.
+        <p className="text-xs mt-2 text-gray-400">
+          Log workouts at imperfectform.fun
         </p>
       </div>
     </div>

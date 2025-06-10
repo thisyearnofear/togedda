@@ -18,6 +18,7 @@ export default async function middleware(req: NextRequest) {
   if (
     req.nextUrl.pathname === "/api/auth/sign-in" ||
     req.nextUrl.pathname === "/api/auth/neynar-signin" ||
+    req.nextUrl.pathname === "/api/auth/logout" ||
     req.nextUrl.pathname.includes("/api/og") ||
     req.nextUrl.pathname.includes("/api/webhook") ||
     req.nextUrl.pathname.includes("/api/farcaster") ||
@@ -76,6 +77,8 @@ export default async function middleware(req: NextRequest) {
       console.log("Allowing /api/test endpoint without auth for debugging");
       return NextResponse.next();
     }
+
+    // Production authentication required for fitness APIs
 
     return NextResponse.json(
       { error: "Authentication required" },

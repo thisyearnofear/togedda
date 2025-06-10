@@ -51,6 +51,7 @@ export default function AuthFlow({
   const [authError, setAuthError] = useState<string | null>(null);
   const [showMethods, setShowMethods] = useState(false);
   const [neynarUser, setNeynarUser] = useState<any>(null);
+  const [isRestoringSession, setIsRestoringSession] = useState(false);
 
   // Use unified authentication state
   const isAuthenticated =
@@ -83,6 +84,47 @@ export default function AuthFlow({
   useEffect(() => {
     setAuthError(null);
   }, [selectedMethod]);
+
+  // Auto-restore session on mount
+  useEffect(() => {
+    const restoreSession = async () => {
+      // Skip if already authenticated or in mini app environment
+      if (isAuthenticated || isFarcasterEnvironment || isRestoringSession) return;
+
+      setIsRestoringSession(true);
+      
+      try {
+        // Check if we have an auth cookie by testing the API
+        const response = await fetch('/api/test', {
+          method: 'GET',
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          console.log('[AuthFlow] Found existing session');
+          // We have a valid session, try to get user data from localStorage
+          const storedUser = localStorage.getItem('neynar_user');
+          if (storedUser) {
+            const user = JSON.parse(storedUser);
+            console.log('[AuthFlow] Restored user from localStorage:', user.username);
+            setNeynarUser(user);
+            setSelectedMethod("farcaster");
+          }
+        } else {
+          console.log('[AuthFlow] No valid session found');
+          // Clear any stale localStorage data
+          localStorage.removeItem('neynar_user');
+          localStorage.removeItem('neynar_auth_timestamp');
+        }
+      } catch (error) {
+        console.log('[AuthFlow] Session restore failed:', error);
+      } finally {
+        setIsRestoringSession(false);
+      }
+    };
+
+    restoreSession();
+  }, [isAuthenticated, isFarcasterEnvironment, isRestoringSession]);
 
   const handleFarcasterSignIn = useCallback(async () => {
     try {
@@ -224,13 +266,32 @@ export default function AuthFlow({
     setIsAuthenticating(false);
   }, []);
 
-  const handleDisconnect = useCallback(() => {
-    if (isConnected) {
-      disconnect();
+  const handleDisconnect = useCallback(async () => {
+    try {
+      // Clear auth cookie on server
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      }).catch(() => {}); // Ignore errors
+
+      // Clear localStorage
+      localStorage.removeItem('neynar_user');
+      localStorage.removeItem('neynar_auth_timestamp');
+      
+      // Disconnect wallet if connected
+      if (isConnected) {
+        disconnect();
+      }
+      
+      // Reset local state
+      setNeynarUser(null);
+      setSelectedMethod("none");
+      setShowMethods(false);
+      
+      console.log('[AuthFlow] Logout completed');
+    } catch (error) {
+      console.error('[AuthFlow] Logout error:', error);
     }
-    setNeynarUser(null);
-    setSelectedMethod("none");
-    setShowMethods(false);
   }, [disconnect, isConnected]);
 
   const handleRetry = useCallback(() => {
@@ -254,7 +315,7 @@ export default function AuthFlow({
   }
 
   // Loading state
-  const isLoading = farcasterLoading || isConnecting || isAuthenticating;
+  const isLoading = farcasterLoading || isConnecting || isAuthenticating || isRestoringSession;
 
   return (
     <div className={`auth-flow ${className}`}>

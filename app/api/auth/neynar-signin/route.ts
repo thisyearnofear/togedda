@@ -105,8 +105,9 @@ export const POST = async (req: NextRequest) => {
     const isProduction = process.env.NODE_ENV === "production";
     const isSecure = isProduction || requestUrl.protocol === "https:";
     
-    // Force sameSite to lax for development to ensure cookie is sent with requests
-    const sameSite = isProduction ? "none" : "lax";
+    // Use 'lax' for better compatibility with web apps
+    // 'none' requires HTTPS and can cause issues with some browsers
+    const sameSite = "lax";
     
     console.log("[neynar-signin] Setting cookie with options:", {
       isProduction,
@@ -126,8 +127,7 @@ export const POST = async (req: NextRequest) => {
       sameSite: sameSite,
       maxAge: 7 * 24 * 60 * 60, // 7 days
       path: "/",
-      // Don't set domain in development to use default behavior
-      ...(isProduction && { domain: domain }),
+      // Don't set domain explicitly to let the browser handle it properly
     });
 
     // Log the cookie being set for debugging

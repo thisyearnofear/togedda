@@ -12,7 +12,7 @@ import {
   MiniAppOnly,
   WebAppOnly,
 } from "@/contexts/app-mode-context";
-import AddressDisplay from "@/components/AddressDisplay";
+import Web3Profile from "@/components/Web3Profile";
 import AuthFlow from "@/components/AuthFlow";
 import { Tab } from "@/src/types";
 import { useState, useEffect, useCallback } from "react";
@@ -321,7 +321,10 @@ export default function Home() {
                         </p>
                       )}
                       {isWalletOnlyUser && address && (
-                        <AddressDisplay address={address} />
+                        <Web3Profile
+                          address={address}
+                          useUnifiedResolution={true}
+                        />
                       )}
                     </div>
                   </div>

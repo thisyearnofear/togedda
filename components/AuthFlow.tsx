@@ -129,12 +129,56 @@ export default function AuthFlow({
     [connect]
   );
 
-  const handleNeynarAuthSuccess = useCallback((user: any) => {
-    setNeynarUser(user);
-    setSelectedMethod("farcaster");
-    setAuthError(null);
-    setIsAuthenticating(false);
-  }, []);
+  const handleNeynarAuthSuccess = useCallback(
+    async (user: any) => {
+      try {
+        setIsAuthenticating(true);
+        console.log("Neynar auth success, setting up session:", user);
+
+        // Call our sign-in endpoint to create the auth_token cookie
+        // We need to create a signature for this user
+        const message = `Sign in to Imperfect Form\nTimestamp: ${Date.now()}`;
+
+        // For Neynar users, we'll use a simplified auth flow
+        // since we already have verified user data from Neynar
+        const response = await fetch("/api/auth/neynar-signin", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            user,
+            message,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || "Failed to create session");
+        }
+
+        setNeynarUser(user);
+        setSelectedMethod("farcaster");
+        setAuthError(null);
+
+        if (onAuthSuccess) {
+          onAuthSuccess(user);
+        }
+      } catch (error) {
+        console.error("Error setting up Neynar session:", error);
+        const errorMessage =
+          error instanceof Error ? error.message : "Session setup failed";
+        setAuthError(errorMessage);
+        if (onAuthError) {
+          onAuthError(errorMessage);
+        }
+      } finally {
+        setIsAuthenticating(false);
+      }
+    },
+    [onAuthSuccess, onAuthError]
+  );
 
   const handleNeynarAuthError = useCallback((error: string) => {
     setAuthError(error);

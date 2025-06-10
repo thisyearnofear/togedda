@@ -165,7 +165,22 @@ export default function Home() {
 
         {/* Header with Arcade-Style Logo */}
         <header className="text-center mb-4 md:mb-6">
-          <div className="game-container py-3 px-4 md:py-4 md:px-6 mb-4 bg-black">
+          <div className="game-container py-3 px-4 md:py-4 md:px-6 mb-4 bg-black relative">
+            {/* Web App Only: Login Button for unauthenticated users who are browsing */}
+            <WebAppOnly>
+              {!showOnboarding && !isAuthenticated && !isLoading && (
+                <div className="absolute top-3 right-3 md:top-4 md:right-4">
+                  <button
+                    onClick={() => setShowAuthFlow(true)}
+                    className="px-2 py-1 md:px-3 md:py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded-lg transition-colors flex items-center space-x-1"
+                  >
+                    <span>🟣</span>
+                    <span className="hidden md:inline">Sign In</span>
+                  </button>
+                </div>
+              )}
+            </WebAppOnly>
+
             <h1
               className="text-xl md:text-2xl mb-2 pulse-animation"
               style={{ textShadow: "2px 2px 0px #000" }}

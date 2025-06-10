@@ -38,30 +38,6 @@ const PredictionMarket: React.FC = () => {
   ];
 
   useEffect(() => {
-    // Call Farcaster SDK ready only if not already initialized
-    const initFarcaster = async () => {
-      // Skip if already initialized
-      if (typeof window !== "undefined" && window.__FARCASTER_SDK_INITIALIZED) {
-        console.log(
-          "Farcaster SDK already initialized, skipping in PredictionMarket component"
-        );
-      } else {
-        try {
-          const { sdk } = await import("@farcaster/frame-sdk");
-          await sdk.actions.ready();
-          console.log("Farcaster SDK ready called from PredictionMarket");
-
-          // Set the global flag
-          if (typeof window !== "undefined") {
-            window.__FARCASTER_SDK_INITIALIZED = true;
-          }
-        } catch (error) {
-          console.error("Error calling Farcaster SDK ready:", error);
-        }
-      }
-    };
-
-    initFarcaster();
     loadPredictions();
   }, []);
 

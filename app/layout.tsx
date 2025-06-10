@@ -75,14 +75,15 @@ export const metadata: Metadata = {
   // Icons and manifest
   icons: {
     icon: [
-      { url: "/favicon.ico" },
       { url: "/icon-16x16.png", sizes: "16x16", type: "image/png" },
       { url: "/icon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
     ],
     apple: [
       { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
     ],
-    shortcut: "/favicon.ico",
+    shortcut: "/icon-32x32.png",
   },
   manifest: "/manifest.json",
 
@@ -110,13 +111,13 @@ export const metadata: Metadata = {
   other: {
     "fc:frame": JSON.stringify({
       version: "next",
-      imageUrl: `${env.NEXT_PUBLIC_URL}/og.png`,
+      imageUrl: `${env.NEXT_PUBLIC_URL}/hero.png`,
       button: {
         title: "Stay Hard",
         action: {
           type: "launch_frame",
+          name: "Imperfect Form",
           url: env.NEXT_PUBLIC_URL,
-          name: appConfig.name,
           splashImageUrl: `${env.NEXT_PUBLIC_URL}/splash.png`,
           splashBackgroundColor: "#000000",
         },
@@ -194,7 +195,10 @@ export default function RootLayout({ children }: RootLayoutProps) {
 
         {/* Farcaster specific meta tags */}
         <meta name="fc:frame:version" content="next" />
-        <meta name="fc:frame:image" content={`${env.NEXT_PUBLIC_URL}/og.png`} />
+        <meta
+          name="fc:frame:image"
+          content={`${env.NEXT_PUBLIC_URL}/hero.png`}
+        />
         <meta name="fc:frame:button:1" content="Stay Hard" />
         <meta name="fc:frame:button:1:action" content="launch_frame" />
         <meta name="fc:frame:button:1:target" content={env.NEXT_PUBLIC_URL} />

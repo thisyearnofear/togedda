@@ -12,7 +12,7 @@
     "splashImageUrl": "https://imperfectminiapp.vercel.app/splash.png",
     "splashBackgroundColor": "#000000",
     "webhookUrl": "https://api.neynar.com/f/app/9c260f93-357a-4952-8090-a03f10e742f4/event",
-    "subtitle": "Track fitness goals across chains",
+    "subtitle": "Cross-chain fitness tracking",
     "description": "Imperfect Form helps you track push-ups and squats across multiple blockchain networks with a retro-gamified style.",
     "primaryCategory": "health-fitness",
     "tags": ["fitness", "blockchain", "gamification", "prediction-market"],

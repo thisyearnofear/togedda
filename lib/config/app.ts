@@ -18,7 +18,7 @@ export const appConfig = {
     manifestUrl: `${env.NEXT_PUBLIC_URL}/.well-known/farcaster.json`,
     frameUrl: env.NEXT_PUBLIC_URL,
     notificationProxyUrl: "/api/notification",
-    webhookUrl: "/api/webhook",
+    webhookUrl: "https://api.neynar.com/f/app/9c260f93-357a-4952-8090-a03f10e742f4/event",
   },
   
   // Supported blockchain networks

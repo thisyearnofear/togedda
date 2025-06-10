@@ -30,6 +30,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log("Exchanging code for token:", { code, client_id: env.NEXT_PUBLIC_NEYNAR_CLIENT_ID });
+
     // Exchange authorization code for access token
     const tokenResponse = await fetch("https://api.neynar.com/v2/farcaster/auth/token", {
       method: "POST",
@@ -47,14 +49,19 @@ export async function POST(request: NextRequest) {
 
     if (!tokenResponse.ok) {
       const errorData = await tokenResponse.text();
-      console.error("Token exchange failed:", errorData);
+      console.error("Token exchange failed:", {
+        status: tokenResponse.status,
+        statusText: tokenResponse.statusText,
+        error: errorData
+      });
       return NextResponse.json(
-        { error: "Failed to exchange authorization code" },
+        { error: "Failed to exchange authorization code", details: errorData },
         { status: 400 }
       );
     }
 
     const tokenData: NeynarTokenResponse = await tokenResponse.json();
+    console.log("Token exchange successful:", { access_token: tokenData.access_token ? "present" : "missing" });
 
     // Get user information using the access token
     const userResponse = await fetch("https://api.neynar.com/v2/farcaster/me", {
@@ -66,14 +73,19 @@ export async function POST(request: NextRequest) {
 
     if (!userResponse.ok) {
       const errorData = await userResponse.text();
-      console.error("User fetch failed:", errorData);
+      console.error("User fetch failed:", {
+        status: userResponse.status,
+        statusText: userResponse.statusText,
+        error: errorData
+      });
       return NextResponse.json(
-        { error: "Failed to fetch user information" },
+        { error: "Failed to fetch user information", details: errorData },
         { status: 400 }
       );
     }
 
     const userData = await userResponse.json();
+    console.log("User data fetched successfully:", { fid: userData.fid, username: userData.username });
     const user: NeynarUser = {
       fid: userData.fid,
       username: userData.username,

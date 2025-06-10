@@ -32,6 +32,11 @@ export default function NeynarAuth({
       setIsLoading(true);
       setError(null);
 
+      console.log(
+        "Starting Neynar authentication with client ID:",
+        env.NEXT_PUBLIC_NEYNAR_CLIENT_ID
+      );
+
       // Create a popup window for Neynar authentication
       const authUrl = `https://app.neynar.com/login?client_id=${
         env.NEXT_PUBLIC_NEYNAR_CLIENT_ID
@@ -93,24 +98,28 @@ export default function NeynarAuth({
   }, [onAuthSuccess, onAuthError]);
 
   return (
-    <button
-      onClick={handleNeynarAuth}
-      disabled={isLoading}
-      className={`
-        flex items-center justify-center gap-2 px-6 py-3
-        bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400
-        text-white font-medium rounded-lg transition-colors
-        ${className}
-      `}
-    >
-      {isLoading ? (
-        <>
-          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-          Connecting...
-        </>
-      ) : (
-        <>🟣 Sign in with Farcaster</>
+    <div className={className}>
+      <button
+        onClick={handleNeynarAuth}
+        disabled={isLoading}
+        className="
+          flex items-center justify-center gap-2 px-6 py-3 w-full
+          bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400
+          text-white font-medium rounded-lg transition-colors
+        "
+      >
+        {isLoading ? (
+          <>
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            Connecting...
+          </>
+        ) : (
+          <>🟣 Sign in with Farcaster</>
+        )}
+      </button>
+      {error && (
+        <p className="text-xs text-red-400 mt-1 text-center">{error}</p>
       )}
-    </button>
+    </div>
   );
 }

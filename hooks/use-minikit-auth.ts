@@ -22,14 +22,14 @@ export const useMiniKitAuth = ({ autoSignIn = false }: { autoSignIn?: boolean })
   const [shouldSignIn, setShouldSignIn] = useState(autoSignIn);
   const [signInAttempts, setSignInAttempts] = useState(0);
 
-  // Check if we already have a valid session
+  // Check if we already have a valid session (only once when initialized)
   useEffect(() => {
     const checkSession = async () => {
-      if (isSignedIn || !isInitialized) return;
+      if (isSignedIn || !isInitialized || !context?.user?.fid) return;
 
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
 
         const res = await fetch("/api/test", {
           method: "GET",
@@ -43,19 +43,20 @@ export const useMiniKitAuth = ({ autoSignIn = false }: { autoSignIn?: boolean })
           console.log("Valid MiniKit session detected");
           setIsSignedIn(true);
 
-          if (context?.user?.fid) {
-            const userRes = await fetch(`/api/farcaster/user?fid=${context.user.fid}`, {
-              credentials: "include",
-              signal: controller.signal,
-            });
+          // Fetch user data
+          const userRes = await fetch(`/api/farcaster/user?fid=${context.user.fid}`, {
+            credentials: "include",
+            signal: controller.signal,
+          });
 
-            if (userRes.ok) {
-              const userData = await userRes.json();
-              if (userData.users && userData.users.length > 0) {
-                setUser(userData.users[0]);
-              }
+          if (userRes.ok) {
+            const userData = await userRes.json();
+            if (userData.users && userData.users.length > 0) {
+              setUser(userData.users[0]);
             }
           }
+        } else {
+          console.log("No valid session found, status:", res.status);
         }
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') {
@@ -66,9 +67,12 @@ export const useMiniKitAuth = ({ autoSignIn = false }: { autoSignIn?: boolean })
       }
     };
 
-    const timeoutId = setTimeout(checkSession, 1000);
-    return () => clearTimeout(timeoutId);
-  }, [isInitialized, isSignedIn, context]);
+    // Only check once when initialized and context is available
+    if (isInitialized && context?.user?.fid && !isSignedIn) {
+      const timeoutId = setTimeout(checkSession, 1000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isInitialized, context?.user?.fid]); // Removed isSignedIn from deps to prevent re-checking
 
   const handleSignIn = useCallback(async () => {
     try {

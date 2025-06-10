@@ -1,7 +1,7 @@
 "use client";
 
 import { useUnifiedAuth } from "@/hooks/use-unified-auth";
-import { useStreaks } from "@/hooks/use-streaks";
+import { useFitnessStreaks } from "@/hooks/use-fitness-streaks";
 import { NetworkData } from "@/lib/blockchain";
 import { formatNumber } from "@/lib/utils";
 import { useNotification } from "@coinbase/onchainkit/minikit";
@@ -53,12 +53,13 @@ export default function PersonalDashboard({
   const isWalletOnlyUser = isConnected && !isFarcasterUser;
   const hasAnyAuth = isFarcasterUser || isWalletOnlyUser;
 
-  // Only use streaks for Farcaster users (requires persistent identity)
+  // Only use fitness streaks for Farcaster users (requires persistent identity)
   const {
     streakData,
     isLoading: streaksLoading,
-    updateStreak,
-  } = useStreaks(isFarcasterUser && user?.fid ? user.fid.toString() : null);
+    refreshStreaks,
+    syncFitnessData,
+  } = useFitnessStreaks();
   // Use useMemo to prevent unnecessary rerenders when setting userStats
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   // Use a ref to track if we've already calculated stats to prevent multiple calculations
@@ -77,12 +78,12 @@ export default function PersonalDashboard({
 
       // Use a ref to track if we've already updated the streak
       const streakUpdateTimeout = setTimeout(() => {
-        updateStreak();
+        syncFitnessData();
       }, 1000); // Add a small delay to avoid immediate API calls
 
       return () => clearTimeout(streakUpdateTimeout);
     }
-  }, [isFarcasterUser, updateStreak]);
+  }, [isFarcasterUser, syncFitnessData]);
 
   // Define calculateStats function with useCallback and memoize expensive calculations
   const calculateStats = useCallback(async () => {
@@ -606,8 +607,8 @@ export default function PersonalDashboard({
                 <button
                   className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs"
                   onClick={() => {
-                    updateStreak();
-                    toast.success("Streak updated!");
+                    syncFitnessData();
+                    toast.success("Syncing fitness data...");
                   }}
                 >
                   Update

@@ -171,8 +171,12 @@ export default function RootLayout({ children }: RootLayoutProps) {
             __html: `
               (function(){
                 if (typeof document !== 'undefined') {
-                  document.documentElement.removeAttribute('data-channel-name');
-                  document.body.removeAttribute('data-channel-name');
+                  if (document.documentElement) {
+                    document.documentElement.removeAttribute('data-channel-name');
+                  }
+                  if (document.body) {
+                    document.body.removeAttribute('data-channel-name');
+                  }
                 }
               })();
             `,
@@ -248,6 +252,43 @@ export default function RootLayout({ children }: RootLayoutProps) {
             )}
           </Providers>
         </CriticalErrorBoundary>
+
+        {/* Wallet conflict handling script */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Handle wallet extension conflicts early
+              (function() {
+                if (typeof window !== 'undefined') {
+                  // Suppress Backpack override warnings
+                  const originalConsoleWarn = console.warn;
+                  console.warn = function(...args) {
+                    const message = args.join(' ');
+                    if (message.includes("Backpack couldn't override") ||
+                        message.includes("window.ethereum") ||
+                        message.includes("pageProvider.js")) {
+                      return; // Suppress these warnings
+                    }
+                    originalConsoleWarn.apply(console, args);
+                  };
+
+                  // Handle wallet-related errors gracefully
+                  window.addEventListener('error', function(event) {
+                    if (event.error && event.error.message) {
+                      const message = event.error.message.toLowerCase();
+                      if (message.includes('wallet') ||
+                          message.includes('ethereum') ||
+                          message.includes('backpack')) {
+                        event.preventDefault();
+                        console.log('Wallet conflict handled:', event.error.message);
+                      }
+                    }
+                  });
+                }
+              })();
+            `,
+          }}
+        />
 
         {/* Service Worker registration script */}
         <script

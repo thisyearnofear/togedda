@@ -6,9 +6,11 @@ const pool = new Pool({
   ssl: {
     rejectUnauthorized: false // Required for Neon PostgreSQL
   },
-  max: 20, // Maximum number of clients in the pool
+  max: 10, // Maximum number of clients in the pool (reduced for better resource management)
   idleTimeoutMillis: 30000, // How long a client is allowed to remain idle before being closed
-  connectionTimeoutMillis: 2000, // How long to wait for a connection to become available
+  connectionTimeoutMillis: 10000, // Increased timeout for build time (10 seconds)
+  query_timeout: 30000, // Query timeout (30 seconds)
+  statement_timeout: 30000, // Statement timeout (30 seconds)
 });
 
 // Test the connection

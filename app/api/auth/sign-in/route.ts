@@ -71,12 +71,15 @@ export const POST = async (req: NextRequest) => {
 
     // Set the auth cookie with the JWT token
     // Note: In Farcaster mini app environment, cookies need special handling
+    const isProduction = process.env.NODE_ENV === "production";
+    const isSecure = isProduction || requestUrl.protocol === "https:";
+
     response.cookies.set({
       name: "auth_token",
       value: token,
       httpOnly: true,
-      secure: true,
-      sameSite: "none", // Required for cross-site iframe usage
+      secure: isSecure,
+      sameSite: isProduction ? "none" : "lax", // Use "none" for production cross-site, "lax" for development
       maxAge: 7 * 24 * 60 * 60, // 7 days
       path: "/",
       // Don't set domain explicitly, let the browser handle it

@@ -1,11 +1,14 @@
 import { getUserStreak, updateUserStreak, initializeDatabase } from "@/lib/streaks-service-pg";
+import { syncUserFitnessData, getUserFitnessData } from "@/lib/fitness-sync-service";
 import { NextRequest, NextResponse } from "next/server";
 
 // Mark this route as dynamic to avoid static optimization errors
 export const dynamic = 'force-dynamic';
 
-// Initialize the database schema
-initializeDatabase().catch(console.error);
+// Initialize the database schema only at runtime, not during build
+if (typeof window === 'undefined' && process.env.NODE_ENV !== 'production') {
+  initializeDatabase().catch(console.error);
+}
 
 /**
  * GET /api/streaks
@@ -23,10 +26,30 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Check if we should sync fitness data first
+    const { searchParams } = new URL(req.url);
+    const shouldSync = searchParams.get("sync") === "true";
+
+    if (shouldSync) {
+      try {
+        console.log(`Syncing fitness data for FID ${fid}`);
+        await syncUserFitnessData(parseInt(fid));
+      } catch (syncError) {
+        console.error("Error syncing fitness data:", syncError);
+        // Continue even if sync fails
+      }
+    }
+
     // Get the user's streak data
     const streakData = await getUserStreak(fid);
 
-    return NextResponse.json(streakData);
+    // Also get fitness data for additional context
+    const fitnessData = await getUserFitnessData(parseInt(fid));
+
+    return NextResponse.json({
+      ...streakData,
+      fitnessData
+    });
   } catch (error) {
     console.error("Error fetching streak data:", error);
     return NextResponse.json(

@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
       try {
         // Call the Neynar API to fetch user data with verifications
         const response = await fetch(
-          `https://api.neynar.com/v2/farcaster/user?fid=${fid}&viewer_fid=${fid}`,
+          `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}&viewer_fid=${fid}`,
           {
             headers: {
               "x-api-key": env.NEYNAR_API_KEY,
@@ -56,14 +56,16 @@ export async function GET(req: NextRequest) {
         }
 
         const data = await response.json();
-        const user = data.user;
-        
-        if (!user) {
+        const users = data.users;
+
+        if (!users || users.length === 0) {
           return NextResponse.json(
             { error: "User not found" },
             { status: 404 }
           );
         }
+
+        const user = users[0];
 
         // Collect all verified addresses
         const addresses: string[] = [];
@@ -88,7 +90,7 @@ export async function GET(req: NextRequest) {
           timestamp: Date.now()
         });
 
-        return NextResponse.json({ addresses });
+        return NextResponse.json({ verifications: addresses });
       } catch (error) {
         console.error("Error fetching verified addresses:", error);
         return NextResponse.json(

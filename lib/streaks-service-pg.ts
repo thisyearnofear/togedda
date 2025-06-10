@@ -6,15 +6,26 @@ export interface UserStreak {
   longestStreak: number;
   lastActivityDate: string;
   activityDates: string[];
+  totalPushups?: number;
+  totalSquats?: number;
+  lastFitnessSync?: string;
 }
 
 /**
  * Initialize the database schema
  */
 export async function initializeDatabase() {
-  const client = await pool.connect();
-  
+  // Skip database initialization during build time
+  if (process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV === 'production') {
+    console.log('Skipping database initialization during build');
+    return;
+  }
+
+  let client;
+
   try {
+    client = await pool.connect();
+
     // Create the streaks table if it doesn't exist
     await client.query(`
       CREATE TABLE IF NOT EXISTS user_streaks (
@@ -25,12 +36,55 @@ export async function initializeDatabase() {
         activity_dates JSONB NOT NULL DEFAULT '[]'
       )
     `);
-    
+
+    // Add new columns if they don't exist (for migration)
+    try {
+      await client.query(`ALTER TABLE user_streaks ADD COLUMN total_pushups INTEGER NOT NULL DEFAULT 0`);
+      console.log('Added total_pushups column');
+    } catch (error: any) {
+      if (!error.message.includes('already exists')) {
+        console.error('Error adding total_pushups column:', error);
+      }
+    }
+
+    try {
+      await client.query(`ALTER TABLE user_streaks ADD COLUMN total_squats INTEGER NOT NULL DEFAULT 0`);
+      console.log('Added total_squats column');
+    } catch (error: any) {
+      if (!error.message.includes('already exists')) {
+        console.error('Error adding total_squats column:', error);
+      }
+    }
+
+    try {
+      await client.query(`ALTER TABLE user_streaks ADD COLUMN last_fitness_sync TEXT`);
+      console.log('Added last_fitness_sync column');
+    } catch (error: any) {
+      if (!error.message.includes('already exists')) {
+        console.error('Error adding last_fitness_sync column:', error);
+      }
+    }
+
+    try {
+      await client.query(`ALTER TABLE user_streaks ADD COLUMN wallet_addresses JSONB NOT NULL DEFAULT '[]'`);
+      console.log('Added wallet_addresses column');
+    } catch (error: any) {
+      if (!error.message.includes('already exists')) {
+        console.error('Error adding wallet_addresses column:', error);
+      }
+    }
+
     console.log('Database schema initialized');
   } catch (error) {
     console.error('Error initializing database schema:', error);
+    // Don't throw error during build time
+    if (process.env.NODE_ENV !== 'production') {
+      throw error;
+    }
   } finally {
-    client.release();
+    if (client) {
+      client.release();
+    }
   }
 }
 
@@ -54,7 +108,10 @@ export async function getUserStreak(userId: string): Promise<UserStreak> {
         currentStreak: 0,
         longestStreak: 0,
         lastActivityDate: '',
-        activityDates: []
+        activityDates: [],
+        totalPushups: 0,
+        totalSquats: 0,
+        lastFitnessSync: ''
       };
     }
     
@@ -65,7 +122,10 @@ export async function getUserStreak(userId: string): Promise<UserStreak> {
       currentStreak: userData.current_streak,
       longestStreak: userData.longest_streak,
       lastActivityDate: userData.last_activity_date || '',
-      activityDates: userData.activity_dates || []
+      activityDates: userData.activity_dates || [],
+      totalPushups: userData.total_pushups || 0,
+      totalSquats: userData.total_squats || 0,
+      lastFitnessSync: userData.last_fitness_sync || ''
     };
   } catch (error) {
     console.error('Error getting user streak:', error);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useUnifiedAuth } from "@/hooks/use-unified-auth";
-import { useStreaks } from "@/hooks/use-streaks";
+import { useFitnessStreaks } from "@/hooks/use-fitness-streaks";
 import { NetworkData } from "@/lib/blockchain";
 import { useEffect, useState } from "react";
 import {
@@ -40,20 +40,20 @@ export default function TargetsAndStreaks({
   const {
     streakData,
     isLoading: streaksLoading,
-    updateStreak,
-  } = useStreaks(user?.fid ? user.fid.toString() : null);
+    syncFitnessData,
+  } = useFitnessStreaks();
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [showConfetti, setShowConfetti] = useState(false);
   const [selectedAchievement, setSelectedAchievement] =
     useState<Achievement | null>(null);
   const sendNotification = useNotification();
 
-  // Update streak when component mounts
+  // Sync fitness data when component mounts
   useEffect(() => {
     if (user?.fid) {
-      updateStreak();
+      syncFitnessData();
     }
-  }, [user?.fid, updateStreak]);
+  }, [user?.fid, syncFitnessData]);
 
   // Calculate user's achievements based on network data and streak data
   useEffect(() => {

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAppMode, WebAppOnly } from "@/contexts/app-mode-context";
 import { useWebAppInstall } from "@/components/WebAppInstallPrompt";
-import { useUnifiedAuth } from "@/hooks/use-unified-auth";
+import { useSimpleUser } from "@/hooks/use-simple-user";
 import AuthFlow from "@/components/AuthFlow";
 
 import type { Tab } from "@/src/types";
@@ -25,9 +25,9 @@ export default function WebAppNavigation({
   const { isInstallable, installApp } = useWebAppInstall();
   const {
     isFarcasterUser: unifiedIsFarcasterUser,
-    isWalletOnlyUser: unifiedIsWalletOnlyUser,
+    isWalletUser: unifiedIsWalletOnlyUser,
     isLoading: authLoading,
-  } = useUnifiedAuth();
+  } = useSimpleUser();
   const [showInstallButton, setShowInstallButton] = useState(false);
   const [showAuthFlow, setShowAuthFlow] = useState(false);
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useUnifiedAuth } from "@/hooks/use-unified-auth";
+import { useSimpleUser } from "@/hooks/use-simple-user";
 import { useFitnessStreaks } from "@/hooks/use-fitness-streaks";
 import { NetworkData } from "@/lib/blockchain";
 import { useEffect, useState } from "react";
@@ -36,7 +36,7 @@ export default function TargetsAndStreaks({
   networkData,
   isLoading,
 }: TargetsAndStreaksProps) {
-  const { user, isAuthenticated: isSignedIn } = useUnifiedAuth();
+  const { user, isAuthenticated: isSignedIn } = useSimpleUser();
   const {
     streakData,
     isLoading: streaksLoading,
@@ -51,9 +51,9 @@ export default function TargetsAndStreaks({
   // Sync fitness data when component mounts
   useEffect(() => {
     if (user?.fid) {
-      syncFitnessData();
+      syncFitnessData(user.fid);
     }
-  }, [user?.fid, syncFitnessData]);
+  }, [user?.fid, syncFitnessData]); // Include syncFitnessData dependency
 
   // Calculate user's achievements based on network data and streak data
   useEffect(() => {

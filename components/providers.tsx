@@ -168,27 +168,7 @@ export default function Providers({ children }: ProvidersProps) {
         settings={{
           clientId: env.NEXT_PUBLIC_NEYNAR_CLIENT_ID || "",
           defaultTheme: Theme.Dark,
-          eventsCallbacks: {
-            onAuthSuccess: (user) => {
-              console.log("Neynar auth success:", user);
-              // Store user data in localStorage for persistence
-              if (typeof window !== "undefined") {
-                localStorage.setItem("neynar_user", JSON.stringify(user));
-                localStorage.setItem(
-                  "neynar_auth_timestamp",
-                  Date.now().toString()
-                );
-              }
-            },
-            onSignout: () => {
-              console.log("Neynar signout");
-              // Clear stored user data
-              if (typeof window !== "undefined") {
-                localStorage.removeItem("neynar_user");
-                localStorage.removeItem("neynar_auth_timestamp");
-              }
-            },
-          },
+          // No callbacks needed - useSimpleUser handles persistence
         }}
       >
         <AppModeProvider>

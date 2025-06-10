@@ -1,33 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { UserStreak } from "@/lib/streaks-service-pg";
 import { UserFitnessData } from "@/lib/fitness-sync-service";
-
-// Helper function to get user FID from various sources
-function getUserFid(): string | null {
-  if (typeof window === "undefined") return null;
-  
-  try {
-    // Try localStorage first
-    const neynarUser = localStorage.getItem("neynar_user");
-    if (neynarUser) {
-      const user = JSON.parse(neynarUser);
-      if (user.fid) return user.fid.toString();
-    }
-    
-    // Try URL params
-    const urlParams = new URLSearchParams(window.location.search);
-    const fidFromUrl = urlParams.get("fid");
-    if (fidFromUrl) return fidFromUrl;
-    
-    // Default fallback for testing (you can remove this)
-    return "5254";
-  } catch (error) {
-    console.error("Error getting user FID:", error);
-    return null;
-  }
-}
+import { useSimpleUser } from "./use-simple-user";
 
 interface EnhancedStreakData extends UserStreak {
   fitnessData?: UserFitnessData | null;
@@ -45,34 +21,43 @@ interface UseFitnessStreaksReturn {
  * Hook to manage fitness streaks with automatic blockchain sync
  */
 export function useFitnessStreaks(): UseFitnessStreaksReturn {
+  const { getFid, isFarcasterUser } = useSimpleUser();
   const [streakData, setStreakData] = useState<EnhancedStreakData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Memoize the current FID to prevent unnecessary rerenders
+  const currentFid = useMemo(() => getFid(), [getFid]);
 
   const refreshStreaks = useCallback(async (sync: boolean = false, fid?: string) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Get FID from parameter or try to determine from context
-      const userFid = fid || getUserFid();
-      const syncParam = sync ? "sync=true" : "";
-      const fidParam = userFid ? `fid=${userFid}` : "";
-      const params = [syncParam, fidParam].filter(Boolean).join("&");
-      const url = `/api/streaks${params ? `?${params}` : ""}`;
+      // Get FID from parameter or current user
+      const userFid = fid || getFid();
       
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-      };
-      
-      if (userFid) {
-        headers["x-fid"] = userFid;
+      if (!userFid) {
+        console.error("[useFitnessStreaks] No FID available in refreshStreaks:", { 
+          fid, 
+          getFidResult: getFid(), 
+          isFarcasterUser,
+          currentFid 
+        });
+        throw new Error("No user FID available");
       }
+      
+      const syncParam = sync ? "sync=true" : "";
+      const fidParam = `fid=${userFid}`;
+      const params = [syncParam, fidParam].filter(Boolean).join("&");
+      const url = `/api/streaks?${params}`;
       
       const response = await fetch(url, {
         method: "GET",
-        credentials: "include",
-        headers,
+        headers: {
+          "Content-Type": "application/json",
+          "x-fid": userFid
+        },
       });
 
       if (!response.ok) {
@@ -97,27 +82,29 @@ export function useFitnessStreaks(): UseFitnessStreaksReturn {
     try {
       console.log("[useFitnessStreaks] Syncing fitness data...");
       
-      // Get FID from parameter or try to determine from context
-      const userFid = fid || getUserFid();
+      // Get FID from parameter or current user
+      const userFid = fid || getFid();
       
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-      };
-      
-      if (userFid) {
-        headers["x-fid"] = userFid;
-      }
-      
-      const body: any = { action: "user" };
-      if (userFid) {
-        body.fid = userFid;
+      if (!userFid) {
+        console.error("[useFitnessStreaks] No FID available in syncFitnessData:", { 
+          fid, 
+          getFidResult: getFid(), 
+          isFarcasterUser,
+          currentFid 
+        });
+        throw new Error("No user FID available");
       }
       
       const response = await fetch("/api/sync-fitness", {
         method: "POST",
-        headers,
-        credentials: "include",
-        body: JSON.stringify(body),
+        headers: {
+          "Content-Type": "application/json",
+          "x-fid": userFid
+        },
+        body: JSON.stringify({ 
+          action: "user", 
+          fid: userFid 
+        }),
       });
 
       if (!response.ok) {
@@ -144,7 +131,7 @@ export function useFitnessStreaks(): UseFitnessStreaksReturn {
         }
         
         // Refresh streaks after successful sync
-        await refreshStreaks(false);
+        await refreshStreaks(false, userFid);
       } else {
         console.warn("[useFitnessStreaks] Sync failed:", result.message);
         throw new Error(result.message || "Sync failed");
@@ -158,10 +145,13 @@ export function useFitnessStreaks(): UseFitnessStreaksReturn {
     }
   }, [refreshStreaks]);
 
-  // Load initial data
+  // Load initial data when we have a Farcaster user
   useEffect(() => {
-    refreshStreaks(true); // Sync on initial load
-  }, [refreshStreaks]);
+    if (isFarcasterUser && currentFid) {
+      console.log("[useFitnessStreaks] Initial load with FID:", currentFid);
+      refreshStreaks(true, currentFid); // Sync on initial load with explicit FID
+    }
+  }, [isFarcasterUser, currentFid]); // Use memoized FID to prevent loops
 
   return {
     streakData,
@@ -175,7 +165,7 @@ export function useFitnessStreaks(): UseFitnessStreaksReturn {
 /**
  * Hook for getting fitness data without streaks
  */
-export function useFitnessData(fid?: number) {
+export function useFitnessData(fid?: string) {
   const [fitnessData, setFitnessData] = useState<UserFitnessData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

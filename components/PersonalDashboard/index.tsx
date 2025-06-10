@@ -1,16 +1,15 @@
 "use client";
 
-import { useUnifiedAuth } from "@/hooks/use-unified-auth";
+import { useSimpleUser } from "@/hooks/use-simple-user";
 import { useFitnessStreaks } from "@/hooks/use-fitness-streaks";
 import { NetworkData } from "@/lib/blockchain";
 import { formatNumber } from "@/lib/utils";
 import { useNotification } from "@coinbase/onchainkit/minikit";
 import Image from "next/image";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import TargetsAndStreaks from "@/components/TargetsAndStreaks";
 import Confetti from "@/components/Confetti";
 import { toast } from "react-hot-toast";
-import { useAccount } from "wagmi";
 import { FaShare, FaArrowRight, FaFire, FaMedal } from "react-icons/fa";
 
 interface PersonalDashboardProps {
@@ -44,14 +43,15 @@ export default function PersonalDashboard({
   networkData,
   isLoading,
 }: PersonalDashboardProps) {
-  const { address, isConnected } = useAccount();
-
-  // Use unified auth for all authentication
-  const { user, isFarcasterUser, isLoading: authLoading } = useUnifiedAuth();
-
-  // Determine user type and available features
-  const isWalletOnlyUser = isConnected && !isFarcasterUser;
-  const hasAnyAuth = isFarcasterUser || isWalletOnlyUser;
+  // Use simple user management
+  const { 
+    user, 
+    isFarcasterUser, 
+    isWalletUser, 
+    isAuthenticated, 
+    isLoading: authLoading,
+    getFid 
+  } = useSimpleUser();
 
   // Only use fitness streaks for Farcaster users (requires persistent identity)
   const {
@@ -87,18 +87,19 @@ export default function PersonalDashboard({
 
   // Update streak when component mounts - only for Farcaster users
   useEffect(() => {
-    if (isFarcasterUser && user?.fid) {
+    const fid = getFid();
+    if (isFarcasterUser && fid) {
       // Reset the stats calculated flag when the user changes
       statsCalculatedRef.current = false;
 
       // Use a ref to track if we've already updated the streak
       const streakUpdateTimeout = setTimeout(() => {
-        syncFitnessData(user.fid.toString());
+        syncFitnessData(fid);
       }, 1000); // Add a small delay to avoid immediate API calls
 
       return () => clearTimeout(streakUpdateTimeout);
     }
-  }, [isFarcasterUser, user?.fid, syncFitnessData]);
+  }, [isFarcasterUser, getFid, syncFitnessData]); // Include syncFitnessData dependency
 
   // Helper function to calculate rankings
   const calculateRankings = useCallback((stats: UserStats) => {
@@ -131,7 +132,7 @@ export default function PersonalDashboard({
       // Use appropriate address for ranking lookup
       const userAddress = isFarcasterUser
         ? (user?.custody_address || "").toLowerCase()
-        : (address || "").toLowerCase();
+        : (user?.address || "").toLowerCase();
 
       // Sort by pushups
       const pushupsRanking = [...allUsers].sort(
@@ -163,12 +164,12 @@ export default function PersonalDashboard({
         overall: userTotalRank || allUsers.length,
       };
     }
-  }, [networkData, isFarcasterUser, user?.custody_address, address]);
+  }, [networkData, isFarcasterUser, user?.custody_address, user?.address]);
 
   // Define calculateStats function with useCallback and memoize expensive calculations
   const calculateStats = useCallback(async () => {
     // Only run if we have the necessary data and aren't already loading
-    if (isLoading || !networkData || !hasAnyAuth) return;
+    if (isLoading || !networkData || !isAuthenticated) return;
 
     // Create a new stats object
     const stats: UserStats = {
@@ -252,15 +253,15 @@ export default function PersonalDashboard({
             });
           }
         }
-      } else if (isWalletOnlyUser && address) {
+      } else if (isWalletUser && user?.address) {
         // Wallet-only user - use connected wallet address only
-        connectedAddresses.push(address.toLowerCase());
+        connectedAddresses.push(user.address.toLowerCase());
       }
     } catch (error) {
       console.error("Error fetching connected addresses:", error);
       // Fallback to current address if available
-      if (address) {
-        connectedAddresses = [address.toLowerCase()];
+      if (user?.address) {
+        connectedAddresses = [user.address.toLowerCase()];
       }
     }
 
@@ -330,11 +331,10 @@ export default function PersonalDashboard({
   }, [
     isLoading,
     networkData,
-    hasAnyAuth,
+    isAuthenticated,
     isFarcasterUser,
-    isWalletOnlyUser,
+    isWalletUser,
     user,
-    address,
     streakData,
     calculateRankings,
   ]);
@@ -356,7 +356,7 @@ export default function PersonalDashboard({
 
     // Clean up the timeout if dependencies change before it fires
     return () => clearTimeout(statsTimeout);
-  }, [isLoading, networkData, user, userStats, calculateStats]); // Add calculateStats to dependencies
+  }, [calculateStats, isLoading, networkData, user, userStats]); // Include all dependencies
 
   const generateShareableImage = async () => {
     if (!userStats || !user) return;
@@ -439,8 +439,8 @@ export default function PersonalDashboard({
   };
 
   // Derive pushups/squats from on-chain data if available, else from userStats
-  const fitnessPushups = streakData?.fitnessData?.totalPushups ?? userStats?.totalPushups ?? 0;
-  const fitnessSquats = streakData?.fitnessData?.totalSquats ?? userStats?.totalSquats ?? 0;
+  const fitnessPushups = useMemo(() => streakData?.fitnessData?.totalPushups ?? userStats?.totalPushups ?? 0, [streakData?.fitnessData?.totalPushups, userStats?.totalPushups]);
+  const fitnessSquats = useMemo(() => streakData?.fitnessData?.totalSquats ?? userStats?.totalSquats ?? 0, [streakData?.fitnessData?.totalSquats, userStats?.totalSquats]);
 
   // Show loading state if either auth, data, or streaks are loading
   if (authLoading || isLoading || streaksLoading) {
@@ -452,7 +452,7 @@ export default function PersonalDashboard({
   }
 
   // Handle different user authentication states
-  if (!hasAnyAuth) {
+  if (!isAuthenticated) {
     return (
       <div className="game-container my-8 text-center">
         <h2 className="retro-heading text-xl mb-6">My Dashboard</h2>
@@ -463,7 +463,7 @@ export default function PersonalDashboard({
   }
 
   // Show wallet-only user experience
-  if (isWalletOnlyUser) {
+  if (isWalletUser) {
     return (
       <div className="space-y-6">
         {/* Wallet Stats */}
@@ -472,7 +472,7 @@ export default function PersonalDashboard({
             <div className="flex items-center justify-between mb-4">
               <h2 className="retro-heading text-xl">My Wallet Stats</h2>
               <div className="text-xs text-gray-400">
-                {address?.slice(0, 6)}...{address?.slice(-4)}
+                {user?.address?.slice(0, 6)}...{user?.address?.slice(-4)}
               </div>
             </div>
 
@@ -736,8 +736,13 @@ export default function PersonalDashboard({
                 onClick={() => {
                   // Reset the stats calculated flag to force recalculation
                   statsCalculatedRef.current = false;
-                  syncFitnessData(user?.fid?.toString());
-                  toast.success("Syncing fitness data...");
+                  const fid = getFid();
+                  if (fid) {
+                    syncFitnessData(fid);
+                    toast.success("Syncing fitness data...");
+                  } else {
+                    toast.error("No user FID available");
+                  }
                 }}
               >
                 Update
@@ -748,8 +753,13 @@ export default function PersonalDashboard({
                   // Force a complete refresh
                   statsCalculatedRef.current = false;
                   setUserStats(null);
-                  syncFitnessData(user?.fid?.toString());
-                  toast.success("Force refreshing data...");
+                  const fid = getFid();
+                  if (fid) {
+                    syncFitnessData(fid);
+                    toast.success("Force refreshing data...");
+                  } else {
+                    toast.error("No user FID available for refresh");
+                  }
                 }}
               >
                 Force Refresh

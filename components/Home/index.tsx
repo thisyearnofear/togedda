@@ -1,6 +1,6 @@
 "use client";
 
-import { useUnifiedAuth } from "@/hooks/use-unified-auth";
+import { useSimpleUser } from "@/hooks/use-simple-user";
 import {
   NetworkData,
   fetchAllNetworksData,
@@ -32,11 +32,9 @@ export default function Home() {
     isAuthenticated,
     user,
     isFarcasterUser,
-    isWalletOnlyUser,
-    canCast,
-    canTrade,
-    error: authError,
-  } = useUnifiedAuth();
+    isWalletUser: isWalletOnlyUser,
+    isLoading: authLoading,
+  } = useSimpleUser();
   const { isConnected, address } = useAccount();
   const { disconnect } = useDisconnect();
 
@@ -47,6 +45,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [localAuthError, setLocalAuthError] = useState<string | null>(null);
+  const authError = null; // No longer needed with simplified auth
   const [hasInteracted, setHasInteracted] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [showAuthFlow, setShowAuthFlow] = useState(false);

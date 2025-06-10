@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useMiniKitAuth } from "@/hooks/use-minikit-auth";
-import { useUnifiedAuth } from "@/hooks/use-unified-auth";
+import { useSimpleUser } from "@/hooks/use-simple-user";
 import {
   useAppMode,
   MiniAppOnly,
@@ -33,9 +33,14 @@ export default function AuthFlow({
   const { connect, connectors, isPending: isConnecting } = useConnect();
   const { disconnect } = useDisconnect();
 
-  // Use unified auth for overall state
-  const { isAuthenticated: unifiedIsAuthenticated, user: unifiedUser } =
-    useUnifiedAuth();
+  // Use simple user for overall state
+  const { 
+    isAuthenticated: simpleIsAuthenticated, 
+    user: simpleUser,
+    isFarcasterUser: simpleIsFarcasterUser,
+    isWalletUser: simpleIsWalletUser,
+    disconnect: simpleDisconnect
+  } = useSimpleUser();
 
   // Use MiniKit auth for mini app specific functionality
   const {
@@ -53,16 +58,15 @@ export default function AuthFlow({
   const [neynarUser, setNeynarUser] = useState<any>(null);
   const [isRestoringSession, setIsRestoringSession] = useState(false);
 
-  // Use unified authentication state
-  const isAuthenticated =
-    unifiedIsAuthenticated || farcasterSignedIn || isConnected || !!neynarUser;
+  // Use simple authentication state (prioritize simple user over local state)
+  const isAuthenticated = simpleIsAuthenticated || farcasterSignedIn || isConnected || !!neynarUser;
   const currentUser = useMemo(
     () =>
-      unifiedUser ||
+      simpleUser ||
       farcasterUser ||
       neynarUser ||
       (isConnected ? { address } : null),
-    [unifiedUser, farcasterUser, neynarUser, isConnected, address]
+    [simpleUser, farcasterUser, neynarUser, isConnected, address]
   );
 
   // Handle authentication success
@@ -215,9 +219,8 @@ export default function AuthFlow({
   }, []);
 
   const handleDisconnect = useCallback(() => {
-    // Clear localStorage
-    localStorage.removeItem('neynar_user');
-    localStorage.removeItem('neynar_auth_timestamp');
+    // Use simple user disconnect (handles localStorage cleanup)
+    simpleDisconnect();
     
     // Disconnect wallet if connected
     if (isConnected) {
@@ -230,7 +233,7 @@ export default function AuthFlow({
     setShowMethods(false);
     
     console.log('[AuthFlow] Disconnect completed');
-  }, [disconnect, isConnected]);
+  }, [simpleDisconnect, disconnect, isConnected]);
 
   const handleRetry = useCallback(() => {
     setAuthError(null);

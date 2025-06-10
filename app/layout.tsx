@@ -123,10 +123,6 @@ export const metadata: Metadata = {
       },
     }),
 
-    // Additional meta tags for Farcaster
-    "farcaster:frame": "vNext",
-    "farcaster:image": `${env.NEXT_PUBLIC_URL}/og.png`,
-
     // PWA related
     "mobile-web-app-capable": "yes",
     "apple-mobile-web-app-capable": "yes",
@@ -197,17 +193,11 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <meta httpEquiv="X-XSS-Protection" content="1; mode=block" />
 
         {/* Farcaster specific meta tags */}
-        <meta name="farcaster:frame:version" content="next" />
-        <meta
-          name="farcaster:frame:image"
-          content={`${env.NEXT_PUBLIC_URL}/og.png`}
-        />
-        <meta name="farcaster:frame:button:1" content="Launch App" />
-        <meta name="farcaster:frame:button:1:action" content="launch_frame" />
-        <meta
-          name="farcaster:frame:button:1:target"
-          content={env.NEXT_PUBLIC_URL}
-        />
+        <meta name="fc:frame:version" content="next" />
+        <meta name="fc:frame:image" content={`${env.NEXT_PUBLIC_URL}/og.png`} />
+        <meta name="fc:frame:button:1" content="Stay Hard" />
+        <meta name="fc:frame:button:1:action" content="launch_frame" />
+        <meta name="fc:frame:button:1:target" content={env.NEXT_PUBLIC_URL} />
       </head>
 
       <body

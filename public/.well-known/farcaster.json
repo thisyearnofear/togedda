@@ -4,7 +4,7 @@
     "payload": "eyJkb21haW4iOiJpbXBlcmZlY3RtaW5pYXBwLnZlcmNlbC5hcHAifQ",
     "signature": "MHhlMTFjNzU2OTY3ZGZhNDUzZGY4NGRlYmZhOGUwMTI4ODc1Yjk2M2M5ZTYwZTFjMDNmMzlmNzUwYTdhODUzNmY3MzE5ZmJmNjZlYWRkMTAzNjlkZDg5YjhiZTU5ZTU2YTNmYzc4OTY5Y2RlYWJkYTFjMDkyMDU5OTk4MjhlNTY1NTFi"
   },
-  "miniApp": {
+  "frame": {
     "version": "1",
     "name": "Imperfect Form",
     "iconUrl": "https://imperfectminiapp.vercel.app/logo.png",
@@ -22,12 +22,6 @@
     "ogDescription": "Track fitness goals across blockchain networks with a retro-gamified style",
     "ogImageUrl": "https://imperfectminiapp.vercel.app/og.png",
     "screenshotUrls": ["https://imperfectminiapp.vercel.app/hero.png"],
-    "noindex": false,
-    "permissions": [
-      "notification:read",
-      "notification:write",
-      "user:read",
-      "cast:write"
-    ]
+    "noindex": false
   }
 }

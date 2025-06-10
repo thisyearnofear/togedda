@@ -66,8 +66,12 @@ export default function Home() {
       setNetworkData(data);
 
       const calculatedGoals = calculateCollectiveGoals(data);
+      console.log("Calculated goals:", calculatedGoals);
+      console.log("Network data:", data);
       if (calculatedGoals) {
         setGoals(calculatedGoals);
+      } else {
+        console.error("Failed to calculate goals from data:", data);
       }
       setDataLoaded(true);
     } catch (error) {
@@ -77,15 +81,19 @@ export default function Home() {
     }
   }, [dataLoaded, isLoading]);
 
-  // Only load data when user is authenticated or has interacted
+  // Load blockchain data immediately for collective goals (public data)
+  useEffect(() => {
+    if (!dataLoaded && !isLoading) {
+      loadBlockchainData();
+    }
+  }, [dataLoaded, isLoading, loadBlockchainData]);
+
+  // Show content when user is authenticated or has interacted
   useEffect(() => {
     if (isAuthenticated || hasInteracted) {
       setShowContent(true);
-      if (!dataLoaded) {
-        loadBlockchainData();
-      }
     }
-  }, [isAuthenticated, hasInteracted, dataLoaded, loadBlockchainData]);
+  }, [isAuthenticated, hasInteracted]);
 
   // Refresh functionality removed
 
@@ -135,14 +143,14 @@ export default function Home() {
     }
   }, [isConnected, showContent, isFarcasterUser]);
 
-  // Set appropriate default tab based on user type
+  // Set appropriate default tab based on user type (only on initial load)
   useEffect(() => {
-    if (isFarcasterUser && selectedTab === "goals") {
-      setSelectedTab("stats"); // Farcaster users get full stats dashboard
-    } else if (isWalletOnlyUser && selectedTab === "stats") {
+    // Only set default tab if user hasn't explicitly chosen one
+    if (isWalletOnlyUser && selectedTab === "stats") {
       setSelectedTab("goals"); // Wallet users start with collective goals
     }
-  }, [isFarcasterUser, isWalletOnlyUser, selectedTab]);
+    // Let users freely navigate between tabs - no forced redirections
+  }, [isWalletOnlyUser, selectedTab]);
 
   return (
     <div className="retro-arcade min-h-screen p-4">
@@ -382,7 +390,7 @@ export default function Home() {
         </header>
 
         {/* Main Content */}
-        {showContent && (
+        {(showContent || (!showOnboarding && !isAuthenticated)) && (
           <main className="space-y-4 md:space-y-6">
             {/* Navigation Tabs */}
             <WebAppNavigation
@@ -392,20 +400,79 @@ export default function Home() {
               isWalletOnlyUser={isWalletOnlyUser}
             />
 
+            {/* Mini App Navigation - Simple tabs for Farcaster */}
+            <MiniAppOnly>
+              <div className="mb-6">
+                <div className="bg-gray-900 rounded-lg p-2">
+                  <div className="grid grid-cols-5 gap-1">
+                    {[
+                      { id: "goals", label: "Goals", icon: "🎯" },
+                      { id: "leaderboard", label: "Leaderboard", icon: "🏆" },
+                      { id: "networks", label: "Networks", icon: "🌐" },
+                      { id: "predictions", label: "Predictions", icon: "🔮" },
+                      { id: "stats", label: "Dashboard", icon: "📊" },
+                    ].map((tab) => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setSelectedTab(tab.id as Tab)}
+                        className={`
+                          relative flex flex-col items-center justify-center p-3 rounded-lg transition-all
+                          ${
+                            selectedTab === tab.id
+                              ? "bg-white text-black shadow-lg transform scale-105"
+                              : "bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
+                          }
+                        `}
+                      >
+                        <span className="text-lg mb-1">{tab.icon}</span>
+                        <span className="text-xs font-medium truncate w-full text-center">
+                          {tab.label}
+                        </span>
+                        {selectedTab === tab.id && (
+                          <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-500 rounded-full"></div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </MiniAppOnly>
+
             {/* Tab Content */}
             <div className="min-h-[400px]">
-              {selectedTab === "stats" && (
+              {selectedTab === "stats" && showContent && (
                 <PersonalDashboard
                   networkData={networkData}
                   isLoading={isLoading}
                 />
               )}
 
-              {selectedTab === "goals" && goals && (
-                <CollectiveGoalsComponent goals={goals} isLoading={isLoading} />
+              {selectedTab === "goals" && (
+                <>
+                  {goals ? (
+                    <CollectiveGoalsComponent
+                      goals={goals}
+                      isLoading={isLoading}
+                    />
+                  ) : (
+                    <div className="game-container py-8 text-center">
+                      <div className="text-lg mb-4">🎯 Collective Goals</div>
+                      {isLoading ? (
+                        <div className="text-sm text-gray-400">
+                          Loading goals data...
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-400">
+                          Unable to load goals data. Please try refreshing the
+                          page.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
 
-              {selectedTab === "networks" && (
+              {selectedTab === "networks" && showContent && (
                 <div className="space-y-4">
                   <NetworkSelector
                     networks={Object.keys(networkData)}
@@ -419,7 +486,7 @@ export default function Home() {
                 </div>
               )}
 
-              {selectedTab === "leaderboard" && (
+              {selectedTab === "leaderboard" && showContent && (
                 <Leaderboard
                   data={networkData}
                   selectedNetwork={selectedNetwork}
@@ -427,7 +494,9 @@ export default function Home() {
                 />
               )}
 
-              {selectedTab === "predictions" && <PredictionMarket />}
+              {selectedTab === "predictions" && showContent && (
+                <PredictionMarket />
+              )}
             </div>
           </main>
         )}

@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useAppMode, WebAppOnly } from "@/contexts/app-mode-context";
 import { useWebAppInstall } from "@/components/WebAppInstallPrompt";
-import { useSignIn } from "@/hooks/use-sign-in";
+import { useUnifiedAuth } from "@/hooks/use-unified-auth";
+import AuthFlow from "@/components/AuthFlow";
 
 import type { Tab } from "@/src/types";
 
@@ -22,11 +23,17 @@ export default function WebAppNavigation({
 }: WebAppNavigationProps) {
   const { mode, isStandalone } = useAppMode();
   const { isInstallable, installApp } = useWebAppInstall();
-  const { signIn: farcasterSignIn, isLoading: farcasterLoading } = useSignIn({
-    autoSignIn: false,
-  });
+  const {
+    isFarcasterUser: unifiedIsFarcasterUser,
+    isWalletOnlyUser: unifiedIsWalletOnlyUser,
+    isLoading: authLoading,
+  } = useUnifiedAuth();
   const [showInstallButton, setShowInstallButton] = useState(false);
-  const [isFarcasterSigningIn, setIsFarcasterSigningIn] = useState(false);
+  const [showAuthFlow, setShowAuthFlow] = useState(false);
+
+  // Use unified auth state instead of props (props are for backward compatibility)
+  const actualIsFarcasterUser = unifiedIsFarcasterUser || isFarcasterUser;
+  const actualIsWalletOnlyUser = unifiedIsWalletOnlyUser || isWalletOnlyUser;
 
   useEffect(() => {
     // Show install button in web app mode if installable and not standalone
@@ -46,10 +53,10 @@ export default function WebAppNavigation({
     { id: "predictions", label: "Predictions", icon: "🔮" },
     {
       id: "stats",
-      label: isFarcasterUser ? "Dashboard" : "Stats",
+      label: actualIsFarcasterUser ? "Dashboard" : "Stats",
       icon: "📊",
-      disabled: isWalletOnlyUser,
-      tooltip: isWalletOnlyUser
+      disabled: actualIsWalletOnlyUser,
+      tooltip: actualIsWalletOnlyUser
         ? "Connect with Farcaster for full personal dashboard"
         : "",
     },
@@ -62,17 +69,8 @@ export default function WebAppNavigation({
     }
   };
 
-  const handleFarcasterSignIn = async () => {
-    try {
-      setIsFarcasterSigningIn(true);
-      await farcasterSignIn();
-      // The parent component will handle the success state
-    } catch (error) {
-      console.error("Farcaster sign-in failed:", error);
-      // Could add toast notification here
-    } finally {
-      setIsFarcasterSigningIn(false);
-    }
+  const handleFarcasterSignIn = () => {
+    setShowAuthFlow(true);
   };
 
   return (
@@ -166,7 +164,7 @@ export default function WebAppNavigation({
         </div>
 
         {/* Feature comparison for wallet users */}
-        {isWalletOnlyUser && (
+        {actualIsWalletOnlyUser && !actualIsFarcasterUser && (
           <div className="mt-4 p-3 bg-blue-900/20 border border-blue-600 rounded-lg">
             <div className="text-center">
               <h3 className="text-sm font-bold text-blue-300 mb-2">
@@ -193,10 +191,10 @@ export default function WebAppNavigation({
               <div className="mt-3 space-y-2">
                 <button
                   onClick={handleFarcasterSignIn}
-                  disabled={farcasterLoading || isFarcasterSigningIn}
+                  disabled={authLoading}
                   className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 disabled:opacity-50 text-white text-sm rounded-lg transition-colors flex items-center justify-center space-x-2"
                 >
-                  {farcasterLoading || isFarcasterSigningIn ? (
+                  {authLoading ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                       <span>Connecting...</span>
@@ -219,6 +217,28 @@ export default function WebAppNavigation({
                   </a>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Auth Flow Modal */}
+        {showAuthFlow && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-900 p-6 rounded-lg max-w-md w-full mx-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold">Connect Account</h3>
+                <button
+                  onClick={() => setShowAuthFlow(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+              <AuthFlow
+                onAuthSuccess={() => setShowAuthFlow(false)}
+                onAuthError={(error) => console.error("Auth error:", error)}
+                compact={true}
+              />
             </div>
           </div>
         )}

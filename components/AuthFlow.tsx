@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useSignIn } from "@/hooks/use-sign-in";
+import { useMiniKitAuth } from "@/hooks/use-minikit-auth";
+import { useUnifiedAuth } from "@/hooks/use-unified-auth";
 import {
   useAppMode,
   MiniAppOnly,
@@ -10,7 +11,7 @@ import {
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { Connector } from "wagmi";
 import Image from "next/image";
-import NeynarAuth from "./NeynarAuth";
+import NeynarSIWN from "./NeynarSIWN";
 
 interface AuthFlowProps {
   onAuthSuccess?: (user: any) => void;
@@ -32,13 +33,18 @@ export default function AuthFlow({
   const { connect, connectors, isPending: isConnecting } = useConnect();
   const { disconnect } = useDisconnect();
 
+  // Use unified auth for overall state
+  const { isAuthenticated: unifiedIsAuthenticated, user: unifiedUser } =
+    useUnifiedAuth();
+
+  // Use MiniKit auth for mini app specific functionality
   const {
     signIn: farcasterSignIn,
     isLoading: farcasterLoading,
     isSignedIn: farcasterSignedIn,
     user: farcasterUser,
     error: farcasterError,
-  } = useSignIn({ autoSignIn: isFarcasterEnvironment });
+  } = useMiniKitAuth({ autoSignIn: isFarcasterEnvironment });
 
   const [selectedMethod, setSelectedMethod] = useState<AuthMethod>("none");
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -46,11 +52,16 @@ export default function AuthFlow({
   const [showMethods, setShowMethods] = useState(false);
   const [neynarUser, setNeynarUser] = useState<any>(null);
 
-  // Determine authentication state
-  const isAuthenticated = farcasterSignedIn || isConnected || !!neynarUser;
+  // Use unified authentication state
+  const isAuthenticated =
+    unifiedIsAuthenticated || farcasterSignedIn || isConnected || !!neynarUser;
   const currentUser = useMemo(
-    () => farcasterUser || neynarUser || (isConnected ? { address } : null),
-    [farcasterUser, neynarUser, isConnected, address]
+    () =>
+      unifiedUser ||
+      farcasterUser ||
+      neynarUser ||
+      (isConnected ? { address } : null),
+    [unifiedUser, farcasterUser, neynarUser, isConnected, address]
   );
 
   // Handle authentication success
@@ -203,72 +214,144 @@ export default function AuthFlow({
 
           {/* Web App Authentication Options */}
           <WebAppOnly>
-            <div className="space-y-3 max-w-sm mx-auto">
-              {/* Neynar Farcaster authentication for web users */}
-              <NeynarAuth
-                onAuthSuccess={handleNeynarAuthSuccess}
-                onAuthError={handleNeynarAuthError}
-                className="w-full"
-              />
+            <div className="space-y-4 max-w-sm mx-auto">
+              {/* Authentication method explanation */}
+              <div className="text-center text-sm text-gray-400">
+                <p>Choose your preferred sign-in method:</p>
+              </div>
 
-              {/* Simple divider */}
+              {/* Farcaster Authentication */}
+              <div className="space-y-2">
+                <div className="text-xs text-gray-500 text-center">
+                  🟣 <strong>Recommended:</strong> Full social features &
+                  streaks
+                </div>
+                <NeynarSIWN
+                  onAuthSuccess={handleNeynarAuthSuccess}
+                  onAuthError={handleNeynarAuthError}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Divider */}
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-600"></div>
                 </div>
                 <div className="relative flex justify-center text-xs">
-                  <span className="bg-black px-2 text-gray-400">or</span>
+                  <span className="bg-black px-2 text-gray-400">
+                    or connect wallet
+                  </span>
                 </div>
               </div>
 
-              {/* Wallet connection options - simplified */}
+              {/* Wallet Connection Options */}
               <div className="space-y-2">
-                {connectors.slice(1, 3).map((connector) => (
-                  <WalletConnector
-                    key={connector.id}
-                    connector={connector}
-                    onClick={() => {
-                      setSelectedMethod("wallet");
-                      handleWalletConnect(connector);
-                    }}
-                    loading={
-                      isConnecting ||
-                      (isAuthenticating && selectedMethod === "wallet")
-                    }
-                    disabled={isLoading}
-                  />
-                ))}
+                <div className="text-xs text-gray-500 text-center">
+                  👛 <strong>For trading:</strong> Required for prediction
+                  markets
+                </div>
+                {connectors
+                  .filter((connector) => connector.id !== "farcasterFrame") // Exclude frame connector in web app
+                  .map((connector) => (
+                    <WalletConnector
+                      key={connector.id}
+                      connector={connector}
+                      onClick={() => {
+                        setSelectedMethod("wallet");
+                        handleWalletConnect(connector);
+                      }}
+                      loading={
+                        isConnecting ||
+                        (isAuthenticating && selectedMethod === "wallet")
+                      }
+                      disabled={isLoading}
+                    />
+                  ))}
+              </div>
+
+              {/* Help text */}
+              <div className="text-xs text-gray-500 text-center space-y-1">
+                <p>
+                  💡 <strong>Tip:</strong> You can connect both for the full
+                  experience
+                </p>
+                <p>Farcaster for social features + Wallet for trading</p>
               </div>
             </div>
           </WebAppOnly>
 
-          {/* Error Display */}
+          {/* Error Display with Better UX */}
           {(authError || farcasterError) && (
             <div className="bg-red-900/20 border border-red-600 rounded p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-red-300 text-sm font-medium">
-                    Connection Failed
-                  </p>
-                  <p className="text-red-400 text-xs mt-1">
-                    {authError || farcasterError}
-                  </p>
-                </div>
-                <div className="flex flex-col space-y-1">
-                  <button
-                    onClick={handleRetry}
-                    className="text-red-300 hover:text-red-200 text-xs px-2 py-1 border border-red-600 rounded"
-                  >
-                    Retry
-                  </button>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-red-300 text-sm font-medium">
+                      {selectedMethod === "farcaster"
+                        ? "Farcaster Sign-In Failed"
+                        : "Wallet Connection Failed"}
+                    </p>
+                    <p className="text-red-400 text-xs mt-1">
+                      {authError || farcasterError}
+                    </p>
+                  </div>
                   <button
                     onClick={() => {
                       setAuthError(null);
                       setSelectedMethod("none");
                     }}
-                    className="text-gray-400 hover:text-gray-300 text-xs px-2 py-1"
+                    className="text-gray-400 hover:text-gray-300 text-lg px-1"
+                    title="Dismiss"
                   >
-                    Dismiss
+                    ×
+                  </button>
+                </div>
+
+                {/* Helpful suggestions */}
+                <div className="text-xs text-red-300 space-y-1">
+                  {selectedMethod === "farcaster" && (
+                    <>
+                      <p>
+                        💡 <strong>Try:</strong>
+                      </p>
+                      <ul className="list-disc list-inside space-y-1 ml-2">
+                        <li>Allow popups for this site</li>
+                        <li>Check if you&apos;re signed into Farcaster</li>
+                        <li>Use wallet connection instead</li>
+                      </ul>
+                    </>
+                  )}
+                  {selectedMethod === "wallet" && (
+                    <>
+                      <p>
+                        💡 <strong>Try:</strong>
+                      </p>
+                      <ul className="list-disc list-inside space-y-1 ml-2">
+                        <li>Make sure your wallet extension is installed</li>
+                        <li>Refresh the page and try again</li>
+                        <li>Try a different wallet</li>
+                      </ul>
+                    </>
+                  )}
+                </div>
+
+                <div className="flex space-x-2">
+                  <button
+                    onClick={handleRetry}
+                    className="flex-1 text-red-300 hover:text-red-200 text-xs px-3 py-2 border border-red-600 rounded transition-colors"
+                  >
+                    Try Again
+                  </button>
+                  <button
+                    onClick={() => {
+                      setAuthError(null);
+                      setSelectedMethod("none");
+                      setShowMethods(true);
+                    }}
+                    className="flex-1 text-gray-400 hover:text-gray-300 text-xs px-3 py-2 border border-gray-600 rounded transition-colors"
+                  >
+                    Choose Different Method
                   </button>
                 </div>
               </div>

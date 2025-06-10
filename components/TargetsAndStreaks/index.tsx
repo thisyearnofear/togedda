@@ -1,6 +1,6 @@
 "use client";
 
-import { useSignIn } from "@/hooks/use-sign-in";
+import { useUnifiedAuth } from "@/hooks/use-unified-auth";
 import { useStreaks } from "@/hooks/use-streaks";
 import { NetworkData } from "@/lib/blockchain";
 import { useEffect, useState } from "react";
@@ -36,12 +36,12 @@ export default function TargetsAndStreaks({
   networkData,
   isLoading,
 }: TargetsAndStreaksProps) {
-  const { user, isSignedIn } = useSignIn({ autoSignIn: true });
+  const { user, isAuthenticated: isSignedIn } = useUnifiedAuth();
   const {
     streakData,
     isLoading: streaksLoading,
     updateStreak,
-  } = useStreaks(user?.fid || null);
+  } = useStreaks(user?.fid ? user.fid.toString() : null);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [showConfetti, setShowConfetti] = useState(false);
   const [selectedAchievement, setSelectedAchievement] =
@@ -73,6 +73,7 @@ export default function TargetsAndStreaks({
         // Find user's scores in this network
         const userScore = scores.find(
           (score) =>
+            user.custody_address &&
             score.user.toLowerCase() === user.custody_address.toLowerCase()
         );
 

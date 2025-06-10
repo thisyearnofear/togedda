@@ -1,6 +1,6 @@
 "use client";
 
-import { useSignIn } from "@/hooks/use-sign-in";
+import { useUnifiedAuth } from "@/hooks/use-unified-auth";
 import { useStreaks } from "@/hooks/use-streaks";
 import { NetworkData } from "@/lib/blockchain";
 import { formatNumber } from "@/lib/utils";
@@ -46,15 +46,10 @@ export default function PersonalDashboard({
 }: PersonalDashboardProps) {
   const { address, isConnected } = useAccount();
 
-  // Only try Farcaster sign-in in mini app mode
-  const {
-    user,
-    isSignedIn,
-    isLoading: authLoading,
-  } = useSignIn({ autoSignIn: false });
+  // Use unified auth for all authentication
+  const { user, isFarcasterUser, isLoading: authLoading } = useUnifiedAuth();
 
   // Determine user type and available features
-  const isFarcasterUser = isSignedIn && user?.fid;
   const isWalletOnlyUser = isConnected && !isFarcasterUser;
   const hasAnyAuth = isFarcasterUser || isWalletOnlyUser;
 
@@ -63,7 +58,7 @@ export default function PersonalDashboard({
     streakData,
     isLoading: streaksLoading,
     updateStreak,
-  } = useStreaks(isFarcasterUser ? user?.fid?.toString() : null);
+  } = useStreaks(isFarcasterUser && user?.fid ? user.fid.toString() : null);
   // Use useMemo to prevent unnecessary rerenders when setting userStats
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   // Use a ref to track if we've already calculated stats to prevent multiple calculations

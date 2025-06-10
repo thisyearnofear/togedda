@@ -1,6 +1,6 @@
 "use client";
 
-import { useSignIn } from "@/hooks/use-sign-in";
+import { useUnifiedAuth } from "@/hooks/use-unified-auth";
 import {
   NetworkData,
   fetchAllNetworksData,
@@ -28,7 +28,15 @@ import CollectiveGoalsComponent from "@/components/CollectiveGoals";
 import { useAccount, useDisconnect } from "wagmi";
 
 export default function Home() {
-  const { signIn, user, isSignedIn, error } = useSignIn({ autoSignIn: false });
+  const {
+    isAuthenticated,
+    user,
+    isFarcasterUser,
+    isWalletOnlyUser,
+    canCast,
+    canTrade,
+    error: authError,
+  } = useUnifiedAuth();
   const { isConnected, address } = useAccount();
   const { disconnect } = useDisconnect();
 
@@ -38,7 +46,7 @@ export default function Home() {
   const [showContent, setShowContent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
+  const [localAuthError, setLocalAuthError] = useState<string | null>(null);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [showAuthFlow, setShowAuthFlow] = useState(false);
@@ -46,13 +54,8 @@ export default function Home() {
   const [goals, setGoals] = useState<CollectiveGoals | null>(null);
   const [selectedNetwork, setSelectedNetwork] = useState<string>("all");
 
-  // Determine if user is authenticated (either Farcaster or wallet)
-  const isAuthenticated = isSignedIn || isConnected;
-  const isFarcasterUser = !!(isSignedIn && user?.fid);
-  const isWalletOnlyUser = isConnected && !isFarcasterUser;
-  const currentUser =
-    user ||
-    (isConnected ? { address, display_name: "Connected Wallet" } : null);
+  // Use the unified auth user as current user
+  const currentUser = user;
 
   // Lazy load blockchain data only when user interacts or is authenticated
   const loadBlockchainData = useCallback(async () => {
@@ -108,8 +111,8 @@ export default function Home() {
 
   // Handle authentication state changes
   useEffect(() => {
-    setAuthError(error);
-  }, [error]);
+    setLocalAuthError(authError);
+  }, [authError]);
 
   // Hide onboarding after user interaction or successful auth
   useEffect(() => {
@@ -222,11 +225,7 @@ export default function Home() {
                     <button
                       onClick={() => {
                         setHasInteracted(true);
-                        setIsAuthenticating(true);
-                        signIn().catch((error) => {
-                          setIsAuthenticating(false);
-                          setAuthError(error?.message || "Sign-in failed");
-                        });
+                        setShowAuthFlow(true);
                       }}
                       disabled={isAuthenticating}
                       className="retro-button px-6 py-3 w-full text-base md:text-lg mb-3"
@@ -240,14 +239,7 @@ export default function Home() {
                       <button
                         onClick={() => {
                           setHasInteracted(true);
-                          setIsAuthenticating(true);
-                          signIn().catch((error) => {
-                            setIsAuthenticating(false);
-                            setAuthError(
-                              error?.message ||
-                                "Farcaster sign-in failed. Try wallet connection below."
-                            );
-                          });
+                          setShowAuthFlow(true);
                         }}
                         disabled={isAuthenticating}
                         className="retro-button px-6 py-3 w-full text-base md:text-lg"
@@ -368,7 +360,7 @@ export default function Home() {
               <WebAppErrorBoundary>
                 <AuthFlow
                   onAuthSuccess={() => setShowAuthFlow(false)}
-                  onAuthError={(error) => setAuthError(error)}
+                  onAuthError={(error) => setLocalAuthError(error)}
                 />
               </WebAppErrorBoundary>
             )}

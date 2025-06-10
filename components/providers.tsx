@@ -7,6 +7,8 @@ import { supportedChains, rpcConfig } from "@/lib/config/chains";
 import { appConfig } from "@/lib/config/app";
 import { MiniKitProvider } from "@coinbase/onchainkit/minikit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { NeynarContextProvider, Theme } from "@neynar/react";
+import "@neynar/react/dist/style.css";
 import dynamic from "next/dynamic";
 import { ReactNode, useState, useEffect } from "react";
 import { createConfig, http, WagmiProvider } from "wagmi";
@@ -162,19 +164,47 @@ export default function Providers({ children }: ProvidersProps) {
   return (
     <ErudaProvider>
       {/* WalletErrorSuppressor removed as per user instruction */}
-      <AppModeProvider>
-        <QueryClientProvider client={queryClient}>
-          <WagmiProvider config={wagmiConfig}>
-            <MiniKitProvider
-              projectId={env.NEXT_PUBLIC_MINIKIT_PROJECT_ID}
-              notificationProxyUrl={appConfig.farcaster.notificationProxyUrl}
-              chain={appConfig.chains.default} // Use configured default chain
-            >
-              <MiniAppProvider>{children}</MiniAppProvider>
-            </MiniKitProvider>
-          </WagmiProvider>
-        </QueryClientProvider>
-      </AppModeProvider>
+      <NeynarContextProvider
+        settings={{
+          clientId: env.NEXT_PUBLIC_NEYNAR_CLIENT_ID || "",
+          defaultTheme: Theme.Dark,
+          eventsCallbacks: {
+            onAuthSuccess: (user) => {
+              console.log("Neynar auth success:", user);
+              // Store user data in localStorage for persistence
+              if (typeof window !== "undefined") {
+                localStorage.setItem("neynar_user", JSON.stringify(user));
+                localStorage.setItem(
+                  "neynar_auth_timestamp",
+                  Date.now().toString()
+                );
+              }
+            },
+            onSignout: () => {
+              console.log("Neynar signout");
+              // Clear stored user data
+              if (typeof window !== "undefined") {
+                localStorage.removeItem("neynar_user");
+                localStorage.removeItem("neynar_auth_timestamp");
+              }
+            },
+          },
+        }}
+      >
+        <AppModeProvider>
+          <QueryClientProvider client={queryClient}>
+            <WagmiProvider config={wagmiConfig}>
+              <MiniKitProvider
+                projectId={env.NEXT_PUBLIC_MINIKIT_PROJECT_ID}
+                notificationProxyUrl={appConfig.farcaster.notificationProxyUrl}
+                chain={appConfig.chains.default} // Use configured default chain
+              >
+                <MiniAppProvider>{children}</MiniAppProvider>
+              </MiniKitProvider>
+            </WagmiProvider>
+          </QueryClientProvider>
+        </AppModeProvider>
+      </NeynarContextProvider>
     </ErudaProvider>
   );
 }

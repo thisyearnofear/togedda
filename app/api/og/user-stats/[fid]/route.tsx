@@ -6,10 +6,10 @@ export const runtime = "edge";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { fid: string } }
+  { params }: { params: Promise<{ fid: string }> }
 ) {
   try {
-    const fid = params.fid;
+    const { fid } = await params;
 
     // Fetch user data from Neynar
     const user = await fetchUser(fid);

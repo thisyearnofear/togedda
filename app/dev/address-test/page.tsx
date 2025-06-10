@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import Link from "next/link";
 import Web3Profile from "@/components/Web3Profile";
 
 export const metadata: Metadata = {
@@ -39,9 +40,12 @@ export default function AddressTestPage() {
               <span className="px-2 py-1 bg-yellow-600 text-black text-xs rounded font-bold">
                 DEV ONLY
               </span>
-              <a href="/" className="text-blue-400 hover:text-blue-300 text-sm">
+              <Link
+                href="/"
+                className="text-blue-400 hover:text-blue-300 text-sm"
+              >
                 ← Back to App
-              </a>
+              </Link>
             </div>
           </div>
 

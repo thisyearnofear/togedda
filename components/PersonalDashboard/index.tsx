@@ -87,18 +87,18 @@ export default function PersonalDashboard({
 
   // Update streak when component mounts - only for Farcaster users
   useEffect(() => {
-    if (isFarcasterUser) {
+    if (isFarcasterUser && user?.fid) {
       // Reset the stats calculated flag when the user changes
       statsCalculatedRef.current = false;
 
       // Use a ref to track if we've already updated the streak
       const streakUpdateTimeout = setTimeout(() => {
-        syncFitnessData();
+        syncFitnessData(user.fid.toString());
       }, 1000); // Add a small delay to avoid immediate API calls
 
       return () => clearTimeout(streakUpdateTimeout);
     }
-  }, [isFarcasterUser, syncFitnessData]);
+  }, [isFarcasterUser, user?.fid, syncFitnessData]);
 
   // Helper function to calculate rankings
   const calculateRankings = useCallback((stats: UserStats) => {
@@ -736,7 +736,7 @@ export default function PersonalDashboard({
                 onClick={() => {
                   // Reset the stats calculated flag to force recalculation
                   statsCalculatedRef.current = false;
-                  syncFitnessData();
+                  syncFitnessData(user?.fid?.toString());
                   toast.success("Syncing fitness data...");
                 }}
               >
@@ -748,7 +748,7 @@ export default function PersonalDashboard({
                   // Force a complete refresh
                   statsCalculatedRef.current = false;
                   setUserStats(null);
-                  syncFitnessData();
+                  syncFitnessData(user?.fid?.toString());
                   toast.success("Force refreshing data...");
                 }}
               >

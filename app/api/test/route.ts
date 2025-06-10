@@ -4,27 +4,14 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-  const authToken = req.cookies.get("auth_token");
-  const fid = req.headers.get("x-user-fid");
+  // Simple test endpoint - no authentication required
+  const { searchParams } = new URL(req.url);
+  const fid = searchParams.get("fid") || req.headers.get("x-fid");
 
-  // For session validation, return status even if not authenticated
-  if (!authToken) {
-    return NextResponse.json({
-      message: "No active session",
-      timestamp: new Date().toISOString(),
-      authenticated: false,
-      fid: null
-    });
-  }
-
-  // you can fetch user FID like this
-  console.log({ fid });
-
-  // Return successful authentication status
   return NextResponse.json({
-    message: "Authentication successful!",
+    message: "API is working!",
     timestamp: new Date().toISOString(),
-    authenticated: true,
-    fid: fid || null
+    fid: fid || null,
+    status: "healthy"
   });
 }

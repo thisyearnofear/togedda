@@ -10,17 +10,17 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(req: NextRequest) {
   try {
-    // Get user FID from the request headers (set by middleware)
-    const fid = req.headers.get("x-user-fid");
-    
+    // Get user FID from request (body or headers)
+    const body = await req.json().catch(() => ({}));
+    const fid = body.fid || req.headers.get("x-fid");
+
     if (!fid) {
       return NextResponse.json(
-        { error: "Unauthorized - User not authenticated" },
-        { status: 401 }
+        { error: "FID required - provide in request body or x-fid header" },
+        { status: 400 }
       );
     }
 
-    const body = await req.json().catch(() => ({}));
     const { action = "user", targetFid } = body;
 
     if (action === "user") {
@@ -74,18 +74,18 @@ export async function POST(req: NextRequest) {
  */
 export async function GET(req: NextRequest) {
   try {
-    // Get user FID from the request headers (set by middleware)
-    const fid = req.headers.get("x-user-fid");
-    
+    // Get user FID from request (query params or headers)
+    const { searchParams } = new URL(req.url);
+    const fid = searchParams.get("fid") || req.headers.get("x-fid");
+
     if (!fid) {
       return NextResponse.json(
-        { error: "Unauthorized - User not authenticated" },
-        { status: 401 }
+        { error: "FID required - provide as ?fid=YOUR_FID or x-fid header" },
+        { status: 400 }
       );
     }
 
-    const { searchParams } = new URL(req.url);
-    const targetFid = searchParams.get("fid");
+    const targetFid = searchParams.get("targetFid"); // Use different param name to avoid confusion
     
     const userFid = targetFid ? parseInt(targetFid) : parseInt(fid);
     const fitnessData = await getUserFitnessData(userFid);

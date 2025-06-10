@@ -85,45 +85,45 @@ export default function AuthFlow({
     setAuthError(null);
   }, [selectedMethod]);
 
-  // Auto-restore session on mount
+  // Auto-restore user from localStorage on mount
   useEffect(() => {
-    const restoreSession = async () => {
+    const restoreUser = () => {
       // Skip if already authenticated or in mini app environment
       if (isAuthenticated || isFarcasterEnvironment || isRestoringSession) return;
 
       setIsRestoringSession(true);
       
       try {
-        // Check if we have an auth cookie by testing the API
-        const response = await fetch('/api/test', {
-          method: 'GET',
-          credentials: 'include'
-        });
-
-        if (response.ok) {
-          console.log('[AuthFlow] Found existing session');
-          // We have a valid session, try to get user data from localStorage
-          const storedUser = localStorage.getItem('neynar_user');
-          if (storedUser) {
+        const storedUser = localStorage.getItem('neynar_user');
+        const storedTimestamp = localStorage.getItem('neynar_auth_timestamp');
+        
+        if (storedUser && storedTimestamp) {
+          const timestamp = parseInt(storedTimestamp, 10);
+          const now = Date.now();
+          const hoursElapsed = (now - timestamp) / (1000 * 60 * 60);
+          
+          // Keep user data for 24 hours
+          if (hoursElapsed < 24) {
             const user = JSON.parse(storedUser);
             console.log('[AuthFlow] Restored user from localStorage:', user.username);
             setNeynarUser(user);
             setSelectedMethod("farcaster");
+          } else {
+            console.log('[AuthFlow] Stored user data expired, clearing');
+            localStorage.removeItem('neynar_user');
+            localStorage.removeItem('neynar_auth_timestamp');
           }
-        } else {
-          console.log('[AuthFlow] No valid session found');
-          // Clear any stale localStorage data
-          localStorage.removeItem('neynar_user');
-          localStorage.removeItem('neynar_auth_timestamp');
         }
       } catch (error) {
-        console.log('[AuthFlow] Session restore failed:', error);
+        console.log('[AuthFlow] User restore failed:', error);
+        localStorage.removeItem('neynar_user');
+        localStorage.removeItem('neynar_auth_timestamp');
       } finally {
         setIsRestoringSession(false);
       }
     };
 
-    restoreSession();
+    restoreUser();
   }, [isAuthenticated, isFarcasterEnvironment, isRestoringSession]);
 
   const handleFarcasterSignIn = useCallback(async () => {
@@ -176,80 +176,28 @@ export default function AuthFlow({
       try {
         setIsAuthenticating(true);
         console.log(
-          "[AuthFlow] Neynar auth success, setting up session:",
+          "[AuthFlow] Neynar auth success:",
           user ? { fid: user.fid, username: user.username } : null
         );
 
-        // Call our sign-in endpoint to create the auth_token cookie
-        // We need to create a signature for this user
-        const message = `Sign in to Imperfect Form\nTimestamp: ${Date.now()}`;
-
-        // For Neynar users, we'll use a simplified auth flow
-        // since we already have verified user data from Neynar
-        console.log("[AuthFlow] Calling /api/auth/neynar-signin");
-
-        try {
-          const response = await fetch("/api/auth/neynar-signin", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            credentials: "include", // Important for cookies
-            body: JSON.stringify({
-              user,
-              message,
-            }),
-          });
-
-          console.log(
-            "[AuthFlow] Neynar signin response status:",
-            response.status
-          );
-
-          // Log response headers for debugging
-          const headers: Record<string, string> = {};
-          response.headers.forEach((value, key) => {
-            headers[key] = value;
-          });
-          console.log("[AuthFlow] Response headers:", headers);
-
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            console.error("[AuthFlow] Neynar signin failed:", errorData);
-            throw new Error(errorData.error || "Failed to create session");
-          }
-
-          const responseData = await response.json();
-          console.log("[AuthFlow] Neynar signin successful:", responseData);
-
-          // Check if cookies were set
-          if (document.cookie.includes("auth_token")) {
-            console.log("[AuthFlow] auth_token cookie was set successfully");
-          } else {
-            console.warn(
-              "[AuthFlow] auth_token cookie was NOT found after signin"
-            );
-          }
-        } catch (fetchError) {
-          console.error("[AuthFlow] Fetch error during signin:", fetchError);
-          throw new Error(
-            `API request failed: ${
-              fetchError instanceof Error ? fetchError.message : "Unknown error"
-            }`
-          );
-        }
-
+        // Simply store user data locally - no server-side session needed
         setNeynarUser(user);
         setSelectedMethod("farcaster");
         setAuthError(null);
+
+        // Store in localStorage for persistence
+        if (typeof window !== "undefined") {
+          localStorage.setItem("neynar_user", JSON.stringify(user));
+          localStorage.setItem("neynar_auth_timestamp", Date.now().toString());
+        }
 
         if (onAuthSuccess) {
           onAuthSuccess(user);
         }
       } catch (error) {
-        console.error("Error setting up Neynar session:", error);
+        console.error("Error handling Neynar auth:", error);
         const errorMessage =
-          error instanceof Error ? error.message : "Session setup failed";
+          error instanceof Error ? error.message : "Auth failed";
         setAuthError(errorMessage);
         if (onAuthError) {
           onAuthError(errorMessage);
@@ -266,32 +214,22 @@ export default function AuthFlow({
     setIsAuthenticating(false);
   }, []);
 
-  const handleDisconnect = useCallback(async () => {
-    try {
-      // Clear auth cookie on server
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include'
-      }).catch(() => {}); // Ignore errors
-
-      // Clear localStorage
-      localStorage.removeItem('neynar_user');
-      localStorage.removeItem('neynar_auth_timestamp');
-      
-      // Disconnect wallet if connected
-      if (isConnected) {
-        disconnect();
-      }
-      
-      // Reset local state
-      setNeynarUser(null);
-      setSelectedMethod("none");
-      setShowMethods(false);
-      
-      console.log('[AuthFlow] Logout completed');
-    } catch (error) {
-      console.error('[AuthFlow] Logout error:', error);
+  const handleDisconnect = useCallback(() => {
+    // Clear localStorage
+    localStorage.removeItem('neynar_user');
+    localStorage.removeItem('neynar_auth_timestamp');
+    
+    // Disconnect wallet if connected
+    if (isConnected) {
+      disconnect();
     }
+    
+    // Reset local state
+    setNeynarUser(null);
+    setSelectedMethod("none");
+    setShowMethods(false);
+    
+    console.log('[AuthFlow] Disconnect completed');
   }, [disconnect, isConnected]);
 
   const handleRetry = useCallback(() => {

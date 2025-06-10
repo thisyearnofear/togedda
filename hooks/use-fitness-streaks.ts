@@ -4,6 +4,31 @@ import { useState, useEffect, useCallback } from "react";
 import { UserStreak } from "@/lib/streaks-service-pg";
 import { UserFitnessData } from "@/lib/fitness-sync-service";
 
+// Helper function to get user FID from various sources
+function getUserFid(): string | null {
+  if (typeof window === "undefined") return null;
+  
+  try {
+    // Try localStorage first
+    const neynarUser = localStorage.getItem("neynar_user");
+    if (neynarUser) {
+      const user = JSON.parse(neynarUser);
+      if (user.fid) return user.fid.toString();
+    }
+    
+    // Try URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    const fidFromUrl = urlParams.get("fid");
+    if (fidFromUrl) return fidFromUrl;
+    
+    // Default fallback for testing (you can remove this)
+    return "5254";
+  } catch (error) {
+    console.error("Error getting user FID:", error);
+    return null;
+  }
+}
+
 interface EnhancedStreakData extends UserStreak {
   fitnessData?: UserFitnessData | null;
 }
@@ -12,8 +37,8 @@ interface UseFitnessStreaksReturn {
   streakData: EnhancedStreakData | null;
   isLoading: boolean;
   error: string | null;
-  refreshStreaks: (sync?: boolean) => Promise<void>;
-  syncFitnessData: () => Promise<void>;
+  refreshStreaks: (sync?: boolean, fid?: string) => Promise<void>;
+  syncFitnessData: (fid?: string) => Promise<void>;
 }
 
 /**
@@ -24,15 +49,30 @@ export function useFitnessStreaks(): UseFitnessStreaksReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refreshStreaks = useCallback(async (sync: boolean = false) => {
+  const refreshStreaks = useCallback(async (sync: boolean = false, fid?: string) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const url = sync ? "/api/streaks?sync=true" : "/api/streaks";
+      // Get FID from parameter or try to determine from context
+      const userFid = fid || getUserFid();
+      const syncParam = sync ? "sync=true" : "";
+      const fidParam = userFid ? `fid=${userFid}` : "";
+      const params = [syncParam, fidParam].filter(Boolean).join("&");
+      const url = `/api/streaks${params ? `?${params}` : ""}`;
+      
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      
+      if (userFid) {
+        headers["x-fid"] = userFid;
+      }
+      
       const response = await fetch(url, {
         method: "GET",
         credentials: "include",
+        headers,
       });
 
       if (!response.ok) {
@@ -50,19 +90,34 @@ export function useFitnessStreaks(): UseFitnessStreaksReturn {
     }
   }, []);
 
-  const syncFitnessData = useCallback(async () => {
+  const syncFitnessData = useCallback(async (fid?: string) => {
     setIsLoading(true);
     setError(null);
 
     try {
       console.log("[useFitnessStreaks] Syncing fitness data...");
+      
+      // Get FID from parameter or try to determine from context
+      const userFid = fid || getUserFid();
+      
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      
+      if (userFid) {
+        headers["x-fid"] = userFid;
+      }
+      
+      const body: any = { action: "user" };
+      if (userFid) {
+        body.fid = userFid;
+      }
+      
       const response = await fetch("/api/sync-fitness", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         credentials: "include",
-        body: JSON.stringify({ action: "user" }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {

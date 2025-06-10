@@ -107,22 +107,11 @@ export const metadata: Metadata = {
     },
   },
 
-  // Farcaster Frame metadata
+  // PWA and other metadata
   other: {
-    "fc:frame": JSON.stringify({
-      version: "next",
-      imageUrl: `${env.NEXT_PUBLIC_URL}/hero.png`,
-      button: {
-        title: "Stay Hard",
-        action: {
-          type: "launch_frame",
-          name: "Imperfect Form",
-          url: env.NEXT_PUBLIC_URL,
-          splashImageUrl: `${env.NEXT_PUBLIC_URL}/splash.png`,
-          splashBackgroundColor: "#000000",
-        },
-      },
-    }),
+    // Farcaster Frame Embed
+    "fc:frame":
+      '{"version":"next","imageUrl":"https://imperfectminiapp.vercel.app/og.png","button":{"title":"Stay Hard","action":{"type":"launch_frame","name":"Imperfect Form","url":"https://imperfectminiapp.vercel.app","splashImageUrl":"https://imperfectminiapp.vercel.app/splash.png","splashBackgroundColor":"#000000"}}}',
 
     // PWA related
     "mobile-web-app-capable": "yes",
@@ -193,15 +182,11 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <meta httpEquiv="X-Content-Type-Options" content="nosniff" />
         <meta httpEquiv="X-XSS-Protection" content="1; mode=block" />
 
-        {/* Farcaster specific meta tags */}
-        <meta name="fc:frame:version" content="next" />
+        {/* Farcaster Frame Embed - Single meta tag with JSON */}
         <meta
-          name="fc:frame:image"
-          content={`${env.NEXT_PUBLIC_URL}/hero.png`}
+          name="fc:frame"
+          content='{"version":"next","imageUrl":"https://imperfectminiapp.vercel.app/og.png","button":{"title":"Stay Hard","action":{"type":"launch_frame","name":"Imperfect Form","url":"https://imperfectminiapp.vercel.app","splashImageUrl":"https://imperfectminiapp.vercel.app/splash.png","splashBackgroundColor":"#000000"}}}'
         />
-        <meta name="fc:frame:button:1" content="Stay Hard" />
-        <meta name="fc:frame:button:1:action" content="launch_frame" />
-        <meta name="fc:frame:button:1:target" content={env.NEXT_PUBLIC_URL} />
       </head>
 
       <body

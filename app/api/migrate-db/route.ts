@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { pool } from "@/lib/streaks-service-pg";
+import pool from "@/lib/db";
 
 // Mark this route as dynamic to avoid static optimization errors
 export const dynamic = 'force-dynamic';

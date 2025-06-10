@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { initializeDatabase, getUserStreak, pool } from "@/lib/streaks-service-pg";
+import { initializeDatabase, getUserStreak } from "@/lib/streaks-service-pg";
 import { syncUserFitnessData, getUserFitnessData } from "@/lib/fitness-sync-service";
 
 // Mark this route as dynamic to avoid static optimization errors

@@ -180,6 +180,10 @@ export default function Leaderboard({
     }
   });
 
+  // Determine number of entries to show based on context
+  const isMiniApp = !!context?.user?.fid;
+  const entriesToShow = isMiniApp ? 5 : 10;
+
   // Show loading state
   if (isLoading) {
     return (
@@ -271,7 +275,7 @@ export default function Leaderboard({
       <div className="overflow-x-auto -mx-4 sm:mx-0">
         {sortedEntries.length > 0 ? (
           <div className="space-y-4 px-4 sm:px-0">
-            {sortedEntries.slice(0, 10).map((entry, index) => {
+            {sortedEntries.slice(0, entriesToShow).map((entry, index) => {
               // Determine medal and styling
               let medalClass = "";
               let medalEmoji = "";
@@ -301,19 +305,19 @@ export default function Leaderboard({
               return (
                 <div
                   key={`${entry.user}-${index}`}
-                  className={`flex flex-wrap items-center p-3 rounded-lg border ${
+                  className={`flex flex-col sm:flex-row sm:flex-wrap items-center p-3 rounded-lg border ${
                     isFollowed ? "border-blue-500" : "border-gray-700"
                   } ${rowClass} transition-colors leaderboard-item ${
                     isFollowed ? "bg-blue-900 bg-opacity-20" : ""
                   }`}
                 >
                   <div
-                    className={`w-8 h-8 flex items-center justify-center rounded-full border-2 ${medalClass} mr-3`}
+                    className={`w-8 h-8 flex items-center justify-center rounded-full border-2 ${medalClass} mb-2 sm:mb-0 sm:mr-3`}
                   >
                     {medalEmoji || index + 1}
                   </div>
 
-                  <div className="flex-1 flex items-center min-w-0 overflow-hidden">
+                  <div className="flex-1 flex items-center min-w-0 overflow-hidden mb-2 sm:mb-0">
                     <Web3Profile
                       address={entry.user}
                       useUnifiedResolution={true}
@@ -326,8 +330,8 @@ export default function Leaderboard({
                     )}
                   </div>
 
-                  <div className="flex items-center space-x-2 sm:space-x-4 mt-2 sm:mt-0 w-full sm:w-auto justify-end">
-                    <div className="flex flex-col items-end">
+                  <div className="flex flex-col items-center sm:items-end space-y-2 sm:space-y-0 sm:space-x-4 mt-2 sm:mt-0 w-full sm:w-auto justify-end">
+                    <div className="flex flex-col items-center sm:items-end">
                       <div className="flex items-center">
                         <span className="text-xs mr-1">💪</span>
                         <span
@@ -340,7 +344,7 @@ export default function Leaderboard({
                       </div>
                     </div>
 
-                    <div className="flex flex-col items-end">
+                    <div className="flex flex-col items-center sm:items-end">
                       <div className="flex items-center">
                         <span className="text-xs mr-1">🏃</span>
                         <span
@@ -353,7 +357,7 @@ export default function Leaderboard({
                       </div>
                     </div>
 
-                    <div className="flex flex-col items-end ml-2 pl-2 border-l border-gray-700">
+                    <div className="flex flex-col items-center sm:items-end mt-2 sm:mt-0 sm:ml-2 sm:pl-2 sm:border-l sm:border-gray-700">
                       <div className="flex items-center">
                         <span className="text-xs mr-1">🏆</span>
                         <span className="font-bold text-sm sm:text-base text-yellow-400">

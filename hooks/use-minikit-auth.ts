@@ -73,18 +73,63 @@ export const useMiniKitAuth = ({ autoSignIn = false }: { autoSignIn?: boolean })
                   setUser(userData.users[0]);
                   setIsSignedIn(true);
                   console.log("Successfully fetched user data from context");
+                } else {
+                  console.log("No user data found, using context data as fallback");
+                  setUser({
+                    fid: context.user.fid.toString(),
+                    username: context.user.username || "Unknown User",
+                    display_name: context.user.displayName || "Connected User",
+                    pfp_url: context.user.pfpUrl || "",
+                    verifications: [],
+                    custody_address: ""
+                  });
+                  setIsSignedIn(true);
                 }
               }
             } catch (userError) {
               console.error("Error fetching user data from context:", userError);
+              console.log("Using context data as fallback due to fetch error");
+              setUser({
+                fid: context.user.fid.toString(),
+                username: context.user.username || "Unknown User",
+                display_name: context.user.displayName || "Connected User",
+                pfp_url: context.user.pfpUrl || "",
+                verifications: [],
+                custody_address: ""
+              });
+              setIsSignedIn(true);
             }
           }
         }
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') {
           console.warn("MiniKit session check timed out");
+          if (context?.user?.fid) {
+            console.log("Session check timed out, using context data as fallback");
+            setUser({
+              fid: context.user.fid.toString(),
+              username: context.user.username || "Unknown User",
+              display_name: context.user.displayName || "Connected User",
+              pfp_url: context.user.pfpUrl || "",
+              verifications: [],
+              custody_address: ""
+            });
+            setIsSignedIn(true);
+          }
         } else {
           console.error("Error checking MiniKit session:", err);
+          if (context?.user?.fid) {
+            console.log("Session check error, using context data as fallback");
+            setUser({
+              fid: context.user.fid.toString(),
+              username: context.user.username || "Unknown User",
+              display_name: context.user.displayName || "Connected User",
+              pfp_url: context.user.pfpUrl || "",
+              verifications: [],
+              custody_address: ""
+            });
+            setIsSignedIn(true);
+          }
         }
       }
     };
@@ -94,7 +139,7 @@ export const useMiniKitAuth = ({ autoSignIn = false }: { autoSignIn?: boolean })
       const timeoutId = setTimeout(checkSession, 1000);
       return () => clearTimeout(timeoutId);
     }
-  }, [isInitialized, context?.user?.fid]); // Removed isSignedIn from deps to prevent re-checking
+  }, [isInitialized, context?.user?.fid, context?.user, isSignedIn]); // Include full user context in deps
 
   const handleSignIn = useCallback(async () => {
     try {

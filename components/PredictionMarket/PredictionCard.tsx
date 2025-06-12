@@ -5,9 +5,18 @@ import {
   useAccount,
   useWriteContract,
   useWaitForTransactionReceipt,
+  useConnect,
 } from "wagmi";
 import { toast } from "react-hot-toast";
-import { FaArrowUp, FaArrowDown, FaShare, FaFireAlt } from "react-icons/fa";
+import {
+  FaArrowUp,
+  FaArrowDown,
+  FaShare,
+  FaFireAlt,
+  FaWallet,
+} from "react-icons/fa";
+import { useSimpleUser } from "@/hooks/use-simple-user";
+import { useAppMode } from "@/contexts/app-mode-context";
 import {
   Prediction,
   PredictionStatus,
@@ -36,11 +45,15 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
   simplified = false,
 }) => {
   const { address } = useAccount();
+  const { connect, connectors } = useConnect();
   const { context } = useMiniKit();
+  const { user, isFarcasterUser } = useSimpleUser();
+  const { isFarcasterEnvironment } = useAppMode();
   const [isVoting, setIsVoting] = useState(false);
   const [amount, setAmount] = useState("0.1");
   const [showConfetti, setShowConfetti] = useState(false);
   const [showSharePrompt, setShowSharePrompt] = useState(false);
+  const [showWalletOptions, setShowWalletOptions] = useState(false);
   const [userVote, setUserVote] = useState<{
     isYes: boolean;
     amount: number;
@@ -112,6 +125,24 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
     }
   }, [isConfirmed, txHash, address, prediction.id]);
 
+  // Handle wallet connection
+  const handleConnectWallet = async (connectorId?: string) => {
+    try {
+      const connector = connectorId
+        ? connectors.find((c) => c.id === connectorId)
+        : connectors.find((c) => c.id !== "farcasterFrame"); // Exclude frame connector in web app
+
+      if (connector) {
+        await connect({ connector });
+        setShowWalletOptions(false);
+        toast.success("Wallet connected! You can now stake on predictions.");
+      }
+    } catch (error) {
+      toast.error("Failed to connect wallet");
+      console.error("Wallet connection error:", error);
+    }
+  };
+
   const handleVote = async (isYes: boolean) => {
     if (!isActive) {
       toast.error("This prediction is not active");
@@ -119,7 +150,13 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
     }
 
     if (!address) {
-      toast.error("Please connect your wallet");
+      // Better UX for Farcaster users
+      if (isFarcasterUser && !isFarcasterEnvironment) {
+        toast.error("Connect a wallet to stake on predictions");
+        setShowWalletOptions(true);
+      } else {
+        toast.error("Please connect your wallet");
+      }
       return;
     }
 
@@ -463,6 +500,67 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
 
       {isActive ? (
         <div>
+          {/* Wallet Connection Prompt for Farcaster Users */}
+          {!address && isFarcasterUser && !isFarcasterEnvironment && (
+            <div className="bg-blue-900 bg-opacity-20 border border-blue-800 rounded-lg p-3 mb-4">
+              <div className="flex items-start">
+                <FaWallet className="text-blue-400 mr-2 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm text-blue-300 font-medium">
+                    Connect Wallet to Stake
+                  </p>
+                  <p className="text-xs text-blue-200 mt-1">
+                    You&apos;re signed in with Farcaster for social features. To
+                    stake {amount} CELO, connect a wallet.
+                  </p>
+
+                  {!showWalletOptions ? (
+                    <button
+                      onClick={() => setShowWalletOptions(true)}
+                      className="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-medium"
+                    >
+                      Connect Wallet
+                    </button>
+                  ) : (
+                    <div className="mt-2 space-y-1">
+                      <p className="text-xs text-blue-300 mb-2">
+                        Choose a wallet:
+                      </p>
+                      {connectors
+                        .filter(
+                          (connector) => connector.id !== "farcasterFrame"
+                        )
+                        .slice(0, 3) // Show top 3 options
+                        .map((connector) => (
+                          <button
+                            key={connector.id}
+                            onClick={() => handleConnectWallet(connector.id)}
+                            className="w-full bg-blue-800 hover:bg-blue-700 border border-blue-600 rounded p-2 text-left transition-colors text-xs"
+                          >
+                            <div className="flex items-center">
+                              <FaWallet className="text-xs mr-2" />
+                              <span>{connector.name}</span>
+                            </div>
+                          </button>
+                        ))}
+                      <button
+                        onClick={() => setShowWalletOptions(false)}
+                        className="text-xs text-blue-400 hover:text-blue-300 mt-1"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+
+                  <p className="text-xs text-blue-300 mt-2">
+                    💡 <strong>Tip:</strong> Use the Farcaster app for seamless
+                    payments
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex mb-4">
             <input
               type="number"
@@ -475,15 +573,15 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
             />
             <button
               onClick={() => handleVote(true)}
-              disabled={isVoting}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 flex items-center"
+              disabled={isVoting || (!address && !isFarcasterEnvironment)}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FaArrowUp className="mr-1" /> YES
             </button>
             <button
               onClick={() => handleVote(false)}
-              disabled={isVoting}
-              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-r flex items-center"
+              disabled={isVoting || (!address && !isFarcasterEnvironment)}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-r flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FaArrowDown className="mr-1" /> NO
             </button>

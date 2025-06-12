@@ -11,7 +11,12 @@
     "type-check": "tsc --noEmit",
     "frames": "frames",
     "clean": "rm -rf .next",
-    "test": "echo \"No tests specified\" && exit 0"
+    "test": "echo \"No tests specified\" && exit 0",
+    "build:node": "tsc --project tsconfig.node.json",
+    "bot:dev": "ts-node --project tsconfig.node.json lib/ai-bot-service.ts",
+    "bot:build": "npm run build:node && node dist/lib/ai-bot-service.js",
+    "bot:test": "ts-node --project tsconfig.node.json scripts/test-bot.ts",
+    "keys:generate": "ts-node --project tsconfig.node.json scripts/generate-keys.ts"
   },
   "dependencies": {
     "@coinbase/onchainkit": "^0.38.13",
@@ -27,6 +32,10 @@
     "@tanstack/react-query": "^5.64.2",
     "@types/pg": "^8.15.2",
     "@vercel/kv": "^1.0.1",
+    "@xmtp/node-sdk": "^2.1.0",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
+    "dotenv": "^16.5.0",
     "eruda": "^3.2.3",
     "ethers": "^6.11.1",
     "jiti": "^2.0.0",
@@ -39,19 +48,22 @@
     "react-dom": "^19.1.0",
     "react-hot-toast": "^2.5.2",
     "react-icons": "^5.5.0",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
     "swr": "^2.3.3",
-    "viem": "^2.27.2",
+    "viem": "^2.31.0",
     "wagmi": "^2.14.12",
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
+    "@types/node": "^22.15.31",
     "@types/react": "^19.1.7",
     "@types/react-dom": "^19.1.6",
     "eslint": "^8.57.0",
     "eslint-config-next": "^15.0.0",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.14",
+    "ts-node": "^10.9.2",
     "typescript": "^5.6.0"
   },
   "engines": {

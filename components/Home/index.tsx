@@ -218,7 +218,7 @@ export default function Home() {
                     onClick={() => setShowAuthFlow(true)}
                     className="px-2 py-1 md:px-3 md:py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded-lg transition-colors flex items-center space-x-1"
                   >
-                    <span>🟣</span>
+                    <span>🔗</span>
                     <span className="hidden md:inline">Sign In</span>
                   </button>
                 </div>
@@ -291,17 +291,11 @@ export default function Home() {
                         disabled={isAuthenticating}
                         className="retro-button px-6 py-3 w-full text-base"
                       >
-                        🟣 Farcaster Sign In
+                        🔗 Sign In
                       </button>
-                      <button
-                        onClick={() => {
-                          setHasInteracted(true);
-                          setShowAuthFlow(true);
-                        }}
-                        className="retro-button px-6 py-3 w-full text-base opacity-75"
-                      >
-                        Connect Wallet
-                      </button>
+                      <div className="text-xs text-gray-400 text-center">
+                        Choose Farcaster or Wallet in next step
+                      </div>
                       <button
                         onClick={() => {
                           setHasInteracted(true);

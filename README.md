@@ -9,10 +9,12 @@ A retro-gamified fitness companion application built as a Farcaster Mini App. Th
 
 ## 🎮 Features
 
-- **Collective Goals**: Community challenges like Mount Olympus and Kenya Run using data from [imperfectform.fun](https://imperfectform.fun)
+- **Collective Goals**: Community challenges like Mount Olympus and Kenya Run
 - **Real-time Leaderboards**: Compete with other fitness enthusiasts across multiple chains
-- **Prediction Markets**: Bet on fitness outcomes and community achievements
-- **Group Competitions**: Create and join smaller fitness groups for targeted challenges
+- **AI-Powered Prediction Markets**: Auto-resolving predictions with external data integration
+- **Real-time XMTP Chat**: Live messaging with conversation history and message caching
+- **Advanced Data Caching**: React Query integration for optimized performance
+- **AI-Powered Predictions**: Natural language prediction creation via secure messaging
 - **Multi-Chain Analytics**: View aggregated fitness data across Base, Celo, Polygon, and Monad
 - **Retro Gaming Aesthetic**: Pixel-perfect arcade-style UI with Press Start 2P font
 - **Farcaster Integration**: Native sign-in, sharing, and notifications within Farcaster
@@ -25,15 +27,19 @@ A retro-gamified fitness companion application built as a Farcaster Mini App. Th
 - **Framework**: Next.js 15 with App Router
 - **Language**: TypeScript with strict type checking
 - **Blockchain**: Wagmi v2 + Viem for multi-chain support
+- **AI & Messaging**: XMTP V3 + OpenAI GPT-4 for intelligent predictions
+- **External APIs**: CoinGecko, OpenWeatherMap, TimeZoneDB, Web3.bio
 - **Farcaster**: Frame SDK v2 + MiniKit for native integration
 - **State Management**: TanStack Query for server state
 - **Styling**: Tailwind CSS with custom retro theme
 - **Authentication**: Farcaster Sign-In with Neynar
-- **Database**: PostgreSQL + Redis for caching
+- **Database**: Neon PostgreSQL + Redis for caching
 - **Deployment**: Vercel with edge functions
 
 ### Key Improvements
 
+- **Real-time Features**: Live XMTP messaging with conversation history and caching
+- **Advanced Caching**: React Query integration for optimized data fetching and background updates
 - **DRY Architecture**: Modular configuration system
 - **Error Handling**: Comprehensive error boundaries and logging
 - **Type Safety**: Full TypeScript coverage with strict config
@@ -97,20 +103,6 @@ ENABLE_ENSDATA_FALLBACK="true"
 ```bash
 npm run dev
 ```
-
-### 5. Set Up Tunneling (Required for Farcaster)
-
-Install and run ngrok to expose your local server:
-
-```bash
-# Install ngrok
-npm install -g ngrok
-
-# Expose port 3000
-ngrok http 3000
-```
-
-Update your `NEXT_PUBLIC_URL` in `.env.local` with the ngrok URL.
 
 ## 🔧 Configuration
 
@@ -211,16 +203,6 @@ The app uses a consistent retro gaming aesthetic:
 - **Components**: Pixel-perfect borders and retro button styles
 - **Animations**: Smooth transitions with retro feel
 
-### Custom CSS Classes
-
-```css
-.retro-arcade        /* Main container styling */
-/* Main container styling */
-.game-container      /* Arcade game panel styling */
-.retro-button        /* Pixel-perfect button component */
-.pulse-animation; /* Retro pulsing animation */
-```
-
 ### Network Color Scheme
 
 Each blockchain has a distinctive color:
@@ -230,28 +212,25 @@ Each blockchain has a distinctive color:
 - **Polygon**: Purple (#8247E5)
 - **Monad**: Orange (#FF6B35)
 
-## 🔌 API Routes
+## 🔌 API Overview
 
-### Authentication
+### Core APIs
 
-- `POST /api/auth/sign-in` - Farcaster authentication
-- `GET /api/test` - Session validation
+- **Authentication**: Farcaster sign-in and session management
+- **Fitness Data**: Streaks, collective goals, and cross-chain sync
+- **Prediction Markets**: Auto-resolution and XMTP bot integration
+- **External Data**: Real-time crypto prices, weather, and timezone APIs
+- **Address Resolution**: ENS, Farcaster usernames, and Web3.bio integration
 
-### Farcaster Data
+### Key Features
 
-- `GET /api/farcaster/user` - User profile data
-- `GET /api/farcaster/verified-addresses` - User's verified addresses
-- `POST /api/farcaster/batch-addresses-to-fids` - Address to FID mapping
+- ✅ **On-Demand Resolution**: User-triggered prediction resolution (optimal performance)
+- ✅ **XMTP AI Bot**: Natural language prediction creation via secure messaging
+- ✅ **External API Integration**: CoinGecko, OpenWeatherMap, TimeZoneDB, Web3.bio
+- ✅ **Smart Contract Automation**: Handles payouts and platform fees
+- ✅ **Eligibility Validation**: Smart checks for resolution readiness
 
-### Fitness Data
-
-- `GET /api/streaks` - User streak information
-- `POST /api/streaks` - Update streak data
-
-### Notifications
-
-- `POST /api/notify` - Send notifications
-- `POST /api/webhook` - Handle Farcaster webhooks
+📚 **For detailed API documentation and testing guides, see [docs/TECHNICAL_GUIDE.md](docs/TECHNICAL_GUIDE.md)**
 
 ## 🧪 Development
 
@@ -265,25 +244,8 @@ npm run lint         # Run ESLint
 npm run lint:fix     # Fix ESLint issues
 npm run type-check   # TypeScript type checking
 npm run clean        # Clean build artifacts
+DEBUG=* npm run bot:dev # Run bot in development mode
 ```
-
-### Code Quality
-
-The project includes comprehensive tooling:
-
-- **TypeScript**: Strict type checking
-- **ESLint**: Code linting with Next.js config
-- **Prettier**: Code formatting (via ESLint)
-- **Husky**: Git hooks for quality gates
-
-### Error Handling
-
-Comprehensive error handling system:
-
-- **Global Error Boundary**: Catches React errors
-- **API Error Handling**: Standardized error responses
-- **Logging System**: Development and production logging
-- **User-Friendly Messages**: Clear error communication
 
 ## 🛠️ Development Tools
 
@@ -325,12 +287,6 @@ curl "/api/ensdata/resolve?address=0x..."
 
 ## 🚀 Deployment
 
-### Vercel Deployment
-
-1. Connect your repository to Vercel
-2. Configure environment variables in Vercel dashboard
-3. Deploy automatically on push to main branch
-
 ### Environment Variables in Production
 
 Set these in your Vercel dashboard:
@@ -347,24 +303,7 @@ NEXT_PUBLIC_APP_ENV=production
 2. Update `NEXT_PUBLIC_URL` to your custom domain
 3. Regenerate Farcaster manifest with new domain
 
-### Production Optimization
-
-#### Address Resolution Performance
-
-- **Enable API Keys**: Configure `WEB3_BIO_API_KEY` for higher rate limits
-- **Monitor Cache**: Address resolution cache reduces API calls by 80%+
-- **Batch Resolution**: Large address lists resolve 5x faster with batching
-- **Fallback Services**: Multiple services ensure 99%+ resolution success rate
-
-#### Performance Monitoring
-
-```env
-# Production settings for optimal performance
-ENABLE_WEB3BIO_FALLBACK="true"
-ENABLE_ENSDATA_FALLBACK="true"
-NEXT_PUBLIC_ENABLE_ANALYTICS="true"
 ```
-
 ## 🔐 Security
 
 ### Best Practices Implemented
@@ -399,26 +338,6 @@ The app includes security headers:
 - **Wallet Integration**: Seamless Warpcast wallet support
 - **Share Actions**: Native sharing within Farcaster
 
-## 🤝 Contributing
-
-### Development Workflow
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Make your changes following the code style
-4. Run tests: `npm run type-check && npm run lint`
-5. Commit: `git commit -m 'Add amazing feature'`
-6. Push: `git push origin feature/amazing-feature`
-7. Open a Pull Request
-
-### Code Style
-
-- Use TypeScript for all new code
-- Follow the existing component patterns
-- Add proper error handling
-- Include JSDoc comments for complex functions
-- Use semantic commit messages
-
 ### Testing Address Resolution
 
 When adding new address resolution services:
@@ -435,15 +354,6 @@ When adding new address resolution services:
 - **Batch When Possible**: Use batch endpoints for multiple addresses
 - **Fail Gracefully**: Always provide fallback display options
 - **Monitor API Limits**: Respect rate limits of external services
-
-## 📚 Resources
-
-### Documentation
-
-- [Farcaster Mini Apps](https://miniapps.farcaster.xyz/)
-- [MiniKit Documentation](https://docs.base.org/builderkits/minikit/overview)
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Wagmi Documentation](https://wagmi.sh/)
 
 ### Tools & Services
 
@@ -474,12 +384,13 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 - Farcaster Mini App integration
 - Human-readable address display
 
-### Phase 2: Enhanced Competition 🚧
+### Phase 2: Enhanced Competition ✅
 
-- Prediction markets for fitness outcomes
-- Group-based challenges and competitions
-- Advanced analytics and insights
-- Real-time notifications and updates
+- ✅ AI-powered prediction markets with auto-resolution
+- ✅ XMTP bot integration for natural language predictions
+- ✅ External API integration (crypto prices, weather, timezone)
+- ✅ Smart contract automation and payout distribution
+- ✅ Real-time monitoring and resolution system
 
 ### Phase 3: Messaging & Social Features 🔮
 
@@ -489,8 +400,24 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 - **Micro-Economies**: Token rewards and group incentives within messaging
 - **Competition Coordination**: Agents that organize and manage group fitness challenges
 
-_Phase 3 aligns with the Base Batches Messaging Buildathon, combining AI agents + crypto + mini apps for secure fitness community messaging._
+_Phase 2 & 3 align with the Base Batches Messaging Buildathon, combining AI agents + crypto + mini apps for secure fitness community messaging._
+
+## 📖 Documentation
+
+### Core Documentation
+
+- **[🏆 Hackathon Submission](./docs/HACKATHON_SUBMISSION.md)** - Complete Base Batches Buildathon submission
+- **[🚀 Deployment Guide](./docs/DEPLOYMENT_GUIDE.md)** - Deploy smart contracts, bot service, and frontend
+- **[🔧 Technical Guide](./docs/TECHNICAL_GUIDE.md)** - Architecture, development setup, and testing
+- **[🛣️ Roadmap](./docs/ROADMAP.md)** - Future vision and development phases
+
+### Quick Links
+
+- **Live Demo:** [imperfectminiapp.vercel.app](https://imperfectminiapp.vercel.app)
+- **Main App:** [imperfectform.fun](https://imperfectform.fun)
+- **Repository:** [github.com/thisyearnofear/minikit-miniapp](https://github.com/thisyearnofear/minikit-miniapp)
 
 ---
 
 **Stay Hard! 💪** - Keep pushing your limits with Imperfect Form
+```

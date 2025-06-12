@@ -1,7 +1,7 @@
 "use client";
 
 import { ethers } from "ethers";
-import { predictionMarketABI } from "@/lib/constants";
+import { predictionMarketABI } from "./constants";
 
 // Deployed prediction market contract address on CELO
 export const PREDICTION_MARKET_ADDRESS = process.env.NEXT_PUBLIC_PREDICTION_MARKET_V2_ADDRESS || '0x4d6b336F174f17daAf63D233E1E05cB105562304';

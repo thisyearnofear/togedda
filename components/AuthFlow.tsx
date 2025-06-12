@@ -34,12 +34,12 @@ export default function AuthFlow({
   const { disconnect } = useDisconnect();
 
   // Use simple user for overall state
-  const { 
-    isAuthenticated: simpleIsAuthenticated, 
+  const {
+    isAuthenticated: simpleIsAuthenticated,
     user: simpleUser,
     isFarcasterUser: simpleIsFarcasterUser,
     isWalletUser: simpleIsWalletUser,
-    disconnect: simpleDisconnect
+    disconnect: simpleDisconnect,
   } = useSimpleUser();
 
   // Use MiniKit auth for mini app specific functionality
@@ -59,7 +59,8 @@ export default function AuthFlow({
   const [isRestoringSession, setIsRestoringSession] = useState(false);
 
   // Use simple authentication state (prioritize simple user over local state)
-  const isAuthenticated = simpleIsAuthenticated || farcasterSignedIn || isConnected || !!neynarUser;
+  const isAuthenticated =
+    simpleIsAuthenticated || farcasterSignedIn || isConnected || !!neynarUser;
   const currentUser = useMemo(
     () =>
       simpleUser ||
@@ -93,35 +94,39 @@ export default function AuthFlow({
   useEffect(() => {
     const restoreUser = () => {
       // Skip if already authenticated or in mini app environment
-      if (isAuthenticated || isFarcasterEnvironment || isRestoringSession) return;
+      if (isAuthenticated || isFarcasterEnvironment || isRestoringSession)
+        return;
 
       setIsRestoringSession(true);
-      
+
       try {
-        const storedUser = localStorage.getItem('neynar_user');
-        const storedTimestamp = localStorage.getItem('neynar_auth_timestamp');
-        
+        const storedUser = localStorage.getItem("neynar_user");
+        const storedTimestamp = localStorage.getItem("neynar_auth_timestamp");
+
         if (storedUser && storedTimestamp) {
           const timestamp = parseInt(storedTimestamp, 10);
           const now = Date.now();
           const hoursElapsed = (now - timestamp) / (1000 * 60 * 60);
-          
+
           // Keep user data for 24 hours
           if (hoursElapsed < 24) {
             const user = JSON.parse(storedUser);
-            console.log('[AuthFlow] Restored user from localStorage:', user.username);
+            console.log(
+              "[AuthFlow] Restored user from localStorage:",
+              user.username
+            );
             setNeynarUser(user);
             setSelectedMethod("farcaster");
           } else {
-            console.log('[AuthFlow] Stored user data expired, clearing');
-            localStorage.removeItem('neynar_user');
-            localStorage.removeItem('neynar_auth_timestamp');
+            console.log("[AuthFlow] Stored user data expired, clearing");
+            localStorage.removeItem("neynar_user");
+            localStorage.removeItem("neynar_auth_timestamp");
           }
         }
       } catch (error) {
-        console.log('[AuthFlow] User restore failed:', error);
-        localStorage.removeItem('neynar_user');
-        localStorage.removeItem('neynar_auth_timestamp');
+        console.log("[AuthFlow] User restore failed:", error);
+        localStorage.removeItem("neynar_user");
+        localStorage.removeItem("neynar_auth_timestamp");
       } finally {
         setIsRestoringSession(false);
       }
@@ -221,18 +226,18 @@ export default function AuthFlow({
   const handleDisconnect = useCallback(() => {
     // Use simple user disconnect (handles localStorage cleanup)
     simpleDisconnect();
-    
+
     // Disconnect wallet if connected
     if (isConnected) {
       disconnect();
     }
-    
+
     // Reset local state
     setNeynarUser(null);
     setSelectedMethod("none");
     setShowMethods(false);
-    
-    console.log('[AuthFlow] Disconnect completed');
+
+    console.log("[AuthFlow] Disconnect completed");
   }, [simpleDisconnect, disconnect, isConnected]);
 
   const handleRetry = useCallback(() => {
@@ -256,7 +261,8 @@ export default function AuthFlow({
   }
 
   // Loading state
-  const isLoading = farcasterLoading || isConnecting || isAuthenticating || isRestoringSession;
+  const isLoading =
+    farcasterLoading || isConnecting || isAuthenticating || isRestoringSession;
 
   return (
     <div className={`auth-flow ${className}`}>
@@ -278,7 +284,9 @@ export default function AuthFlow({
           {!compact && (
             <div className="text-center">
               <h3 className="text-lg mb-4">
-                {mode === "miniapp" ? "Connect to Continue" : "Sign In"}
+                {mode === "miniapp"
+                  ? "Connect to Continue"
+                  : "Choose Sign-In Method"}
               </h3>
             </div>
           )}
@@ -302,7 +310,10 @@ export default function AuthFlow({
             <div className="space-y-4 max-w-sm mx-auto">
               {/* Authentication method explanation */}
               <div className="text-center text-sm text-gray-400">
-                <p>Choose your preferred sign-in method:</p>
+                <p>
+                  Connect with Farcaster for social features or wallet for
+                  trading:
+                </p>
               </div>
 
               {/* Farcaster Authentication */}

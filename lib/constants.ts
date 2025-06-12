@@ -43,6 +43,12 @@ export const NETWORK_COLORS = {
 export const MOUNT_OLYMPUS_GOAL = 291700; // 2917m × 100kg
 export const KENYA_RUN_GOAL = 1030000;    // 1,030 kilometers in meters
 
+// Message expiration time for authentication
+export const MESSAGE_EXPIRATION_TIME = 1000 * 60 * 60 * 24 * 7; // 7 days
+
+// Cache duration for leaderboard data (5 minutes)
+export const LEADERBOARD_CACHE_DURATION = 5 * 60 * 1000;
+
 // ABI for the fitness leaderboard contracts
 export const fitnessLeaderboardABI = [
   {
@@ -123,12 +129,6 @@ export const fitnessLeaderboardABI = [
   }
 ];
 
-// Message expiration time for authentication
-export const MESSAGE_EXPIRATION_TIME = 1000 * 60 * 60 * 24 * 7; // 7 days
-
-// Cache duration for leaderboard data (5 minutes)
-export const LEADERBOARD_CACHE_DURATION = 5 * 60 * 1000;
-
 // Complete ABI for the prediction market contract
 export const predictionMarketABI = [
   // View Functions
@@ -158,3 +158,40 @@ export const predictionMarketABI = [
   "function updateMaintenanceAddress(address _newMaintenanceAddress) external",
   "function transferOwnership(address _newOwner) external"
 ];
+
+/**
+ * Base Batches Buildathon Constants
+ * Constants for the AI-Powered Prediction Market with XMTP integration
+ */
+
+/**
+ * Address of the deployed ImperfectFormPredictionMarketV2 contract on Base Sepolia
+ */
+export const PREDICTION_MARKET_ADDRESS = "0x9B4Be1030eDC90205C10aEE54920192A13c12Cba";
+
+/**
+ * Address of the deployed PredictionBot contract on Base Sepolia
+ */
+export const PREDICTION_BOT_ADDRESS = "0x5552e0ca9fd8e71bc2D0941619248f91d30CDa0E";
+
+/**
+ * Initial fee for proposing predictions via PredictionBot (in wei)
+ */
+export const PREDICTION_PROPOSAL_FEE = "1000000000000000"; // 0.001 ETH
+
+/**
+ * Base Sepolia network configuration
+ */
+export const BASE_SEPOLIA_CHAIN_ID = 84532;
+export const BASE_SEPOLIA_RPC_URL = "https://sepolia.base.org";
+export const BASE_SEPOLIA_EXPLORER_URL = "https://sepolia.basescan.org";
+
+/**
+ * Charity address associated with the prediction market
+ */
+export const CHARITY_ADDRESS = "0x44770D93e1a426DDAf5923a738eaCe3D2FB65BC1";
+
+/**
+ * Wallet address (if needed for specific configurations or testing)
+ */
+export const WALLET_ADDRESS = "0x55A5705453Ee82c742274154136Fce8149597058";

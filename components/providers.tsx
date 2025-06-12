@@ -6,7 +6,7 @@ import { env } from "@/lib/env";
 import { supportedChains, rpcConfig } from "@/lib/config/chains";
 import { appConfig } from "@/lib/config/app";
 import { MiniKitProvider } from "@coinbase/onchainkit/minikit";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryProvider } from "@/providers/query-provider";
 import { NeynarContextProvider, Theme } from "@neynar/react";
 import "@neynar/react/dist/style.css";
 import dynamic from "next/dynamic";
@@ -131,35 +131,7 @@ export default function Providers({ children }: ProvidersProps) {
     }
   }, []);
 
-  // Create QueryClient with optimized settings for Mini Apps
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            staleTime: appConfig.cache.networkData,
-            gcTime: appConfig.cache.networkData * 2, // Double the stale time
-            retry: (failureCount, error) => {
-              // Don't retry on 4xx errors
-              if (error && typeof error === "object" && "status" in error) {
-                const status = error.status as number;
-                if (status >= 400 && status < 500) return false;
-              }
-              return failureCount < appConfig.api.retries;
-            },
-            retryDelay: (attemptIndex) =>
-              Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
-            refetchOnWindowFocus: false, // Disable for Mini App context
-            refetchOnReconnect: true,
-            refetchInterval: false, // Disable automatic refetching
-          },
-          mutations: {
-            retry: 1,
-            retryDelay: appConfig.api.retryDelay,
-          },
-        },
-      })
-  );
+  // QueryProvider now handles QueryClient configuration
 
   return (
     <ErudaProvider>
@@ -172,7 +144,7 @@ export default function Providers({ children }: ProvidersProps) {
         }}
       >
         <AppModeProvider>
-          <QueryClientProvider client={queryClient}>
+          <QueryProvider>
             <WagmiProvider config={wagmiConfig}>
               <MiniKitProvider
                 projectId={env.NEXT_PUBLIC_MINIKIT_PROJECT_ID}
@@ -182,7 +154,7 @@ export default function Providers({ children }: ProvidersProps) {
                 <MiniAppProvider>{children}</MiniAppProvider>
               </MiniKitProvider>
             </WagmiProvider>
-          </QueryClientProvider>
+          </QueryProvider>
         </AppModeProvider>
       </NeynarContextProvider>
     </ErudaProvider>
@@ -191,6 +163,3 @@ export default function Providers({ children }: ProvidersProps) {
 
 // Export wagmi config for use in other parts of the app
 export { wagmiConfig };
-
-// Export query client type for type inference
-export type AppQueryClient = QueryClient;

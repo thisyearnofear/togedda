@@ -29,7 +29,10 @@ const nextConfig = {
           { key: "Access-Control-Allow-Origin", value: "*" },
           { key: "Access-Control-Allow-Methods", value: "GET, OPTIONS" },
           { key: "Access-Control-Allow-Headers", value: "Content-Type" },
-          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
         ],
       },
       {
@@ -49,13 +52,19 @@ const nextConfig = {
       {
         source: "/:path*.(ico|png|jpg|jpeg|gif|webp|svg)",
         headers: [
-          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
         ],
       },
       {
         source: "/:path*.(js|css|woff|woff2|ttf|eot)",
         headers: [
-          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
         ],
       },
     ];
@@ -63,6 +72,31 @@ const nextConfig = {
 
   // Webpack optimizations
   webpack: (config, { dev, isServer }) => {
+    // Handle XMTP node modules for browser compatibility
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        "node:module": false,
+        "node:path": false,
+        "node:process": false,
+        "node:fs": false,
+        "node:crypto": false,
+        "node:stream": false,
+        "node:util": false,
+        "node:buffer": false,
+        "node:url": false,
+        fs: false,
+        path: false,
+        crypto: false,
+        stream: false,
+        util: false,
+        buffer: false,
+        url: false,
+        module: false,
+        process: false,
+      };
+    }
+
     // Optimize bundle size
     if (!dev && !isServer) {
       // Removed custom splitChunks to restore Next.js defaults and fix RSC chunking issues.
@@ -73,19 +107,22 @@ const nextConfig = {
 
   // Experimental features for better performance
   experimental: {
-    optimizePackageImports: ['@farcaster/frame-sdk', '@coinbase/onchainkit'],
-    webVitalsAttribution: ['CLS', 'LCP'],
+    optimizePackageImports: ["@farcaster/frame-sdk", "@coinbase/onchainkit"],
+    webVitalsAttribution: ["CLS", "LCP"],
   },
 
   // Compiler options
   compiler: {
-    removeConsole: process.env.NODE_ENV === "production" ? {
-      exclude: ["error", "warn"],
-    } : false,
+    removeConsole:
+      process.env.NODE_ENV === "production"
+        ? {
+            exclude: ["error", "warn"],
+          }
+        : false,
   },
 
   // Production optimizations
-  distDir: '.next',
+  distDir: ".next",
   generateEtags: false,
   poweredByHeader: false,
 };

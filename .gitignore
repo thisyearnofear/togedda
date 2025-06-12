@@ -35,4 +35,39 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# environment variables
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# database files
+*.db
+*.db3
+*.db3-shm
+*.db3-wal
+*.sqlcipher_salt
+notifications.db
+
+# XMTP local storage
+xmtp-dev-*.db3*
+xmtp-prod-*.db3*
+
+# logs
+*.log
+logs/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# temporary files
+tmp/
+temp/

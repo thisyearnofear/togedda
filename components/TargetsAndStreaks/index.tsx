@@ -1,6 +1,6 @@
 "use client";
 
-import { useSimpleUser } from "@/hooks/use-simple-user";
+import { useAppUser } from "@/contexts/unified-app-context";
 import { useFitnessStreaks } from "@/hooks/use-fitness-streaks";
 import { NetworkData } from "@/lib/blockchain";
 import { useEffect, useState } from "react";
@@ -36,7 +36,7 @@ export default function TargetsAndStreaks({
   networkData,
   isLoading,
 }: TargetsAndStreaksProps) {
-  const { user, isAuthenticated: isSignedIn } = useSimpleUser();
+  const { user, isAuthenticated: isSignedIn } = useAppUser();
   const {
     streakData,
     isLoading: streaksLoading,

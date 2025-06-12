@@ -3,7 +3,8 @@
 import { MESSAGE_EXPIRATION_TIME } from "@/lib/constants";
 import { NeynarUser } from "@/lib/neynar";
 import { useAuthenticate, useMiniKit } from "@coinbase/onchainkit/minikit";
-import { useMiniApp } from "@/contexts/miniapp-context";
+// Simple replacement for MiniApp context - just return initialized state
+const useMiniApp = () => ({ isInitialized: true });
 import { useCallback, useEffect, useState } from "react";
 
 /**

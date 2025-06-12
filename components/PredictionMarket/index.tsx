@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, lazy, Suspense } from "react";
+import React, { useState, useEffect } from "react";
 import { useAccount, useWriteContract } from "wagmi";
 import { toast } from "react-hot-toast";
 import {
@@ -41,9 +41,7 @@ import {
   FaHistory,
 } from "react-icons/fa";
 import WarpcastWallet from "@/components/WarpcastWallet";
-
-// Lazy load chat interface to improve initial page load
-const ChatInterface = lazy(() => import("./ChatInterface"));
+import ChatInterface from "./ChatInterface";
 
 const PredictionMarket: React.FC = () => {
   const { address } = useAccount();
@@ -753,35 +751,9 @@ const PredictionMarket: React.FC = () => {
 
         {/* Chat Tab Content */}
         {activeTab === "chat" && (
-          <div className="space-y-6">
-            <div className="bg-purple-900 bg-opacity-20 border border-purple-800 rounded-lg p-4">
-              <div className="flex items-center mb-3">
-                <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center mr-3">
-                  <FaComments className="text-white" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-purple-400">
-                    AI Assistant & Community Chat
-                  </h3>
-                  <p className="text-sm text-gray-300">
-                    Ask about live markets, create predictions, or chat with
-                    other users
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Integrated Chat Interface */}
-            <Suspense
-              fallback={
-                <div className="bg-black border-2 border-purple-800 rounded-lg p-6 text-center">
-                  <div className="loading-spinner mb-3"></div>
-                  <p className="text-purple-400">Loading chat interface...</p>
-                </div>
-              }
-            >
-              <ChatInterface onClose={() => setActiveTab("markets")} />
-            </Suspense>
+          <div className="space-y-2">
+            {/* Integrated Chat Interface - Full Height */}
+            <ChatInterface onClose={() => setActiveTab("markets")} />
           </div>
         )}
       </div>

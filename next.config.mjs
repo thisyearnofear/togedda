@@ -95,6 +95,12 @@ const nextConfig = {
         module: false,
         process: false,
       };
+
+      // Exclude server-side XMTP modules from client bundle
+      config.externals = config.externals || [];
+      config.externals.push({
+        "@xmtp/node-sdk": "commonjs @xmtp/node-sdk",
+      });
     }
 
     // Optimize bundle size

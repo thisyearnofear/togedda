@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAppMode } from "@/contexts/app-mode-context";
+import { useAppEnvironment } from "@/contexts/unified-app-context";
 
 export default function OfflineIndicator() {
-  const { mode } = useAppMode();
+  const { mode } = useAppEnvironment();
   const [isOnline, setIsOnline] = useState(true);
   const [showOfflineMessage, setShowOfflineMessage] = useState(false);
 
@@ -20,19 +20,19 @@ export default function OfflineIndicator() {
     const handleOffline = () => {
       setIsOnline(false);
       setShowOfflineMessage(true);
-      
+
       // Auto-hide offline message after 5 seconds
       setTimeout(() => {
         setShowOfflineMessage(false);
       }, 5000);
     };
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
 
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
     };
   }, []);
 
@@ -66,14 +66,13 @@ export default function OfflineIndicator() {
                   Connection Lost
                 </h3>
                 <p className="text-xs text-red-200 mb-2">
-                  You&apos;re now offline. Cached data will be used when possible.
+                  You&apos;re now offline. Cached data will be used when
+                  possible.
                 </p>
                 <div className="text-xs text-red-300">
-                  {mode === "webapp" ? (
-                    "Install the app for better offline support"
-                  ) : (
-                    "Some features may be limited until connection is restored"
-                  )}
+                  {mode === "webapp"
+                    ? "Install the app for better offline support"
+                    : "Some features may be limited until connection is restored"}
                 </div>
               </div>
               <button
@@ -127,12 +126,12 @@ export function useOnlineStatus() {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
 
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
     };
   }, []);
 

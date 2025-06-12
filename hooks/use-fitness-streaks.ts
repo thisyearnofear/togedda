@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { UserStreak } from "@/lib/streaks-service-pg";
 import { UserFitnessData } from "@/lib/fitness-sync-service";
-import { useSimpleUser } from "./use-simple-user";
+import { useAppUser } from "@/contexts/unified-app-context";
 
 interface EnhancedStreakData extends UserStreak {
   fitnessData?: UserFitnessData | null;
@@ -21,7 +21,7 @@ interface UseFitnessStreaksReturn {
  * Hook to manage fitness streaks with automatic blockchain sync
  */
 export function useFitnessStreaks(): UseFitnessStreaksReturn {
-  const { getFid, isFarcasterUser } = useSimpleUser();
+  const { getFid, isFarcasterUser } = useAppUser();
   const [streakData, setStreakData] = useState<EnhancedStreakData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

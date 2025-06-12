@@ -1,6 +1,6 @@
 "use client";
 
-import { useSimpleUser } from "@/hooks/use-simple-user";
+import { useAppUser, useAppEnvironment } from "@/contexts/unified-app-context";
 import { useFitnessStreaks } from "@/hooks/use-fitness-streaks";
 import { NetworkData } from "@/lib/blockchain";
 import { formatNumber } from "@/lib/utils";
@@ -11,7 +11,12 @@ import TargetsAndStreaks from "@/components/TargetsAndStreaks";
 import Confetti from "@/components/Confetti";
 import { toast } from "react-hot-toast";
 import { FaShare, FaArrowRight, FaFire, FaMedal } from "react-icons/fa";
-import { WebAppOnly } from "@/contexts/app-mode-context";
+
+// Simple conditional rendering component
+const WebAppOnly = ({ children }: { children: React.ReactNode }) => {
+  const { mode } = useAppEnvironment();
+  return mode === "webapp" ? <>{children}</> : null;
+};
 
 interface PersonalDashboardProps {
   networkData: NetworkData;
@@ -52,7 +57,7 @@ export default function PersonalDashboard({
     isAuthenticated,
     isLoading: authLoading,
     getFid,
-  } = useSimpleUser();
+  } = useAppUser();
 
   // Only use fitness streaks for Farcaster users (requires persistent identity)
   const {

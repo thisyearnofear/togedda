@@ -168,18 +168,20 @@ export function useSendMessage() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ 
-      message, 
-      userAddress, 
-      conversationId 
-    }: { 
-      message: string; 
-      userAddress: string; 
+    mutationFn: async ({
+      message,
+      userAddress,
+      conversationId,
+      context
+    }: {
+      message: string;
+      userAddress: string;
       conversationId: string;
+      context?: any;
     }) => {
       return await sendMessageToBot(message, userAddress, conversationId);
     },
-    onMutate: async ({ message, userAddress, conversationId }) => {
+    onMutate: async ({ message, userAddress, conversationId, context }) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ 
         queryKey: QUERY_KEYS.CONVERSATION_HISTORY(conversationId) 

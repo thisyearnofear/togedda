@@ -1,19 +1,19 @@
 "use client";
 
-import { useSimpleUser } from "@/hooks/use-simple-user";
+import {
+  useUnifiedApp,
+  useAppUser,
+  useAppEnvironment,
+} from "@/contexts/unified-app-context";
 import {
   NetworkData,
   fetchAllNetworksData,
   calculateCollectiveGoals,
   CollectiveGoals,
 } from "@/lib/blockchain";
-import {
-  AppModeIndicator,
-  MiniAppOnly,
-  WebAppOnly,
-} from "@/contexts/app-mode-context";
 import Web3Profile from "@/components/Web3Profile";
 import AuthFlow from "@/components/AuthFlow";
+import EnhancedUserStatus from "@/components/EnhancedUserStatus";
 import { Tab } from "@/src/types";
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
@@ -27,14 +27,39 @@ import PersonalDashboard from "@/components/PersonalDashboard";
 import CollectiveGoalsComponent from "@/components/CollectiveGoals";
 import { useAccount, useDisconnect } from "wagmi";
 
+// Simple conditional rendering components
+const MiniAppOnly = ({ children }: { children: React.ReactNode }) => {
+  const { mode } = useAppEnvironment();
+  return mode === "miniapp" ? <>{children}</> : null;
+};
+
+const WebAppOnly = ({ children }: { children: React.ReactNode }) => {
+  const { mode } = useAppEnvironment();
+  return mode === "webapp" ? <>{children}</> : null;
+};
+
+const AppModeIndicator = () => {
+  const { mode, isFarcasterEnvironment } = useAppEnvironment();
+
+  if (process.env.NODE_ENV !== "development") return null;
+
+  return (
+    <div className="fixed top-2 left-2 z-50 bg-gray-800 p-2 rounded text-xs text-white">
+      <div>Mode: {mode}</div>
+      <div>Farcaster: {isFarcasterEnvironment ? "✓" : "✗"}</div>
+    </div>
+  );
+};
+
 export default function Home() {
   const {
-    isAuthenticated,
     user,
+    isAuthenticated,
     isFarcasterUser,
     isWalletUser: isWalletOnlyUser,
     isLoading: authLoading,
-  } = useSimpleUser();
+  } = useAppUser();
+  const { mode, showMiniAppFeatures, showWebAppFeatures } = useAppEnvironment();
   const { isConnected, address } = useAccount();
   const { disconnect } = useDisconnect();
 
@@ -322,66 +347,12 @@ export default function Home() {
 
             {isAuthenticated && currentUser ? (
               <div className="game-container py-2 px-3 md:py-3 md:px-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3 flex-1 min-w-0">
-                    {user?.pfp_url ? (
-                      <Image
-                        src={user.pfp_url}
-                        alt="Profile"
-                        className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-white flex-shrink-0"
-                        width={48}
-                        height={48}
-                      />
-                    ) : (
-                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-white bg-gray-600 flex items-center justify-center flex-shrink-0">
-                        <span className="text-base md:text-lg">👤</span>
-                      </div>
-                    )}
-                    <div className="text-left flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {currentUser.display_name || "Connected User"}
-                      </p>
-                      {isFarcasterUser && user?.username && (
-                        <p className="text-xs text-gray-400">
-                          @{user.username}
-                        </p>
-                      )}
-                      {/* Only show wallet address for wallet-only users in web app */}
-                      <WebAppOnly>
-                        {isWalletOnlyUser && address && (
-                          <Web3Profile
-                            address={address}
-                            useUnifiedResolution={true}
-                          />
-                        )}
-                      </WebAppOnly>
-                    </div>
-                  </div>
-
-                  {/* Disconnect/Change Button - Only in web app */}
-                  <WebAppOnly>
-                    <div className="flex space-x-2">
-                      {isWalletOnlyUser && (
-                        <button
-                          onClick={() => setShowAuthFlow(true)}
-                          className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
-                          title="Connect different wallet"
-                        >
-                          Change
-                        </button>
-                      )}
-                      <button
-                        onClick={handleDisconnect}
-                        className="text-xs px-2 py-1 bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors"
-                        title={
-                          isFarcasterUser ? "Sign out" : "Disconnect wallet"
-                        }
-                      >
-                        {isFarcasterUser ? "Sign Out" : "Disconnect"}
-                      </button>
-                    </div>
-                  </WebAppOnly>
-                </div>
+                <EnhancedUserStatus
+                  user={currentUser}
+                  onDisconnect={handleDisconnect}
+                  compact={false}
+                  showWalletControls={true}
+                />
               </div>
             ) : null}
 

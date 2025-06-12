@@ -1,10 +1,15 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import {
   FaPaperPlane,
   FaTimes,
-  FaRocket,
   FaUsers,
   FaRobot,
   FaCircle,
@@ -12,19 +17,17 @@ import {
   FaSpinner,
   FaEllipsisH,
 } from "react-icons/fa";
-import { sendMessageToBot, getBotStatus } from "./XMTPIntegration";
 import { useAccount } from "wagmi";
 import {
   DEFAULT_FALLBACK_ADDRESS,
-  CHAT_CONFIG,
-  ERROR_MESSAGES,
   CHAT_MODES,
   type ChatMode,
-  formatErrorMessage,
 } from "@/lib/xmtp-constants";
 // import { useRealTimeMessages } from "@/hooks/use-real-time-messages";
 import { useBotStatus, useSendMessage } from "@/hooks/use-prediction-queries";
 import { type StoredMessage } from "@/lib/xmtp-message-store";
+import { useXMTPConnectionStatus } from "@/hooks/use-xmtp-auth";
+import { useXMTPConversations } from "@/hooks/use-xmtp-conversations";
 
 interface ChatMessage {
   id: string;
@@ -47,20 +50,29 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onClose,
   embedded = true,
 }) => {
-  // Hooks for real-time messaging and data fetching
-  const { address: userAddress } = useAccount();
-  const { data: botStatus, isLoading: botStatusLoading } = useBotStatus();
-  const sendMessageMutation = useSendMessage();
+  // Enhanced authentication and XMTP readiness
+  const {
+    canInitializeXMTP,
+    connectionMessage,
+    primaryIdentity,
+    userDisplayInfo,
+    getConversationContext,
+  } = useXMTPConnectionStatus();
 
-  // Temporarily disabled for build compatibility
-  const xmtpConnected = false;
-  const xmtpConnecting = false;
-  const xmtpError = null;
-  const realTimeMessages: any[] = [];
-  const conversations: any[] = [];
-  const startConversationStream = useCallback(async () => {}, []);
-  const sendXMTPMessage = async (_address: string, _message: string) => {};
-  const isClientReady = false;
+  // XMTP Conversations Management
+  const {
+    isInitializing: xmtpInitializing,
+    isReady: xmtpReady,
+    initError: xmtpError,
+    botConversation,
+    communityConversation,
+    sendToBotConversation,
+    sendToCommunityConversation,
+  } = useXMTPConversations();
+
+  // Fallback API for when XMTP is not available
+  const { data: botStatus } = useBotStatus();
+  const sendMessageMutation = useSendMessage();
   const hasUnreadMessages = false;
   const totalUnreadCount = 0;
 
@@ -78,19 +90,37 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(
     null
   );
+  const [currentThinkingMessage, setCurrentThinkingMessage] = useState("");
+  const [communityMessages, setCommunityMessages] = useState<ChatMessage[]>([]);
+
+  // Dynamic thinking messages
+  const thinkingMessages = [
+    "Analyzing market trends...",
+    "Consulting the prediction oracle...",
+    "Crunching blockchain data...",
+    "Checking fitness stats across networks...",
+    "Evaluating prediction possibilities...",
+    "Scanning live markets...",
+    "Processing your request...",
+    "Connecting to the multiverse...",
+    "Calculating odds...",
+    "Reviewing community insights...",
+  ];
 
   // Refs for auto-scroll and UI management
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Conversation ID for maintaining context
-  const [conversationId] = useState(
-    () =>
-      `chat_${userAddress || "anon"}_${Date.now()}_${Math.random()
-        .toString(36)
-        .substring(2, 11)}`
-  );
+  // Enhanced conversation ID with authentication context
+  const [conversationId] = useState(() => {
+    const authType = primaryIdentity.type;
+    const identifier =
+      primaryIdentity.address || userDisplayInfo.identifier || "anon";
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 11);
+    return `chat_${authType}_${identifier.slice(-8)}_${timestamp}_${random}`;
+  });
 
   // Bot address for XMTP communication
   const botAddress =
@@ -117,45 +147,74 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     []
   );
 
-  // Display messages (real-time + fallback)
-  const displayMessages =
-    realTimeMessages.length > 0
-      ? convertToDisplayMessages(realTimeMessages)
-      : [
-          {
-            id: "welcome",
-            sender: "PredictionBot",
-            content:
-              "Welcome! I'm your AI prediction assistant. Ask me:\n• 'What prediction markets are live?'\n• 'Create a prediction about Bitcoin reaching $100k'\n• 'How do prediction markets work?'\n\nYou can also chat with other users here!",
-            timestamp: Date.now() - 300000,
-            messageType: "bot" as const,
-          },
-        ];
+  // Convert XMTP messages to display format
+  const convertXMTPToDisplayMessages = useCallback(
+    (xmtpMessages: any[]) => {
+      return xmtpMessages.map((msg) => ({
+        id: msg.id,
+        sender:
+          msg.senderInboxId === primaryIdentity.address
+            ? "You"
+            : "PredictionBot",
+        content: msg.content,
+        timestamp: msg.timestamp,
+        messageType:
+          msg.senderInboxId === primaryIdentity.address
+            ? ("user" as const)
+            : ("bot" as const),
+      }));
+    },
+    [primaryIdentity.address]
+  );
 
-  // Initialize real-time conversation stream
-  useEffect(() => {
-    const initializeStream = async () => {
-      if (!userAddress || !isClientReady || isStreamActive) return;
-
-      try {
-        console.log("🔄 Starting conversation stream with bot...");
-        await startConversationStream();
-        setIsStreamActive(true);
-        console.log("✅ Conversation stream started");
-      } catch (error) {
-        console.error("❌ Failed to start conversation stream:", error);
-        setError("Failed to connect to real-time chat");
-      }
-    };
-
-    initializeStream();
+  // Display messages based on chat mode
+  const displayMessages = useMemo(() => {
+    if (chatMode === CHAT_MODES.COMMUNITY) {
+      // Show community XMTP messages or welcome message
+      return communityConversation.messages.length > 0
+        ? convertXMTPToDisplayMessages(communityConversation.messages)
+        : [
+            {
+              id: "community_welcome",
+              sender: "Community",
+              content:
+                "💬 Welcome to the community chat!\n\nThis is where you can:\n• Discuss predictions with other users\n• Share fitness strategies\n• Chat about market trends\n\nStart chatting with other community members!",
+              timestamp: Date.now() - 300000,
+              messageType: "bot" as const,
+            },
+          ];
+    } else {
+      // Show AI bot XMTP messages or welcome message
+      return botConversation.messages.length > 0
+        ? convertXMTPToDisplayMessages(botConversation.messages)
+        : [
+            {
+              id: "ai_welcome",
+              sender: "PredictionBot",
+              content:
+                '🤖 Ready to help with predictions and market insights!\n\nTry asking:\n• "What markets are live?"\n• "Create a Bitcoin prediction"\n• "Show me fitness stats"\n\nLet\'s build the future together! 🚀',
+              timestamp: Date.now() - 300000,
+              messageType: "bot" as const,
+            },
+          ];
+    }
   }, [
-    userAddress,
-    isClientReady,
-    isStreamActive,
-    startConversationStream,
-    botAddress,
+    chatMode,
+    communityConversation.messages,
+    botConversation.messages,
+    convertXMTPToDisplayMessages,
   ]);
+
+  // Monitor XMTP connection status
+  useEffect(() => {
+    if (!canInitializeXMTP) {
+      setError(connectionMessage);
+    } else if (xmtpError) {
+      setError(`XMTP Error: ${xmtpError}`);
+    } else {
+      setError(null);
+    }
+  }, [canInitializeXMTP, connectionMessage, xmtpError]);
 
   // Enhanced message sending with better UX
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -168,6 +227,18 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setError(null);
     setIsTyping(false);
 
+    // Start cycling through thinking messages
+    const randomMessage =
+      thinkingMessages[Math.floor(Math.random() * thinkingMessages.length)];
+    setCurrentThinkingMessage(randomMessage);
+
+    // Change thinking message every 3 seconds
+    const thinkingInterval = setInterval(() => {
+      const newMessage =
+        thinkingMessages[Math.floor(Math.random() * thinkingMessages.length)];
+      setCurrentThinkingMessage(newMessage);
+    }, 3000);
+
     // Clear typing timeout
     if (typingTimeout) {
       clearTimeout(typingTimeout);
@@ -179,23 +250,29 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
     try {
       if (chatMode === CHAT_MODES.AI_BOT) {
-        // Send to AI bot
-        if (isClientReady) {
-          // Use real-time XMTP if available
-          await sendXMTPMessage(botAddress, messageToSend);
+        // Direct AI Bot conversation - use XMTP if ready, fallback to API
+        if (xmtpReady && botConversation.id) {
+          await sendToBotConversation(messageToSend);
         } else {
-          // Fallback to API
+          // Fallback to API with enhanced context
+          const context = getConversationContext();
           await sendMessageMutation.mutateAsync({
             message: messageToSend,
-            userAddress: userAddress || DEFAULT_FALLBACK_ADDRESS,
+            userAddress: primaryIdentity.address || DEFAULT_FALLBACK_ADDRESS,
             conversationId,
+            context, // Include authentication context
           });
         }
       } else if (chatMode === CHAT_MODES.COMMUNITY) {
-        // Community chat - broadcast to all connected users
-        // This would require additional implementation for multi-user chat
-        console.log("Community chat not yet implemented");
-        setError("Community chat coming soon!");
+        // Community chat - use XMTP group chat
+        if (xmtpReady && communityConversation.id) {
+          await sendToCommunityConversation(messageToSend);
+        } else {
+          // Show error if XMTP not ready for community chat
+          setError(
+            "Community chat requires XMTP connection. Please ensure your wallet is connected."
+          );
+        }
       }
 
       // Check for prediction proposals in the response
@@ -208,7 +285,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           content: messageToSend,
         });
       }
-      // Focus back on input after sending
+      // Force scroll to show user's message and focus back on input
+      scrollToBottomForced();
       setTimeout(() => {
         if (inputRef.current) {
           inputRef.current.focus();
@@ -222,6 +300,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       setNewMessage(messageToSend);
     } finally {
       setIsLoading(false);
+      clearInterval(thinkingInterval);
+      setCurrentThinkingMessage("");
     }
   };
 
@@ -254,13 +334,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   // Connection status indicator
   const getConnectionStatus = () => {
-    if (xmtpConnecting)
+    if (xmtpInitializing)
       return { status: "connecting", color: "yellow", text: "Connecting..." };
-    if (xmtpConnected && isClientReady)
+    if (xmtpReady)
       return {
         status: "connected",
         color: "green",
-        text: "Real-time Connected",
+        text: "XMTP Connected",
       };
     if (xmtpError)
       return { status: "error", color: "red", text: "Connection Error" };
@@ -271,24 +351,42 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   const connectionStatus = getConnectionStatus();
 
-  // Auto-scroll to bottom when new messages arrive
-  const scrollToBottom = useCallback((smooth: boolean = true) => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({
-        behavior: smooth ? "smooth" : "auto",
-        block: "end",
-      });
-    }
-  }, []);
+  // Enhanced auto-scroll to keep user messages in view
+  const scrollToBottom = useCallback(
+    (smooth: boolean = true, force: boolean = false) => {
+      if (messagesEndRef.current && messagesContainerRef.current) {
+        // Check if user is near bottom before auto-scrolling
+        const container = messagesContainerRef.current;
+        const isNearBottom =
+          container.scrollHeight -
+            container.scrollTop -
+            container.clientHeight <
+          100;
 
-  // Auto-scroll when messages change
+        if (force || isNearBottom) {
+          messagesEndRef.current.scrollIntoView({
+            behavior: smooth ? "smooth" : "auto",
+            block: "end",
+          });
+        }
+      }
+    },
+    []
+  );
+
+  // Auto-scroll when messages change, but only if user is near bottom
   useEffect(() => {
     const timer = setTimeout(() => {
-      scrollToBottom();
-    }, 100); // Small delay to ensure DOM is updated
+      scrollToBottom(true, false); // Don't force scroll unless user is near bottom
+    }, 100);
 
     return () => clearTimeout(timer);
   }, [displayMessages.length, scrollToBottom]);
+
+  // Force scroll when user sends a message
+  const scrollToBottomForced = useCallback(() => {
+    scrollToBottom(true, true);
+  }, [scrollToBottom]);
 
   // Handle typing indicators
   const handleInputChange = useCallback(
@@ -323,8 +421,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   }, []);
 
   const containerClass = embedded
-    ? "bg-black bg-opacity-50 border-2 border-purple-800 rounded-lg flex flex-col h-[500px]"
-    : "fixed bottom-0 right-0 left-0 bg-black bg-opacity-80 z-50 flex flex-col border-t-2 border-blue-800 rounded-t-lg max-h-[50vh] mx-auto";
+    ? "bg-black bg-opacity-50 border-2 border-purple-800 rounded-lg flex flex-col h-[600px]"
+    : "fixed bottom-0 right-0 left-0 bg-black bg-opacity-80 z-50 flex flex-col border-t-2 border-blue-800 rounded-t-lg max-h-[60vh] mx-auto";
 
   return (
     <div className={containerClass}>
@@ -336,14 +434,53 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               : "Prediction Chat (Beta)"}
           </h3>
 
+          {/* Authentication Status */}
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-gray-500">|</span>
+            <div className="flex items-center gap-1">
+              {primaryIdentity.type === "dual" && (
+                <>
+                  <span className="text-purple-400" title="Farcaster">
+                    🟣
+                  </span>
+                  <span className="text-green-400" title="Wallet">
+                    💰
+                  </span>
+                </>
+              )}
+              {primaryIdentity.type === "farcaster" && (
+                <span className="text-purple-400" title="Farcaster Only">
+                  🟣
+                </span>
+              )}
+              {primaryIdentity.type === "wallet" && (
+                <span className="text-green-400" title="Wallet Only">
+                  💰
+                </span>
+              )}
+              {primaryIdentity.type === "none" && (
+                <span className="text-red-400" title="Not Connected">
+                  ❌
+                </span>
+              )}
+              <span className="text-gray-300 truncate max-w-20">
+                {userDisplayInfo.displayName}
+              </span>
+            </div>
+          </div>
+
           {/* Enhanced connection status */}
           <div className="flex items-center gap-2 text-xs">
             <div className="flex items-center gap-1">
               <FaCircle
-                className={`text-${connectionStatus.color}-400`}
+                className={`${
+                  canInitializeXMTP ? "text-green-400" : "text-red-400"
+                }`}
                 size={8}
               />
-              <span className="text-gray-300">{connectionStatus.text}</span>
+              <span className="text-gray-300">
+                {canInitializeXMTP ? "Ready" : "Not Ready"}
+              </span>
             </div>
 
             {/* Unread message indicator */}
@@ -381,42 +518,45 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         </div>
       </div>
 
-      {/* Chat Mode Selector */}
+      {/* Simplified Chat Mode Selector - AI Bot vs Community */}
       <div className="flex p-2 bg-black bg-opacity-20 border-b border-purple-800">
         <button
           onClick={() => setChatMode(CHAT_MODES.AI_BOT)}
           className={`flex-1 py-2 px-3 rounded-l-lg text-xs font-bold transition-all ${
             chatMode === CHAT_MODES.AI_BOT
-              ? "bg-purple-600 text-white"
-              : "bg-gray-800 text-gray-400 hover:text-white"
+              ? "bg-purple-600 text-white shadow-lg"
+              : "bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700"
           }`}
         >
           <FaRobot className="inline mr-1" />
-          AI Bot
+          🤖 AI Assistant
         </button>
         <button
           onClick={() => setChatMode(CHAT_MODES.COMMUNITY)}
-          className={`flex-1 py-2 px-3 text-xs font-bold transition-all ${
+          className={`flex-1 py-2 px-3 rounded-r-lg text-xs font-bold transition-all ${
             chatMode === CHAT_MODES.COMMUNITY
-              ? "bg-blue-600 text-white"
-              : "bg-gray-800 text-gray-400 hover:text-white"
+              ? "bg-blue-600 text-white shadow-lg"
+              : "bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700"
           }`}
         >
           <FaUsers className="inline mr-1" />
-          Community
-        </button>
-        <button
-          onClick={() => setChatMode(CHAT_MODES.MIXED)}
-          className={`flex-1 py-2 px-3 rounded-r-lg text-xs font-bold transition-all ${
-            chatMode === CHAT_MODES.MIXED
-              ? "bg-green-600 text-white"
-              : "bg-gray-800 text-gray-400 hover:text-white"
-          }`}
-        >
-          <FaRocket className="inline mr-1" />
-          Mixed
+          💬 Community
         </button>
       </div>
+
+      {/* Authentication Error Display */}
+      {!canInitializeXMTP && (
+        <div className="p-3 bg-red-900 bg-opacity-20 border-b border-red-800">
+          <div className="flex items-center gap-2 text-red-300 text-sm">
+            <span className="text-red-400">⚠️</span>
+            <div>
+              <div className="font-medium">Chat Not Available</div>
+              <div className="text-xs text-red-400">{connectionMessage}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div
         ref={messagesContainerRef}
         className="flex-1 overflow-y-auto p-3 bg-black bg-opacity-30 scroll-smooth"
@@ -453,14 +593,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               </div>
               <div className="whitespace-pre-wrap">{msg.content}</div>
 
-              {/* Message metadata */}
-              {msg.metadata?.actionType && (
-                <div className="mt-1 text-xs opacity-60">
-                  {msg.metadata.actionType === "create_prediction" &&
-                    "🔮 Prediction"}
-                  {msg.metadata.actionType === "vote" && "🗳️ Vote"}
-                  {msg.metadata.actionType === "query" && "❓ Query"}
-                </div>
+              {/* Message type indicator */}
+              {msg.messageType === "bot" && msg.sender === "PredictionBot" && (
+                <div className="mt-1 text-xs opacity-60">🤖 AI Response</div>
               )}
             </div>
           </div>
@@ -476,7 +611,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               </div>
               <div className="flex items-center gap-2 mt-1">
                 <FaSpinner className="animate-spin text-purple-300" />
-                <span className="text-purple-200">AI is thinking...</span>
+                <span className="text-purple-200">
+                  {currentThinkingMessage || "Processing your request..."}
+                </span>
                 <div className="flex gap-1">
                   <div
                     className="w-1 h-1 bg-purple-300 rounded-full animate-bounce"
@@ -531,8 +668,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               type="text"
               value={newMessage}
               onChange={handleInputChange}
-              placeholder="Ask about live markets, create predictions, or chat..."
-              className="w-full bg-black border-2 border-purple-700 p-2 text-white text-sm rounded-lg focus:outline-none focus:border-purple-500 transition-all duration-200"
+              placeholder={
+                chatMode === CHAT_MODES.AI_BOT
+                  ? "Ask about markets, create predictions, get insights..."
+                  : "Chat with the community (coming soon)..."
+              }
+              className={`w-full bg-black border-2 p-2 text-white text-sm rounded-lg focus:outline-none transition-all duration-200 ${
+                chatMode === CHAT_MODES.AI_BOT
+                  ? "border-purple-700 focus:border-purple-500"
+                  : "border-blue-700 focus:border-blue-500"
+              }`}
               disabled={isLoading}
               maxLength={500}
             />
@@ -556,8 +701,18 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           <button
             type="submit"
             disabled={isLoading || !newMessage.trim()}
-            className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white p-2 rounded-lg transition-all duration-200 flex items-center gap-1"
-            title={isLoading ? "AI is thinking..." : "Send message"}
+            className={`p-2 rounded-lg transition-all duration-200 flex items-center gap-1 text-white disabled:bg-gray-600 ${
+              chatMode === CHAT_MODES.AI_BOT
+                ? "bg-purple-600 hover:bg-purple-700"
+                : "bg-blue-600 hover:bg-blue-700"
+            }`}
+            title={
+              isLoading
+                ? chatMode === CHAT_MODES.AI_BOT
+                  ? "AI is thinking..."
+                  : "Sending..."
+                : "Send message"
+            }
           >
             {isLoading ? (
               <FaSpinner className="animate-spin" size={14} />
@@ -577,8 +732,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               <span className="text-red-400">{error}</span>
             ) : (
               <span>
-                {connectionStatus.status === "connected" &&
-                  "🟢 Real-time active"}
+                {connectionStatus.status === "connected" && "🟢 XMTP active"}
                 {connectionStatus.status === "api" && "🔵 API connected"}
                 {connectionStatus.status === "connecting" && "🟡 Connecting..."}
                 {connectionStatus.status === "offline" && "🔴 Offline"}
@@ -594,11 +748,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             )}
 
             {/* Bot status */}
-            {botStatus && (
-              <span>
-                Bot: {botStatus.online ? "🟢" : "🔴"} {botStatus.environment}
-              </span>
-            )}
+            <span>
+              Bot: {botStatus?.online ? "🟢" : "🔴"}{" "}
+              {botStatus?.environment || "Unknown"}
+            </span>
           </div>
         </div>
       </form>

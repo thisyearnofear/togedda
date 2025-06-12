@@ -1,7 +1,7 @@
 "use client";
 
 import React, { Component, ErrorInfo, ReactNode } from "react";
-import { useAppMode } from "@/contexts/app-mode-context";
+import { useAppEnvironment } from "@/contexts/unified-app-context";
 
 interface Props {
   children: ReactNode;
@@ -25,13 +25,15 @@ class WebAppErrorBoundaryClass extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('WebApp Error Boundary caught an error:', error, errorInfo);
+    console.error("WebApp Error Boundary caught an error:", error, errorInfo);
     this.setState({ error, errorInfo });
   }
 
   render() {
     if (this.state.hasError) {
-      return this.props.fallback || <WebAppErrorFallback error={this.state.error} />;
+      return (
+        this.props.fallback || <WebAppErrorFallback error={this.state.error} />
+      );
     }
 
     return this.props.children;
@@ -44,7 +46,7 @@ function WebAppErrorFallback({ error }: { error?: Error }) {
   };
 
   const handleGoHome = () => {
-    window.location.href = '/';
+    window.location.href = "/";
   };
 
   return (
@@ -52,19 +54,22 @@ function WebAppErrorFallback({ error }: { error?: Error }) {
       <div className="max-w-md w-full text-center space-y-6">
         {/* Error Icon */}
         <div className="text-6xl mb-4">⚠️</div>
-        
+
         {/* Error Message */}
         <div className="space-y-3">
           <h1 className="text-xl font-bold">Something went wrong</h1>
           <p className="text-gray-400 text-sm">
-            The app encountered an unexpected error. This might be due to a network issue or a temporary problem.
+            The app encountered an unexpected error. This might be due to a
+            network issue or a temporary problem.
           </p>
         </div>
 
         {/* Error Details (Development only) */}
-        {process.env.NODE_ENV === 'development' && error && (
+        {process.env.NODE_ENV === "development" && error && (
           <div className="bg-gray-900 border border-gray-700 rounded-lg p-4 text-left">
-            <h3 className="text-sm font-bold text-red-400 mb-2">Error Details:</h3>
+            <h3 className="text-sm font-bold text-red-400 mb-2">
+              Error Details:
+            </h3>
             <pre className="text-xs text-gray-300 overflow-auto max-h-32">
               {error.message}
             </pre>
@@ -79,7 +84,7 @@ function WebAppErrorFallback({ error }: { error?: Error }) {
           >
             🔄 Reload App
           </button>
-          
+
           <button
             onClick={handleGoHome}
             className="w-full px-4 py-3 border border-gray-600 text-white rounded-lg hover:bg-gray-800 transition-colors"
@@ -107,7 +112,7 @@ function WebAppErrorFallback({ error }: { error?: Error }) {
 }
 
 function WebAppErrorHelp() {
-  const { mode, isStandalone } = useAppMode();
+  const { mode, isStandalone } = useAppEnvironment();
 
   if (mode !== "webapp") return null;
 
@@ -145,10 +150,10 @@ export default function WebAppErrorBoundary({ children, fallback }: Props) {
 // Hook for manual error reporting
 export function useErrorReporting() {
   const reportError = (error: Error, context?: string) => {
-    console.error(`[${context || 'WebApp'}] Error:`, error);
-    
+    console.error(`[${context || "WebApp"}] Error:`, error);
+
     // In production, you might want to send this to an error tracking service
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env.NODE_ENV === "production") {
       // Example: Send to error tracking service
       // errorTrackingService.captureException(error, { context });
     }

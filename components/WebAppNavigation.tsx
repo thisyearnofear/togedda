@@ -1,10 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAppMode, WebAppOnly } from "@/contexts/app-mode-context";
+import { useAppEnvironment, useAppUser } from "@/contexts/unified-app-context";
 import { useWebAppInstall } from "@/components/WebAppInstallPrompt";
-import { useSimpleUser } from "@/hooks/use-simple-user";
 import AuthFlow from "@/components/AuthFlow";
+
+// Simple conditional rendering component
+const WebAppOnly = ({ children }: { children: React.ReactNode }) => {
+  const { mode } = useAppEnvironment();
+  return mode === "webapp" ? <>{children}</> : null;
+};
 
 import type { Tab } from "@/src/types";
 
@@ -21,13 +26,13 @@ export default function WebAppNavigation({
   isWalletOnlyUser = false,
   isFarcasterUser = false,
 }: WebAppNavigationProps) {
-  const { mode, isStandalone } = useAppMode();
+  const { mode, isStandalone } = useAppEnvironment();
   const { isInstallable, installApp } = useWebAppInstall();
   const {
     isFarcasterUser: unifiedIsFarcasterUser,
     isWalletUser: unifiedIsWalletOnlyUser,
     isLoading: authLoading,
-  } = useSimpleUser();
+  } = useAppUser();
   const [showInstallButton, setShowInstallButton] = useState(false);
   const [showAuthFlow, setShowAuthFlow] = useState(false);
 

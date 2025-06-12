@@ -2,12 +2,11 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useMiniKitAuth } from "@/hooks/use-minikit-auth";
-import { useSimpleUser } from "@/hooks/use-simple-user";
 import {
-  useAppMode,
-  MiniAppOnly,
-  WebAppOnly,
-} from "@/contexts/app-mode-context";
+  useUnifiedApp,
+  useAppUser,
+  useAppEnvironment,
+} from "@/contexts/unified-app-context";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { Connector } from "wagmi";
 import Image from "next/image";
@@ -22,25 +21,37 @@ interface AuthFlowProps {
 
 type AuthMethod = "farcaster" | "wallet" | "none";
 
+// Simple conditional rendering components
+const MiniAppOnly = ({ children }: { children: React.ReactNode }) => {
+  const { mode } = useAppEnvironment();
+  return mode === "miniapp" ? <>{children}</> : null;
+};
+
+const WebAppOnly = ({ children }: { children: React.ReactNode }) => {
+  const { mode } = useAppEnvironment();
+  return mode === "webapp" ? <>{children}</> : null;
+};
+
 export default function AuthFlow({
   onAuthSuccess,
   onAuthError,
   className = "",
   compact = false,
 }: AuthFlowProps) {
-  const { mode, isFarcasterEnvironment, showFallbackAuth } = useAppMode();
+  const { mode, isFarcasterEnvironment, showWebAppFeatures } =
+    useAppEnvironment();
   const { address, isConnected } = useAccount();
   const { connect, connectors, isPending: isConnecting } = useConnect();
   const { disconnect } = useDisconnect();
 
-  // Use simple user for overall state
+  // Use unified user state
   const {
     isAuthenticated: simpleIsAuthenticated,
     user: simpleUser,
     isFarcasterUser: simpleIsFarcasterUser,
     isWalletUser: simpleIsWalletUser,
-    disconnect: simpleDisconnect,
-  } = useSimpleUser();
+  } = useAppUser();
+  const { disconnect: simpleDisconnect } = useUnifiedApp();
 
   // Use MiniKit auth for mini app specific functionality
   const {

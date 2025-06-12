@@ -12,10 +12,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { message, userAddress, conversationId } = req.body;
+    const { message, userAddress, conversationId, context } = req.body;
 
     if (!message || !userAddress) {
       return res.status(400).json({ error: 'Message and userAddress are required' });
+    }
+
+    // Log enhanced authentication context for debugging
+    if (context) {
+      console.log('📋 Enhanced auth context:', {
+        authType: context.authType,
+        environment: context.environment,
+        hasFarcaster: !!context.farcaster,
+        userAddress: context.userAddress,
+      });
     }
 
     // Check if bot is configured
@@ -92,7 +102,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { generatePredictionProposal } = await import('../../../lib/ai-bot-service');
       // Use provided conversation ID or create one based on request info
       const finalConversationId = conversationId || `api_${req.headers['x-forwarded-for'] || 'unknown'}_${Date.now()}`;
-      const aiResponse = await generatePredictionProposal(message, process.env.OPENAI_API_KEY || '', finalConversationId);
+
+      // Enhanced AI call with authentication context
+      const enhancedMessage = context ?
+        `[User Context: ${context.authType} auth${context.farcaster ? `, Farcaster: @${context.farcaster.username || context.farcaster.fid}` : ''}${context.environment ? `, Environment: ${context.environment}` : ''}] ${message}` :
+        message;
+
+      const aiResponse = await generatePredictionProposal(enhancedMessage, process.env.OPENAI_API_KEY || '', finalConversationId);
 
       res.status(200).json({
         response: aiResponse,

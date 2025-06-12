@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAccount, useConnect } from "wagmi";
-import { useAppMode } from "@/contexts/app-mode-context";
+import { useAppEnvironment } from "@/contexts/unified-app-context";
 import { FaWallet, FaExternalLinkAlt } from "react-icons/fa";
 
 interface WarpcastWalletProps {
@@ -12,7 +12,8 @@ interface WarpcastWalletProps {
 export const WarpcastWallet: React.FC<WarpcastWalletProps> = ({ children }) => {
   const { isConnected, address } = useAccount();
   const { connect, connectors } = useConnect();
-  const { mode, isFarcasterEnvironment, canUseMiniKitFeatures } = useAppMode();
+  const { mode, isFarcasterEnvironment, canUseMiniKitFeatures } =
+    useAppEnvironment();
   const [isWarpcastAvailable, setIsWarpcastAvailable] = useState<
     boolean | null
   >(null);

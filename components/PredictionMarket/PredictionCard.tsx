@@ -15,8 +15,7 @@ import {
   FaFireAlt,
   FaWallet,
 } from "react-icons/fa";
-import { useSimpleUser } from "@/hooks/use-simple-user";
-import { useAppMode } from "@/contexts/app-mode-context";
+import { useAppUser, useAppEnvironment } from "@/contexts/unified-app-context";
 import {
   Prediction,
   PredictionStatus,
@@ -47,8 +46,8 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
   const { address } = useAccount();
   const { connect, connectors } = useConnect();
   const { context } = useMiniKit();
-  const { user, isFarcasterUser } = useSimpleUser();
-  const { isFarcasterEnvironment } = useAppMode();
+  const { user, isFarcasterUser } = useAppUser();
+  const { isFarcasterEnvironment } = useAppEnvironment();
   const [isVoting, setIsVoting] = useState(false);
   const [amount, setAmount] = useState("0.1");
   const [showConfetti, setShowConfetti] = useState(false);

@@ -16,7 +16,8 @@
     "bot:dev": "ts-node --project tsconfig.node.json lib/ai-bot-service.ts",
     "bot:build": "npm run build:node && node dist/lib/ai-bot-service.js",
     "bot:test": "ts-node --project tsconfig.node.json scripts/test-bot.ts",
-    "keys:generate": "ts-node --project tsconfig.node.json scripts/generate-keys.ts"
+    "keys:generate": "ts-node --project tsconfig.node.json scripts/generate-keys.ts",
+    "xmtp:inbox-id": "node scripts/get-xmtp-inbox-id.js"
   },
   "dependencies": {
     "@coinbase/onchainkit": "^0.38.13",
@@ -32,6 +33,7 @@
     "@tanstack/react-query": "^5.64.2",
     "@types/pg": "^8.15.2",
     "@vercel/kv": "^1.0.1",
+    "@xmtp/browser-sdk": "^2.1.1",
     "@xmtp/node-sdk": "^2.1.0",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",

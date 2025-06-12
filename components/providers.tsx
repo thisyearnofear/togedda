@@ -1,12 +1,11 @@
 "use client";
 
-import { MiniAppProvider } from "@/contexts/miniapp-context";
-import { AppModeProvider } from "@/contexts/app-mode-context";
+import { UnifiedAppProvider } from "@/contexts/unified-app-context";
 import { env } from "@/lib/env";
 import { supportedChains, rpcConfig } from "@/lib/config/chains";
 import { appConfig } from "@/lib/config/app";
 import { MiniKitProvider } from "@coinbase/onchainkit/minikit";
-import { QueryProvider } from "@/providers/query-provider";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NeynarContextProvider, Theme } from "@neynar/react";
 import "@neynar/react/dist/style.css";
 import dynamic from "next/dynamic";
@@ -117,11 +116,41 @@ const wagmiConfig = createConfig({
   pollingInterval: 4000, // 4 seconds for Mini App context
 });
 
+// Create query client with optimized configuration
+const createQueryClient = () => {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 30 * 1000, // 30 seconds
+        gcTime: 5 * 60 * 1000, // 5 minutes
+        retry: (failureCount, error: any) => {
+          if (error?.status >= 400 && error?.status < 500) {
+            return false;
+          }
+          return failureCount < 3;
+        },
+        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+        refetchOnWindowFocus: true,
+        refetchOnReconnect: true,
+        refetchOnMount: true,
+        networkMode: "online",
+      },
+      mutations: {
+        retry: 1,
+        retryDelay: 2000,
+        networkMode: "online",
+      },
+    },
+  });
+};
+
 interface ProvidersProps {
   children: ReactNode;
 }
 
 export default function Providers({ children }: ProvidersProps) {
+  const [queryClient] = useState(() => createQueryClient());
+
   // Handle wallet conflicts on mount
   useEffect(() => {
     try {
@@ -131,32 +160,26 @@ export default function Providers({ children }: ProvidersProps) {
     }
   }, []);
 
-  // QueryProvider now handles QueryClient configuration
-
   return (
     <ErudaProvider>
-      {/* WalletErrorSuppressor removed as per user instruction */}
-      <NeynarContextProvider
-        settings={{
-          clientId: env.NEXT_PUBLIC_NEYNAR_CLIENT_ID || "",
-          defaultTheme: Theme.Dark,
-          // No callbacks needed - useSimpleUser handles persistence
-        }}
-      >
-        <AppModeProvider>
-          <QueryProvider>
-            <WagmiProvider config={wagmiConfig}>
-              <MiniKitProvider
-                projectId={env.NEXT_PUBLIC_MINIKIT_PROJECT_ID}
-                notificationProxyUrl={appConfig.farcaster.notificationProxyUrl}
-                chain={appConfig.chains.default} // Use configured default chain
-              >
-                <MiniAppProvider>{children}</MiniAppProvider>
-              </MiniKitProvider>
-            </WagmiProvider>
-          </QueryProvider>
-        </AppModeProvider>
-      </NeynarContextProvider>
+      <QueryClientProvider client={queryClient}>
+        <WagmiProvider config={wagmiConfig}>
+          <NeynarContextProvider
+            settings={{
+              clientId: env.NEXT_PUBLIC_NEYNAR_CLIENT_ID || "",
+              defaultTheme: Theme.Dark,
+            }}
+          >
+            <MiniKitProvider
+              projectId={env.NEXT_PUBLIC_MINIKIT_PROJECT_ID}
+              notificationProxyUrl={appConfig.farcaster.notificationProxyUrl}
+              chain={appConfig.chains.default}
+            >
+              <UnifiedAppProvider>{children}</UnifiedAppProvider>
+            </MiniKitProvider>
+          </NeynarContextProvider>
+        </WagmiProvider>
+      </QueryClientProvider>
     </ErudaProvider>
   );
 }

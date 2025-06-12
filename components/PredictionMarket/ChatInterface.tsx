@@ -24,7 +24,11 @@ import {
   type ChatMode,
 } from "@/lib/xmtp-constants";
 // import { useRealTimeMessages } from "@/hooks/use-real-time-messages";
-import { useBotStatus, useSendMessage } from "@/hooks/use-prediction-queries";
+import {
+  useBotStatus,
+  useSendMessage,
+  useConversationHistory,
+} from "@/hooks/use-prediction-queries";
 import { type StoredMessage } from "@/lib/xmtp-message-store";
 import { useXMTPConnectionStatus } from "@/hooks/use-xmtp-auth";
 import { useXMTPConversations } from "@/hooks/use-xmtp-conversations";
@@ -74,6 +78,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   // Fallback API for when XMTP is not available
   const { data: botStatus } = useBotStatus();
   const sendMessageMutation = useSendMessage();
+
   const hasUnreadMessages = false;
   const totalUnreadCount = 0;
 
@@ -122,6 +127,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     const random = Math.random().toString(36).substring(2, 11);
     return `chat_${authType}_${identifier.slice(-8)}_${timestamp}_${random}`;
   });
+
+  // Get conversation history from query cache (after conversationId is declared)
+  const { data: conversationHistory = [], isLoading: historyLoading } =
+    useConversationHistory(conversationId);
 
   // Bot address for XMTP communication
   const botAddress =
@@ -188,22 +197,36 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         ];
       }
     } else {
-      // AI Bot chat - always works without XMTP
-      return [
-        {
-          id: "ai_welcome",
-          sender: "PredictionBot",
-          content:
-            '🤖 Ready to help with predictions and market insights!\n\nTry asking:\n• "What markets are live?"\n• "Create a Bitcoin prediction"\n• "Show me fitness stats"\n\n✨ No setup required - start chatting immediately! 🚀',
-          timestamp: Date.now() - 300000,
-          messageType: "bot" as const,
-        },
-      ];
+      // AI Bot chat - use conversation history from query cache
+      if (conversationHistory.length > 0) {
+        // Convert stored messages to display format
+        return conversationHistory.map((msg: any) => ({
+          id: msg.id,
+          sender: msg.sender,
+          content: msg.content,
+          timestamp: msg.timestamp,
+          messageType: msg.messageType,
+          metadata: msg.metadata,
+        }));
+      } else {
+        // Show welcome message when no conversation history
+        return [
+          {
+            id: "ai_welcome",
+            sender: "PredictionBot",
+            content:
+              '🤖 Ready to help with predictions and market insights!\n\nTry asking:\n• "What markets are live?"\n• "Create a Bitcoin prediction"\n• "Show me fitness stats"\n\n✨ No setup required - start chatting immediately! 🚀',
+            timestamp: Date.now() - 300000,
+            messageType: "bot" as const,
+          },
+        ];
+      }
     }
   }, [
     chatMode,
     xmtpReady,
     communityConversation.messages,
+    conversationHistory,
     convertXMTPToDisplayMessages,
   ]);
 
@@ -625,7 +648,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         ref={messagesContainerRef}
         className="flex-1 overflow-y-auto p-3 bg-black bg-opacity-30 scroll-smooth"
       >
-        {displayMessages.map((msg) => (
+        {displayMessages.map((msg: ChatMessage) => (
           <div
             key={msg.id}
             className={`mb-2 animate-fadeIn ${

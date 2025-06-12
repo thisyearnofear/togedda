@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { enhancedMessageStore } from '@/lib/enhanced-message-store';
 
 /**
  * API endpoint to send a message to the XMTP bot
@@ -109,6 +110,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         message;
 
       const aiResponse = await generatePredictionProposal(enhancedMessage, process.env.OPENAI_API_KEY || '', finalConversationId);
+
+      // Store both user message and bot response in enhanced store
+      const userMessage = {
+        id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        conversationId: finalConversationId,
+        senderAddress: userAddress,
+        content: message,
+        timestamp: Date.now(),
+        messageType: 'user' as const,
+        metadata: {
+          actionType: 'general' as const,
+        },
+      };
+
+      const botMessage = {
+        id: `bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        conversationId: finalConversationId,
+        senderAddress: process.env.PREDICTION_BOT_XMTP_ADDRESS || 'bot',
+        content: aiResponse,
+        timestamp: Date.now() + 1, // Ensure bot message comes after user message
+        messageType: 'bot' as const,
+        metadata: {
+          actionType: 'general' as const,
+        },
+      };
+
+      // Store messages in enhanced store
+      await enhancedMessageStore.addMessage(userMessage);
+      await enhancedMessageStore.addMessage(botMessage);
 
       res.status(200).json({
         response: aiResponse,

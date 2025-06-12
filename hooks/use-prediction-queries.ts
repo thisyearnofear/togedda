@@ -127,12 +127,19 @@ export function useConversationHistory(conversationId: string | null) {
     queryKey: conversationId ? QUERY_KEYS.CONVERSATION_HISTORY(conversationId) : ['conversation-history', 'none'],
     queryFn: async () => {
       if (!conversationId) return [];
-      
+
       const response = await fetch(`/api/xmtp/conversation-history?conversationId=${conversationId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch conversation history');
       }
-      return response.json();
+      const data = await response.json();
+
+      // Extract messages from the API response
+      if (data.success && data.messages) {
+        return data.messages;
+      }
+
+      return [];
     },
     enabled: !!conversationId,
     staleTime: 2 * 60 * 1000, // 2 minutes

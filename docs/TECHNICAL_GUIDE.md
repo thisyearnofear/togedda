@@ -30,15 +30,55 @@ Imperfect Form is a dual-chain prediction market platform with AI-powered natura
 
 ## 🚀 Real-time Features & Caching
 
+### **Enhanced Message Storage System** ✅ **NEW**
+
+The app now includes a robust multi-layer message storage architecture:
+
+#### **Storage Layers**
+
+1. **PostgreSQL** - Persistent storage for all messages and conversations
+2. **Redis** - Real-time caching and session management (optional but recommended)
+3. **XMTP Sync** - Cross-device message synchronization using XMTP's native capabilities
+
+#### **Key Features**
+
+- **Persistence**: Messages survive server restarts and deployments
+- **Performance**: Redis caching for sub-100ms message retrieval
+- **Scalability**: Handles high message volumes with connection pooling
+- **Reliability**: Graceful fallback if Redis is unavailable
+- **Analytics**: Built-in conversation statistics and user engagement metrics
+
+#### **Setup & Configuration**
+
+```bash
+# Quick setup and testing
+npm run setup:message-store
+
+# Test complete message flow
+npm run setup:message-store test
+```
+
+#### **Environment Variables**
+
+```env
+# Required - PostgreSQL (already configured)
+DATABASE_URL="postgresql://username:password@host:port/database?sslmode=require"
+
+# Optional - Redis for performance boost
+REDIS_URL="redis://localhost:6379"  # Local development
+REDIS_URL="redis://username:password@host:port"  # Production (Upstash, Railway)
+```
+
 ### **Enhanced XMTP Integration**
 
-The app now includes advanced real-time messaging capabilities:
+Building on the robust storage foundation, the app includes advanced real-time messaging:
 
 - **Live Message Streaming**: Real-time conversation updates via XMTP V3
-- **Conversation History**: Persistent message storage with intelligent caching
+- **Persistent History**: All messages stored in PostgreSQL with Redis caching
 - **Message Metadata**: Automatic extraction of prediction-related data
 - **Optimistic Updates**: Immediate UI feedback with rollback on errors
 - **Connection Management**: Automatic reconnection and error handling
+- **Cross-Device Sync**: XMTP native sync for seamless multi-device experience
 
 ### **Advanced Caching System**
 
@@ -407,7 +447,31 @@ npm run bot:dev
 # ✓ Waiting for messages...
 ```
 
-### **2.2 Frontend Development Server**
+### **2.2 Enhanced Message Store Testing** ✅ **NEW**
+
+```bash
+# Setup and test message storage system
+npm run setup:message-store
+
+# Expected output:
+# 🚀 Setting up Enhanced Message Store...
+# 1. Testing PostgreSQL connection...
+# ✅ PostgreSQL connection successful
+# 2. Testing message retrieval...
+# ✅ Retrieved X messages
+# 3. Testing conversation statistics...
+# ✅ Conversation stats: {...}
+# 4. Testing conversations list...
+# ✅ Found X conversations
+# 🎉 Enhanced Message Store setup completed successfully!
+
+# Test complete message flow
+npm run setup:message-store test
+
+# Expected: Full conversation simulation with user/bot messages
+```
+
+### **2.3 Frontend Development Server**
 
 ```bash
 # Start Next.js development server
@@ -416,19 +480,46 @@ npm run dev
 # Expected: Server running on http://localhost:3000
 ```
 
-### **2.3 API Endpoints Testing**
+### **2.4 API Endpoints Testing**
 
 ```bash
 # Test bot status endpoint
 curl http://localhost:3000/api/xmtp/bot-status
 
-# Test message sending endpoint
+# Test enhanced message sending (now with persistent storage)
 curl -X POST http://localhost:3000/api/xmtp/send-message \
   -H "Content-Type: application/json" \
   -d '{"message": "Hello bot!", "userAddress": "0x1234567890123456789012345678901234567890"}'
 
-# Test conversation history endpoint
+# Test enhanced conversation history (PostgreSQL + Redis)
 curl "http://localhost:3000/api/xmtp/conversation-history?conversationId=test_conv&limit=20"
+
+# Expected response format:
+# {
+#   "success": true,
+#   "messages": [
+#     {
+#       "id": "user_123...",
+#       "sender": "You",
+#       "content": "Hello bot!",
+#       "timestamp": 1640995200000,
+#       "messageType": "user"
+#     },
+#     {
+#       "id": "bot_456...",
+#       "sender": "PredictionBot",
+#       "content": "Hello! How can I help you create predictions?",
+#       "timestamp": 1640995201000,
+#       "messageType": "bot"
+#     }
+#   ],
+#   "pagination": {
+#     "total": 2,
+#     "limit": 20,
+#     "offset": 0,
+#     "hasMore": false
+#   }
+# }
 
 # Test user votes endpoint
 curl "http://localhost:3000/api/user-votes?address=0x55A5705453Ee82c742274154136Fce8149597058"

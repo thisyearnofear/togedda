@@ -77,6 +77,88 @@ NEXT_PUBLIC_MAX_RETRIES=3
 
 ---
 
+## 💾 Enhanced Message Storage Setup
+
+The app now includes a robust multi-layer message storage system that combines PostgreSQL, Redis, and XMTP sync for optimal performance and reliability.
+
+### Architecture
+
+1. **PostgreSQL** - Persistent storage for all messages and conversations
+2. **Redis** - Real-time caching and session management (optional but recommended)
+3. **XMTP Sync** - Cross-device message synchronization using XMTP's native capabilities
+
+### Quick Setup
+
+```bash
+# 1. Install dependencies (already done if you ran npm install)
+npm install
+
+# 2. Configure environment variables in .env.local
+DATABASE_URL="postgresql://username:password@host:port/database?sslmode=require"
+REDIS_URL="redis://localhost:6379"  # Optional
+
+# 3. Run setup script to initialize and test
+npm run setup:message-store
+
+# 4. Test complete message flow
+npm run setup:message-store test
+```
+
+### Environment Variables
+
+```env
+# Required - PostgreSQL Database
+DATABASE_URL="postgresql://username:password@host:port/database?sslmode=require"
+
+# Optional - Redis for caching (improves performance)
+REDIS_URL="redis://localhost:6379"
+# OR for cloud Redis (Upstash, Railway, etc.)
+REDIS_URL="redis://username:password@host:port"
+
+# Optional - XMTP Sync Configuration
+XMTP_ENV="dev"  # or "production"
+BOT_PRIVATE_KEY="0x..."
+ENCRYPTION_KEY="0x..."
+```
+
+### Redis Setup Options
+
+#### Option 1: Local Redis (Development)
+
+```bash
+# Install Redis locally
+brew install redis  # macOS
+sudo apt install redis-server  # Ubuntu
+
+# Start Redis
+redis-server
+
+# Set environment variable
+REDIS_URL="redis://localhost:6379"
+```
+
+#### Option 2: Upstash Redis (Recommended for Production)
+
+1. Go to [upstash.com](https://upstash.com)
+2. Create a free Redis database
+3. Copy the Redis URL to your environment variables
+
+#### Option 3: Railway Redis
+
+1. Add Redis service to your Railway project
+2. Copy the connection URL from Railway dashboard
+
+### Benefits of Enhanced Storage
+
+- **Persistence**: Messages survive server restarts
+- **Performance**: Redis caching for fast message retrieval
+- **Scalability**: Handles high message volumes efficiently
+- **Reliability**: Graceful fallback if Redis is unavailable
+- **Sync**: XMTP native sync for cross-device consistency
+- **Analytics**: Built-in conversation statistics and metrics
+
+---
+
 ## 🤖 AI Bot Service Deployment
 
 ### Option 1: Railway (Recommended)
@@ -108,7 +190,9 @@ Railway is recommended for XMTP bot deployment as shown in the [official example
    BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
    PREDICTION_BOT_XMTP_ADDRESS=0x7E28ed4e4ac222DdC51bd09902FcB62B70AF525c
 
-   # Real-time Features
+   # Enhanced Message Storage
+   DATABASE_URL=postgresql://username:password@host:port/database?sslmode=require
+   REDIS_URL=redis://username:password@host:port (optional)
    ENABLE_MESSAGE_PERSISTENCE=true
    MESSAGE_RETENTION_DAYS=30
    MAX_MESSAGES_PER_CONVERSATION=1000
@@ -303,10 +387,12 @@ NODE_ENV=development
    - Use PM2 or similar for process management
    - Implement message queuing for high volume
 
-2. **Database Persistence**
+2. **Enhanced Message Storage** ✅
 
-   - Consider adding Redis for conversation state
-   - Implement message history storage
+   - **PostgreSQL:** Persistent message storage (already configured)
+   - **Redis:** Real-time caching and session management (optional)
+   - **XMTP Sync:** Cross-device message synchronization
+   - **Setup:** Run `npm run setup:message-store` to configure
 
 3. **Load Balancing**
    - Use multiple bot instances

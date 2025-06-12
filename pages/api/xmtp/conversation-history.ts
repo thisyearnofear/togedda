@@ -4,7 +4,7 @@
  */
 
 import { NextApiRequest, NextApiResponse } from 'next';
-import { messageStore } from '@/lib/xmtp-message-store';
+import { enhancedMessageStore } from '@/lib/enhanced-message-store';
 
 interface ConversationHistoryRequest {
   conversationId?: string;
@@ -65,17 +65,17 @@ export default async function handler(
     let total = 0;
 
     if (conversationId) {
-      // Get messages for specific conversation
-      const allMessages = messageStore.getMessages(conversationId);
+      // Get messages for specific conversation using enhanced store
+      const allMessages = await enhancedMessageStore.getMessages(conversationId, limitNum + offsetNum);
       total = allMessages.length;
-      
+
       // Apply pagination
       messages = allMessages
         .slice(offsetNum, offsetNum + limitNum)
         .map(msg => ({
           id: msg.id,
-          sender: msg.messageType === 'bot' ? 'PredictionBot' : 
-                  msg.messageType === 'user' ? 'You' : 
+          sender: msg.messageType === 'bot' ? 'PredictionBot' :
+                  msg.messageType === 'user' ? 'You' :
                   msg.senderAddress,
           content: msg.content,
           timestamp: msg.timestamp,
@@ -83,31 +83,34 @@ export default async function handler(
           metadata: msg.metadata,
         }));
     } else if (userAddress) {
-      // Get all conversations for user
-      const conversations = messageStore.getConversations();
-      const userConversations = conversations.filter(conv => 
+      // Get all conversations for user using enhanced store
+      const conversations = await enhancedMessageStore.getConversations();
+      const userConversations = conversations.filter(conv =>
         conv.peerAddress.toLowerCase() === userAddress.toLowerCase()
       );
 
       // Aggregate messages from all user conversations
       const allUserMessages: any[] = [];
-      userConversations.forEach(conv => {
-        const convMessages = messageStore.getMessages(conv.id);
-        allUserMessages.push(...convMessages);
-      });
+      for (const conv of userConversations) {
+        const convMessages = await enhancedMessageStore.getMessages(conv.id, 100);
+        allUserMessages.push(...convMessages.map(msg => ({
+          ...msg,
+          conversationId: conv.id,
+        })));
+      }
 
       // Sort by timestamp (most recent first)
       allUserMessages.sort((a, b) => b.timestamp - a.timestamp);
-      
+
       total = allUserMessages.length;
-      
+
       // Apply pagination
       messages = allUserMessages
         .slice(offsetNum, offsetNum + limitNum)
         .map(msg => ({
           id: msg.id,
-          sender: msg.messageType === 'bot' ? 'PredictionBot' : 
-                  msg.messageType === 'user' ? 'You' : 
+          sender: msg.messageType === 'bot' ? 'PredictionBot' :
+                  msg.messageType === 'user' ? 'You' :
                   msg.senderAddress,
           content: msg.content,
           timestamp: msg.timestamp,

@@ -60,6 +60,9 @@ export function useXMTPConversations() {
     setInitError(null);
 
     try {
+      console.log("🚀 Starting XMTP client initialization...");
+      console.log("ℹ️  First-time users will see a signature request to create XMTP inbox");
+
       const manager = new XMTPClientManager({
         signer: walletClient,
         env: process.env.NODE_ENV === "production" ? "production" : "dev",
@@ -70,7 +73,22 @@ export function useXMTPConversations() {
       console.log("✅ XMTP client manager initialized");
     } catch (error) {
       console.error("❌ Failed to initialize XMTP:", error);
-      setInitError(error instanceof Error ? error.message : "Failed to initialize XMTP");
+
+      // Provide user-friendly error messages
+      let errorMessage = "Failed to initialize XMTP";
+      if (error instanceof Error) {
+        if (error.message.includes("Pop up window failed")) {
+          errorMessage = "Signature popup was blocked. Please allow popups and try again.";
+        } else if (error.message.includes("User rejected")) {
+          errorMessage = "Signature was rejected. XMTP requires a signature to create your inbox.";
+        } else if (error.message.includes("Access Handle")) {
+          errorMessage = "Database access conflict. Please close other tabs and refresh.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      setInitError(errorMessage);
     } finally {
       setIsInitializing(false);
     }
@@ -213,10 +231,16 @@ export function useXMTPConversations() {
     return sendMessage(communityConversation.id, content);
   }, [communityConversation.id, sendMessage]);
 
-  // Initialize client when ready
-  useEffect(() => {
-    initializeClient();
-  }, [initializeClient]);
+  // Manual initialization function for community chat
+  const initializeXMTPForCommunity = useCallback(async () => {
+    if (!canInitializeXMTP || isInitializing || clientManager?.isReady) return;
+    await initializeClient();
+  }, [canInitializeXMTP, isInitializing, clientManager?.isReady, initializeClient]);
+
+  // Don't auto-initialize - only when community chat is needed
+  // useEffect(() => {
+  //   initializeClient();
+  // }, [initializeClient]);
 
   // Initialize conversations when client is ready
   useEffect(() => {
@@ -239,15 +263,16 @@ export function useXMTPConversations() {
     isInitializing,
     isReady: clientManager?.isReady || false,
     initError,
-    
+
     // Conversations
     botConversation,
     communityConversation,
-    
+
     // Actions
     sendToBotConversation,
     sendToCommunityConversation,
-    
+    initializeXMTPForCommunity, // Manual initialization for community chat
+
     // Utils
     clientManager,
   };

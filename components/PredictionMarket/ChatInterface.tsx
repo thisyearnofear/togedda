@@ -68,6 +68,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     communityConversation,
     sendToBotConversation,
     sendToCommunityConversation,
+    initializeXMTPForCommunity, // Manual initialization
   } = useXMTPConversations();
 
   // Fallback API for when XMTP is not available
@@ -170,38 +171,39 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   // Display messages based on chat mode
   const displayMessages = useMemo(() => {
     if (chatMode === CHAT_MODES.COMMUNITY) {
-      // Show community XMTP messages or welcome message
-      return communityConversation.messages.length > 0
-        ? convertXMTPToDisplayMessages(communityConversation.messages)
-        : [
-            {
-              id: "community_welcome",
-              sender: "Community",
-              content:
-                "💬 Welcome to the community chat!\n\nThis is where you can:\n• Discuss predictions with other users\n• Share fitness strategies\n• Chat about market trends\n\nStart chatting with other community members!",
-              timestamp: Date.now() - 300000,
-              messageType: "bot" as const,
-            },
-          ];
+      // Show community XMTP messages or setup message
+      if (xmtpReady && communityConversation.messages.length > 0) {
+        return convertXMTPToDisplayMessages(communityConversation.messages);
+      } else {
+        return [
+          {
+            id: "community_setup",
+            sender: "Community",
+            content: xmtpReady
+              ? "💬 Welcome to the community chat!\n\nThis is where you can:\n• Discuss predictions with other users\n• Share fitness strategies\n• Chat about market trends\n\nStart chatting with other community members!"
+              : "💬 Community Chat Setup Required\n\n🔐 Community chat uses XMTP for secure P2P messaging\n📝 This requires a one-time signature to create your decentralized inbox\n✨ Your messages will be end-to-end encrypted\n\n👆 Click 'Set up Community Chat' below to get started!",
+            timestamp: Date.now() - 300000,
+            messageType: "bot" as const,
+          },
+        ];
+      }
     } else {
-      // Show AI bot XMTP messages or welcome message
-      return botConversation.messages.length > 0
-        ? convertXMTPToDisplayMessages(botConversation.messages)
-        : [
-            {
-              id: "ai_welcome",
-              sender: "PredictionBot",
-              content:
-                '🤖 Ready to help with predictions and market insights!\n\nTry asking:\n• "What markets are live?"\n• "Create a Bitcoin prediction"\n• "Show me fitness stats"\n\nLet\'s build the future together! 🚀',
-              timestamp: Date.now() - 300000,
-              messageType: "bot" as const,
-            },
-          ];
+      // AI Bot chat - always works without XMTP
+      return [
+        {
+          id: "ai_welcome",
+          sender: "PredictionBot",
+          content:
+            '🤖 Ready to help with predictions and market insights!\n\nTry asking:\n• "What markets are live?"\n• "Create a Bitcoin prediction"\n• "Show me fitness stats"\n\n✨ No setup required - start chatting immediately! 🚀',
+          timestamp: Date.now() - 300000,
+          messageType: "bot" as const,
+        },
+      ];
     }
   }, [
     chatMode,
+    xmtpReady,
     communityConversation.messages,
-    botConversation.messages,
     convertXMTPToDisplayMessages,
   ]);
 
@@ -210,7 +212,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     if (!canInitializeXMTP) {
       setError(connectionMessage);
     } else if (xmtpError) {
-      setError(`XMTP Error: ${xmtpError}`);
+      // Provide user-friendly error messages for XMTP issues
+      let friendlyError = xmtpError;
+      if (xmtpError.includes("Signature")) {
+        friendlyError =
+          "🔐 XMTP requires a signature to create your secure inbox. Please sign the message in your wallet to continue.";
+      } else if (xmtpError.includes("popup")) {
+        friendlyError =
+          "🚫 Signature popup was blocked. Please allow popups and refresh the page.";
+      } else if (xmtpError.includes("Access Handle")) {
+        friendlyError =
+          "⚠️ Database conflict detected. Please close other tabs with this app and refresh.";
+      }
+      setError(friendlyError);
     } else {
       setError(null);
     }
@@ -250,27 +264,22 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
     try {
       if (chatMode === CHAT_MODES.AI_BOT) {
-        // Direct AI Bot conversation - use XMTP if ready, fallback to API
-        if (xmtpReady && botConversation.id) {
-          await sendToBotConversation(messageToSend);
-        } else {
-          // Fallback to API with enhanced context
-          const context = getConversationContext();
-          await sendMessageMutation.mutateAsync({
-            message: messageToSend,
-            userAddress: primaryIdentity.address || DEFAULT_FALLBACK_ADDRESS,
-            conversationId,
-            context, // Include authentication context
-          });
-        }
+        // AI Bot conversation - use API by default (no signature required)
+        const context = getConversationContext();
+        await sendMessageMutation.mutateAsync({
+          message: messageToSend,
+          userAddress: primaryIdentity.address || DEFAULT_FALLBACK_ADDRESS,
+          conversationId,
+          context, // Include authentication context
+        });
       } else if (chatMode === CHAT_MODES.COMMUNITY) {
-        // Community chat - use XMTP group chat
+        // Community chat - requires XMTP for P2P messaging
         if (xmtpReady && communityConversation.id) {
           await sendToCommunityConversation(messageToSend);
         } else {
-          // Show error if XMTP not ready for community chat
+          // Show helpful error for community chat
           setError(
-            "Community chat requires XMTP connection. Please ensure your wallet is connected."
+            "Community chat requires XMTP setup. Click 'Set up Community Chat' to enable P2P messaging."
           );
         }
       }
@@ -335,18 +344,39 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   // Connection status indicator
   const getConnectionStatus = () => {
     if (xmtpInitializing)
-      return { status: "connecting", color: "yellow", text: "Connecting..." };
+      return {
+        status: "connecting",
+        color: "yellow",
+        text: "Setting up secure chat...",
+        detail: "First-time users need to sign a message to create XMTP inbox",
+      };
     if (xmtpReady)
       return {
         status: "connected",
         color: "green",
         text: "XMTP Connected",
+        detail: "Secure messaging ready",
       };
     if (xmtpError)
-      return { status: "error", color: "red", text: "Connection Error" };
+      return {
+        status: "error",
+        color: "red",
+        text: "Connection Error",
+        detail: "Check error message below",
+      };
     if (botStatus?.online)
-      return { status: "api", color: "blue", text: "API Connected" };
-    return { status: "offline", color: "gray", text: "Offline" };
+      return {
+        status: "api",
+        color: "blue",
+        text: "API Connected",
+        detail: "Using fallback messaging",
+      };
+    return {
+      status: "offline",
+      color: "gray",
+      text: "Offline",
+      detail: "Connect wallet to enable chat",
+    };
   };
 
   const connectionStatus = getConnectionStatus();
@@ -557,6 +587,40 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         </div>
       )}
 
+      {/* XMTP Initialization Info - Only for Community Chat */}
+      {xmtpInitializing &&
+        canInitializeXMTP &&
+        chatMode === CHAT_MODES.COMMUNITY && (
+          <div className="p-3 bg-blue-900 bg-opacity-20 border-b border-blue-800">
+            <div className="flex items-center gap-2 text-blue-300 text-sm">
+              <FaSpinner className="animate-spin text-blue-400" />
+              <div>
+                <div className="font-medium">Setting up community chat...</div>
+                <div className="text-xs text-blue-400 mt-1 space-y-1">
+                  <div>
+                    🔐 Community chat requires XMTP signature for P2P messaging
+                  </div>
+                  <div>📝 This creates your secure, decentralized inbox</div>
+                  <div>💬 AI Bot chat works without signatures!</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+      {/* XMTP Error Display */}
+      {xmtpError && canInitializeXMTP && (
+        <div className="p-3 bg-red-900 bg-opacity-20 border-b border-red-800">
+          <div className="flex items-center gap-2 text-red-300 text-sm">
+            <span className="text-red-400">⚠️</span>
+            <div>
+              <div className="font-medium">XMTP Connection Error</div>
+              <div className="text-xs text-red-400">{error}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div
         ref={messagesContainerRef}
         className="flex-1 overflow-y-auto p-3 bg-black bg-opacity-30 scroll-smooth"
@@ -671,7 +735,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               placeholder={
                 chatMode === CHAT_MODES.AI_BOT
                   ? "Ask about markets, create predictions, get insights..."
-                  : "Chat with the community (coming soon)..."
+                  : xmtpReady
+                  ? "Chat with the community..."
+                  : "Set up community chat first..."
               }
               className={`w-full bg-black border-2 p-2 text-white text-sm rounded-lg focus:outline-none transition-all duration-200 ${
                 chatMode === CHAT_MODES.AI_BOT
@@ -698,28 +764,52 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             )}
           </div>
 
-          <button
-            type="submit"
-            disabled={isLoading || !newMessage.trim()}
-            className={`p-2 rounded-lg transition-all duration-200 flex items-center gap-1 text-white disabled:bg-gray-600 ${
-              chatMode === CHAT_MODES.AI_BOT
-                ? "bg-purple-600 hover:bg-purple-700"
-                : "bg-blue-600 hover:bg-blue-700"
-            }`}
-            title={
-              isLoading
-                ? chatMode === CHAT_MODES.AI_BOT
-                  ? "AI is thinking..."
-                  : "Sending..."
-                : "Send message"
-            }
-          >
-            {isLoading ? (
-              <FaSpinner className="animate-spin" size={14} />
-            ) : (
-              <FaPaperPlane size={14} />
-            )}
-          </button>
+          {/* Community Chat Setup Button or Send Button */}
+          {chatMode === CHAT_MODES.COMMUNITY && !xmtpReady ? (
+            <button
+              type="button"
+              onClick={initializeXMTPForCommunity}
+              disabled={xmtpInitializing}
+              className="px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-sm font-medium"
+              title="Set up secure P2P messaging for community chat"
+            >
+              {xmtpInitializing ? (
+                <>
+                  <FaSpinner className="animate-spin" size={14} />
+                  Setting up...
+                </>
+              ) : (
+                <>🔐 Set up Community Chat</>
+              )}
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={
+                isLoading ||
+                !newMessage.trim() ||
+                (chatMode === CHAT_MODES.COMMUNITY && !xmtpReady)
+              }
+              className={`p-2 rounded-lg transition-all duration-200 flex items-center gap-1 text-white disabled:bg-gray-600 ${
+                chatMode === CHAT_MODES.AI_BOT
+                  ? "bg-purple-600 hover:bg-purple-700"
+                  : "bg-blue-600 hover:bg-blue-700"
+              }`}
+              title={
+                isLoading
+                  ? chatMode === CHAT_MODES.AI_BOT
+                    ? "AI is thinking..."
+                    : "Sending..."
+                  : "Send message"
+              }
+            >
+              {isLoading ? (
+                <FaSpinner className="animate-spin" size={14} />
+              ) : (
+                <FaPaperPlane size={14} />
+              )}
+            </button>
+          )}
         </div>
         <div className="flex items-center justify-between mt-2 text-xs text-gray-400">
           <div>

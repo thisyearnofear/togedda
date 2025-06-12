@@ -1,10 +1,46 @@
 "use client";
 
-import { Client, Group } from "@xmtp/browser-sdk";
+import { Client, Group, type Signer } from "@xmtp/browser-sdk";
+import type { WalletClient } from "viem";
 
 export interface XMTPClientConfig {
-  signer: any; // Wallet signer
+  signer: WalletClient; // Wagmi wallet client
   env: "dev" | "production" | "local";
+}
+
+// Convert wagmi WalletClient to XMTP Signer
+function createXMTPSigner(walletClient: WalletClient): Signer {
+  return {
+    type: "EOA",
+    getIdentifier: () => ({
+      identifier: walletClient.account?.address || "",
+      identifierKind: "Ethereum" as const,
+    }),
+    signMessage: async (message: string) => {
+      if (!walletClient.account) {
+        throw new Error("No account connected");
+      }
+
+      console.log("🔐 XMTP requesting signature for:", message.substring(0, 50) + "...");
+
+      try {
+        const signature = await walletClient.signMessage({
+          account: walletClient.account,
+          message,
+        });
+
+        console.log("✅ Signature obtained successfully");
+
+        // Convert hex signature to Uint8Array
+        return new Uint8Array(
+          signature.slice(2).match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
+        );
+      } catch (error) {
+        console.error("❌ Signature failed:", error);
+        throw error;
+      }
+    },
+  };
 }
 
 export interface ConversationInfo {
@@ -37,16 +73,28 @@ export class XMTPClientManager {
   private async _initialize(): Promise<void> {
     try {
       console.log("🔄 Initializing XMTP client...");
-      
-      this.client = await Client.create(this.config.signer, {
+
+      // Convert wagmi wallet client to XMTP signer
+      const xmtpSigner = createXMTPSigner(this.config.signer);
+
+      // Create unique database path to avoid conflicts
+      const walletAddress = this.config.signer.account?.address;
+      const dbPath = walletAddress ? `xmtp-${walletAddress.toLowerCase()}` : undefined;
+
+      this.client = await Client.create(xmtpSigner, {
         env: this.config.env,
+        dbPath,
+        // Enable structured logging for better debugging
+        structuredLogging: process.env.NODE_ENV === "development",
+        loggingLevel: process.env.NODE_ENV === "development" ? "info" : "warn",
       });
 
       // Sync conversations to get latest state
       await this.client.conversations.sync();
-      
+
       this.isInitialized = true;
       console.log("✅ XMTP client initialized successfully");
+      console.log(`📧 Inbox ID: ${this.client.inboxId}`);
     } catch (error) {
       console.error("❌ Failed to initialize XMTP client:", error);
       this.initPromise = null;

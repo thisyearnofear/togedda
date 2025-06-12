@@ -326,6 +326,7 @@ Our dual-mode architecture allows us to maximize both contexts:
 - Create group chat creation and management
 - Basic message sending and receiving
 - User authentication and identity management
+- **Transition to User-Signed Transactions**: Move from bot-signed to user-signed prediction creation for proper attribution
 
 #### **Phase 3.2: AI Agent Development** (Month 2)
 

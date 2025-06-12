@@ -137,8 +137,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       };
 
       // Store messages in enhanced store
-      await enhancedMessageStore.addMessage(userMessage);
-      await enhancedMessageStore.addMessage(botMessage);
+      try {
+        console.log(`📝 Storing user message: ${userMessage.id} in conversation ${finalConversationId}`);
+        await enhancedMessageStore.addMessage(userMessage);
+        console.log(`📝 Storing bot message: ${botMessage.id} in conversation ${finalConversationId}`);
+        await enhancedMessageStore.addMessage(botMessage);
+        console.log(`✅ Successfully stored both messages in database`);
+      } catch (storeError) {
+        console.error('❌ Error storing messages in enhanced store:', storeError);
+        // Continue anyway - the response will still be sent to the user
+      }
 
       res.status(200).json({
         response: aiResponse,

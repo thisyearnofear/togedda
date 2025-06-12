@@ -33,12 +33,18 @@ export async function parseNaturalDate(
     { regex: /(\w+\s+\d{1,2},?\s+\d{4})/i, confidence: 'high' as const },
     { regex: /(\d{1,2}\/\d{1,2}\/\d{4})/i, confidence: 'high' as const },
     { regex: /(\d{4}-\d{2}-\d{2})/i, confidence: 'high' as const },
-    
+
+    // European date formats (dd.mm.yy, dd.mm.yyyy)
+    { regex: /(\d{1,2}\.\d{1,2}\.\d{2,4})/i, confidence: 'high' as const },
+
+    // Date with time (dd.mm.yy HH:MM, dd/mm/yyyy HH:MM)
+    { regex: /(\d{1,2}[\.\/]\d{1,2}[\.\/]\d{2,4}\s+\d{1,2}:\d{2})/i, confidence: 'high' as const },
+
     // Relative dates
     { regex: /(next\s+\w+)/i, confidence: 'medium' as const },
     { regex: /(in\s+\d+\s+\w+)/i, confidence: 'medium' as const },
     { regex: /(by\s+the\s+end\s+of\s+\w+)/i, confidence: 'medium' as const },
-    
+
     // Vague dates
     { regex: /(soon|later|eventually)/i, confidence: 'low' as const },
   ];
@@ -62,6 +68,23 @@ export async function parseNaturalDate(
     }
   }
 
+  // Enhanced parsing for common user formats
+  if (!parsedDate) {
+    parsedDate = parseUserFriendlyDate(dateText);
+    if (parsedDate) {
+      confidence = 'medium';
+      // Check if the parsed date is in the past
+      if (parsedDate.getTime() < Date.now()) {
+        ambiguous = true;
+        suggestions = [
+          `Did you mean ${parsedDate.getFullYear() + 1} instead of ${parsedDate.getFullYear()}?`,
+          'Please specify the full year (e.g., "2025" instead of "25")',
+          'Use format: "DD.MM.YYYY HH:MM" or "December 31, 2025"'
+        ];
+      }
+    }
+  }
+
   // Fallback to basic parsing
   if (!parsedDate) {
     try {
@@ -69,15 +92,26 @@ export async function parseNaturalDate(
       if (isNaN(parsedDate.getTime())) {
         throw new Error('Invalid date');
       }
+      // Check if parsed date is in the past
+      if (parsedDate.getTime() < Date.now()) {
+        ambiguous = true;
+        suggestions = [
+          'The date appears to be in the past. Did you mean a future year?',
+          'Please use format: "December 31, 2025" or "31.12.2025"',
+          'For relative dates, try: "in 6 months" or "next year"'
+        ];
+      }
     } catch (error) {
       // Default to 30 days from now
       parsedDate = addDays(new Date(), 30);
       confidence = 'low';
       ambiguous = true;
       suggestions = [
-        'Please specify a clearer date (e.g., "December 31, 2024")',
-        'Use relative dates (e.g., "in 2 weeks", "next Friday")',
-        'Include the year for clarity'
+        'Could not understand the date format. Please try:',
+        '• "December 31, 2025" (full date)',
+        '• "31.12.2025 23:59" (European format)',
+        '• "in 6 months" (relative date)',
+        '• "next Friday" (relative day)'
       ];
     }
   }
@@ -93,6 +127,64 @@ export async function parseNaturalDate(
     ambiguous,
     suggestions: suggestions.length > 0 ? suggestions : undefined
   };
+}
+
+/**
+ * Parse user-friendly date formats with smart year interpretation
+ */
+function parseUserFriendlyDate(dateText: string): Date | null {
+  const text = dateText.trim();
+
+  // Handle European format: dd.mm.yy or dd.mm.yyyy with optional time
+  const europeanMatch = text.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})(?:\s+(\d{1,2}):(\d{2}))?/);
+  if (europeanMatch) {
+    const day = parseInt(europeanMatch[1]);
+    const month = parseInt(europeanMatch[2]) - 1; // JavaScript months are 0-indexed
+    let year = parseInt(europeanMatch[3]);
+    const hour = europeanMatch[4] ? parseInt(europeanMatch[4]) : 0;
+    const minute = europeanMatch[5] ? parseInt(europeanMatch[5]) : 0;
+
+    // Smart year interpretation: if 2-digit year, assume future
+    if (year < 100) {
+      const currentYear = new Date().getFullYear();
+      const currentCentury = Math.floor(currentYear / 100) * 100;
+      year = currentCentury + year;
+
+      // If the resulting date is in the past, add 100 years
+      const testDate = new Date(year, month, day, hour, minute);
+      if (testDate.getTime() < Date.now()) {
+        year += 100;
+      }
+    }
+
+    return new Date(year, month, day, hour, minute);
+  }
+
+  // Handle US format: mm/dd/yy or mm/dd/yyyy with smart year interpretation
+  const usMatch = text.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+(\d{1,2}):(\d{2}))?/);
+  if (usMatch) {
+    const month = parseInt(usMatch[1]) - 1;
+    const day = parseInt(usMatch[2]);
+    let year = parseInt(usMatch[3]);
+    const hour = usMatch[4] ? parseInt(usMatch[4]) : 0;
+    const minute = usMatch[5] ? parseInt(usMatch[5]) : 0;
+
+    // Smart year interpretation
+    if (year < 100) {
+      const currentYear = new Date().getFullYear();
+      const currentCentury = Math.floor(currentYear / 100) * 100;
+      year = currentCentury + year;
+
+      const testDate = new Date(year, month, day, hour, minute);
+      if (testDate.getTime() < Date.now()) {
+        year += 100;
+      }
+    }
+
+    return new Date(year, month, day, hour, minute);
+  }
+
+  return null;
 }
 
 /**

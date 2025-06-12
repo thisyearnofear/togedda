@@ -2,8 +2,15 @@
 
 A retro-gamified fitness companion application built as a Farcaster Mini App. This sister app to [imperfectform.fun](https://imperfectform.fun) creates collective goals, leaderboards, and prediction markets to gamify fitness results across multiple blockchain networks with a pixel-perfect arcade aesthetic.
 
-**Main App**: Exercise tracking and score submission at [imperfectform.fun](https://imperfectform.fun)  
+**Main App**: Exercise tracking and score submission at [imperfectform.fun](https://imperfectform.fun)
 **Mini App**: Community goals, competition, and gamification features
+
+## 🔗 Quick Links
+
+- **Live Demo:** [imperfectminiapp.vercel.app](https://imperfectminiapp.vercel.app)
+- **CELO Contract:** [`0x4d6b336F174f17daAf63D233E1E05cB105562304`](https://explorer.celo.org/mainnet/address/0x4d6b336F174f17daAf63D233E1E05cB105562304)
+- **Base Sepolia Contract:** [`0x9B4Be1030eDC90205C10aEE54920192A13c12Cba`](https://sepolia.basescan.org/address/0x9B4Be1030eDC90205C10aEE54920192A13c12Cba)
+- **Documentation:** [Deployment Guide](./docs/DEPLOYMENT_GUIDE.md) | [Technical Guide](./docs/TECHNICAL_GUIDE.md)
 
 ![Imperfect Form](./public/og.png)
 
@@ -100,7 +107,22 @@ ENABLE_ENSDATA_FALLBACK="true"
 2. Enter your domain (use ngrok URL for local dev)
 3. Copy the generated header, payload, and signature to your `.env.local`
 
-### 4. Start Development
+### 4. Optional: Start Redis (for enhanced performance)
+
+```bash
+# Install Redis locally (macOS)
+brew install redis
+
+# Start Redis server
+redis-server
+
+# Or use Docker
+docker run -d -p 6379:6379 redis:alpine
+```
+
+> **Note**: Redis is optional. The app will work with PostgreSQL only, but Redis provides better performance for message caching.
+
+### 5. Start Development
 
 ```bash
 npm run dev
@@ -154,9 +176,30 @@ NEXT_PUBLIC_ENABLE_PREDICTIONS="true"
 NEXT_PUBLIC_ENABLE_ANALYTICS="false"
 ```
 
-### Blockchain Networks
+### Blockchain Networks & Smart Contracts
 
-Supported networks are configured in `lib/config/chains.ts`:
+The app operates on multiple blockchain networks with deployed prediction market contracts:
+
+#### Production Contracts
+
+**CELO Mainnet** (Production)
+
+- **Contract:** `ImperfectFormPredictionMarketV2`
+- **Address:** `0x4d6b336F174f17daAf63D233E1E05cB105562304`
+- **Explorer:** [CELO Explorer](https://explorer.celo.org/mainnet/address/0x4d6b336F174f17daAf63D233E1E05cB105562304)
+- **Status:** ✅ Live with real CELO tokens
+
+**Base Sepolia** (Hackathon/Testing)
+
+- **Contract:** `ImperfectFormPredictionMarketV2`
+- **Address:** `0x9B4Be1030eDC90205C10aEE54920192A13c12Cba`
+- **Explorer:** [Base Sepolia Scan](https://sepolia.basescan.org/address/0x9B4Be1030eDC90205C10aEE54920192A13c12Cba)
+- **PredictionBot:** `0x5552e0ca9fd8e71bc2D0941619248f91d30CDa0E`
+- **Status:** ✅ Live with test ETH
+
+#### Supported Networks
+
+Additional networks are configured in `lib/config/chains.ts`:
 
 - **Base**: Primary network, Coinbase L2
 - **Celo**: Mobile-first DeFi platform

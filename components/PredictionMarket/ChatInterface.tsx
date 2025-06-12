@@ -17,7 +17,11 @@ import {
   FaSpinner,
   FaEllipsisH,
 } from "react-icons/fa";
-import { useAccount } from "wagmi";
+import {
+  useAccount,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+} from "wagmi";
 import {
   DEFAULT_FALLBACK_ADDRESS,
   CHAT_MODES,
@@ -28,10 +32,12 @@ import {
   useBotStatus,
   useSendMessage,
   useConversationHistory,
+  useCacheInvalidation,
 } from "@/hooks/use-prediction-queries";
 import { type StoredMessage } from "@/lib/xmtp-message-store";
 import { useXMTPConnectionStatus } from "@/hooks/use-xmtp-auth";
 import { useXMTPConversations } from "@/hooks/use-xmtp-conversations";
+import { predictionMarketABI } from "@/lib/constants";
 
 interface ChatMessage {
   id: string;
@@ -78,6 +84,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   // Fallback API for when XMTP is not available
   const { data: botStatus } = useBotStatus();
   const sendMessageMutation = useSendMessage();
+  const { invalidatePredictions } = useCacheInvalidation();
 
   const hasUnreadMessages = false;
   const totalUnreadCount = 0;
@@ -90,6 +97,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     id: string;
     content: string;
   } | null>(null);
+  const [isCreatingPrediction, setIsCreatingPrediction] = useState(false);
   const [chatMode, setChatMode] = useState<ChatMode>(CHAT_MODES.AI_BOT);
   const [isStreamActive, setIsStreamActive] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
@@ -136,6 +144,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const botAddress =
     process.env.NEXT_PUBLIC_PREDICTION_BOT_XMTP_ADDRESS ||
     "0x7E28ed4e4ac222DdC51bd09902FcB62B70AF525c";
+
+  // Wagmi hooks for contract interaction
+  const {
+    writeContract,
+    data: hash,
+    isPending: isContractPending,
+  } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed } =
+    useWaitForTransactionReceipt({
+      hash,
+    });
 
   // Convert StoredMessage to ChatMessage format
   const convertToDisplayMessages = useCallback(
@@ -466,6 +485,72 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     [isTyping, typingTimeout]
   );
 
+  // Create prediction via wallet transaction
+  const handleCreatePrediction = useCallback(
+    async (transactionParams: any) => {
+      if (!transactionParams || isCreatingPrediction) return;
+
+      setIsCreatingPrediction(true);
+
+      try {
+        console.log(`🔄 Creating prediction with params:`, transactionParams);
+        await writeContract({
+          address: transactionParams.contractAddress as `0x${string}`,
+          abi: predictionMarketABI,
+          functionName: "createPrediction",
+          args: [
+            transactionParams.title,
+            transactionParams.description,
+            BigInt(transactionParams.targetDate),
+            BigInt(transactionParams.targetValue),
+            transactionParams.category,
+            transactionParams.network,
+            transactionParams.emoji,
+            transactionParams.autoResolvable,
+          ],
+        });
+      } catch (error) {
+        console.error("Error creating prediction:", error);
+        setIsCreatingPrediction(false);
+      }
+    },
+    [isCreatingPrediction, writeContract]
+  );
+
+  // Parse messages for wallet transaction triggers
+  useEffect(() => {
+    const lastMessage = displayMessages[displayMessages.length - 1];
+    if (
+      lastMessage?.content?.includes("<!-- WALLET_TRIGGER:") &&
+      !isCreatingPrediction
+    ) {
+      try {
+        const match = lastMessage.content.match(
+          /<!-- WALLET_TRIGGER:(.*?) -->/
+        );
+        if (match) {
+          const transactionParams = JSON.parse(match[1]);
+          console.log(`🚀 Wallet trigger detected, creating prediction...`);
+          handleCreatePrediction(transactionParams);
+        }
+      } catch (error) {
+        console.error("Error parsing wallet trigger:", error);
+      }
+    }
+  }, [displayMessages, isCreatingPrediction, handleCreatePrediction]);
+
+  // Handle contract transaction success
+  useEffect(() => {
+    if (isConfirmed && hash) {
+      console.log(`✅ Transaction confirmed: ${hash}`);
+      setIsCreatingPrediction(false);
+
+      // Invalidate predictions cache to refresh Live Markets immediately
+      invalidatePredictions();
+      console.log(`🔄 Cache invalidated - Live Markets will refresh`);
+    }
+  }, [isConfirmed, hash, invalidatePredictions]);
+
   // Focus input when component mounts
   useEffect(() => {
     if (inputRef.current) {
@@ -678,7 +763,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   {new Date(msg.timestamp).toLocaleTimeString()}
                 </div>
               </div>
-              <div className="whitespace-pre-wrap">{msg.content}</div>
+              <div className="whitespace-pre-wrap">
+                {/* Hide wallet trigger comments from display */}
+                {msg.content.replace(/<!-- WALLET_TRIGGER:.*? -->/g, "").trim()}
+              </div>
 
               {/* Message type indicator */}
               {msg.messageType === "bot" && msg.sender === "PredictionBot" && (
@@ -715,6 +803,43 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     style={{ animationDelay: "300ms" }}
                   ></div>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Wallet Transaction Indicator */}
+        {(isCreatingPrediction || isContractPending || isConfirming) && (
+          <div className="mb-2 text-left animate-fadeIn">
+            <div className="inline-block p-3 rounded-lg text-sm max-w-md bg-blue-700 text-white shadow-lg">
+              <div className="flex items-center gap-2">
+                <span className="text-blue-300">💰</span>
+                <span className="font-bold text-xs">Wallet Transaction</span>
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <FaSpinner className="animate-spin text-blue-300" />
+                <span className="text-blue-200">
+                  {isContractPending
+                    ? "⚡ Please sign the transaction in your wallet..."
+                    : isConfirming
+                    ? "🔄 Transaction confirming on blockchain..."
+                    : "🚀 Preparing wallet transaction..."}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Transaction Success Indicator */}
+        {isConfirmed && hash && (
+          <div className="mb-2 text-left animate-fadeIn">
+            <div className="inline-block p-3 rounded-lg text-sm max-w-md bg-green-700 text-white shadow-lg">
+              <div className="flex items-center gap-2">
+                <span className="text-green-300">✅</span>
+                <span className="font-bold text-xs">Prediction Created!</span>
+              </div>
+              <div className="mt-1 text-xs text-green-200">
+                TX: {hash.slice(0, 10)}...{hash.slice(-8)}
               </div>
             </div>
           </div>

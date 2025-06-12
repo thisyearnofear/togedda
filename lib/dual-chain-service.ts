@@ -98,13 +98,23 @@ export async function getAllChainPredictions(): Promise<ChainPrediction[]> {
       console.log(`🔄 Fetching predictions from ${config.name}...`);
       const contract = getChainContract(chain);
       
-      // Get predictions (assuming IDs 1-4 exist on both chains)
-      const knownIds = [1, 2, 3, 4];
-      
-      for (const id of knownIds) {
+      // Get total number of predictions from contract
+      let totalPredictions = 0;
+      try {
+        // Try to get the prediction count from contract (if available)
+        totalPredictions = await contract.predictionCount();
+        console.log(`📊 ${config.name} has ${totalPredictions} total predictions`);
+      } catch (error) {
+        // Fallback: scan for predictions up to a reasonable limit
+        console.log(`⚠️ No predictionCount() method, scanning for predictions...`);
+        totalPredictions = 20; // Scan up to 20 predictions
+      }
+
+      // Fetch all predictions dynamically
+      for (let id = 1; id <= totalPredictions; id++) {
         try {
           const prediction = await contract.getPrediction(id);
-          
+
           const chainPrediction: ChainPrediction = {
             id: Number(prediction.id),
             chain,
@@ -130,10 +140,16 @@ export async function getAllChainPredictions(): Promise<ChainPrediction[]> {
               isProduction: config.isProduction
             }
           };
-          
+
           allPredictions.push(chainPrediction);
         } catch (error) {
-          console.log(`No prediction ${id} found on ${config.name}`);
+          // Stop scanning when we hit a non-existent prediction
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          if (errorMessage?.includes('revert') || errorMessage?.includes('invalid')) {
+            console.log(`📍 Reached end of predictions at ID ${id - 1} on ${config.name}`);
+            break;
+          }
+          console.log(`⚠️ Error fetching prediction ${id} on ${config.name}:`, errorMessage);
         }
       }
       

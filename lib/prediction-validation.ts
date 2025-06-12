@@ -316,11 +316,23 @@ export async function enhancedValidatePrediction(text: string): Promise<{
   if (!basicData.title && text.length > 10) {
     // Create a concise title from the prediction text
     let title = text.replace(/^(I predict that|I think that|I bet that)/i, '').trim();
-    title = title.substring(0, Math.min(150, title.length)).trim();
+    title = title.substring(0, Math.min(80, title.length)).trim(); // 80 char limit for UI
     if (title.length < 10) {
-      title = text.substring(0, Math.min(150, text.length)).trim();
+      title = text.substring(0, Math.min(80, text.length)).trim();
     }
     basicData.title = title;
+  }
+
+  // Initialize enhanced data and validation early
+  let enhancedData = { ...basicData };
+  let enhancedValidation = { ...basicValidation };
+
+  // Validate title length for UI compatibility
+  if (basicData.title && basicData.title.length > 80) {
+    // Auto-shorten long titles
+    const shortened = basicData.title.substring(0, 77) + '...';
+    enhancedValidation.warnings.push(`Title shortened for UI: "${shortened}"`);
+    basicData.title = shortened;
   }
 
   // If no description was extracted, use the full text as description
@@ -336,8 +348,6 @@ export async function enhancedValidatePrediction(text: string): Promise<{
   const usernameMatch = text.match(usernamePattern);
 
   let resolvedProfile: ResolvedProfile | undefined;
-  let enhancedData = { ...basicData };
-  let enhancedValidation = { ...basicValidation };
 
   // Try to resolve ENS name or username
   if (ensMatch) {
@@ -441,12 +451,25 @@ export async function enhancedValidatePrediction(text: string): Promise<{
   // Re-validate with the enhanced data (including title/description fixes)
   enhancedValidation = validatePrediction(enhancedData);
 
-  // Additional validation for platform-specific requirements
+  // Handle address requirements more flexibly
   if (platformSpecific.requiresAddress && !enhancedData.targetAddress) {
-    enhancedValidation.errors.push(
-      'This prediction requires a valid user address. Please provide an ENS name (e.g., "vitalik.eth") or Farcaster username.'
-    );
-    enhancedValidation.isValid = false;
+    // If @ or .eth was used but couldn't be resolved, that's an error
+    if (usernameMatch || ensMatch) {
+      enhancedValidation.errors.push(
+        `Couldn't resolve "${usernameMatch?.[1] || ensMatch?.[1]}" to an address. Provide a valid ENS name or Farcaster username, or remove it for a general prediction.`
+      );
+      enhancedValidation.isValid = false;
+    } else {
+      // No @ or .eth used - convert to general prediction
+      enhancedData.platformSpecific = {
+        requiresAddress: false,
+        dataSource: 'external',
+        resolutionCriteria: 'General prediction - manual resolution required'
+      };
+      enhancedData.autoResolvable = false;
+      enhancedData.verificationMethod = 'manual';
+      enhancedValidation.warnings.push('Converted to general prediction (no specific user target)');
+    }
   }
 
   // Add helpful suggestions
@@ -478,13 +501,36 @@ export function getValidationMessage(validation: PredictionValidationResult): st
     }
     return message;
   } else {
-    let message = "❌ Please fix these issues:\n";
-    message += validation.errors.map(e => `• ${e}`).join('\n');
+    // Check if this is a date-related error and provide enhanced guidance
+    const hasDateError = validation.errors.some(e =>
+      e.includes('date') || e.includes('future') || e.includes('past')
+    );
 
-    if (validation.warnings.length > 0) {
-      message += `\n\n⚠️ Also note:\n${validation.warnings.map(w => `• ${w}`).join('\n')}`;
+    if (hasDateError) {
+      let message = "📅 **Date Format Issue**\n\n";
+      message += validation.errors.map(e => `• ${e}`).join('\n');
+      message += "\n\n**Examples of clear date formats:**\n";
+      message += "• \"December 31, 2025 23:59\"\n";
+      message += "• \"31.12.2025 00:00\"\n";
+      message += "• \"in 6 months\"\n";
+      message += "• \"next Friday\"\n";
+      message += "\n💡 **Tip:** For 2-digit years, I assume future dates (e.g., \"25\" → \"2025\")";
+
+      if (validation.warnings.length > 0) {
+        message += `\n\n⚠️ Also note:\n${validation.warnings.map(w => `• ${w}`).join('\n')}`;
+      }
+
+      return message;
+    } else {
+      // Standard error message for non-date issues
+      let message = "❌ Please fix these issues:\n";
+      message += validation.errors.map(e => `• ${e}`).join('\n');
+
+      if (validation.warnings.length > 0) {
+        message += `\n\n⚠️ Also note:\n${validation.warnings.map(w => `• ${w}`).join('\n')}`;
+      }
+
+      return message;
     }
-
-    return message;
   }
 }

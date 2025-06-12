@@ -80,6 +80,21 @@ Building on the robust storage foundation, the app includes advanced real-time m
 - **Connection Management**: Automatic reconnection and error handling
 - **Cross-Device Sync**: XMTP native sync for seamless multi-device experience
 
+#### **Transaction Signing Architecture**
+
+**Current (Hackathon)**: Bot creates predictions using its own wallet for instant creation
+**Roadmap**: Transition to user-signed transactions for proper attribution and decentralization
+
+```typescript
+// Current: Bot-signed (immediate)
+const result = await createChainPrediction(chain, predictionData, botWallet);
+
+// Future: User-signed (planned)
+const result = await createChainPrediction(chain, predictionData, userWallet);
+```
+
+This ensures clear attribution of who created each prediction while maintaining the smooth UX.
+
 ### **Advanced Caching System**
 
 React Query integration provides:

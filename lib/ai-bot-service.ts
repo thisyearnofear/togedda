@@ -240,6 +240,9 @@ export async function generatePredictionProposal(userMessage: string, apiKey: st
   if (state?.awaitingConfirmation && state.lastPredictionProposal) {
     if (lowerMessage.includes('yes') || lowerMessage.includes('confirm') || lowerMessage.includes('create')) {
       // User confirmed - create the prediction
+      // Save the prediction proposal before clearing state
+      const predictionProposal = state.lastPredictionProposal;
+
       if (conversationId) {
         updateConversationState(conversationId, {
           awaitingConfirmation: false,
@@ -247,71 +250,65 @@ export async function generatePredictionProposal(userMessage: string, apiKey: st
         });
       }
 
-      // Parse and validate the prediction with enhanced validation
-      const { enhancedValidatePrediction, getValidationMessage } = await import('./prediction-validation');
-      const { data: predictionData, validation, resolvedProfile } = await enhancedValidatePrediction(state.lastPredictionProposal);
+      // Parse prediction data with aggressive defaults - prioritize completion over perfection
+      const predictionData = await parseAndCreatePredictionWithDefaults(predictionProposal);
 
-      // Check if prediction is valid
-      if (!validation.isValid) {
-        const response = `❌ I found some issues with the prediction:\n\n${getValidationMessage(validation)}\n\nPlease provide a corrected version.`;
+      console.log('📊 Parsed prediction data:', predictionData);
 
-        if (conversationId) {
-          updateConversationState(conversationId, {
-            awaitingConfirmation: false,
-            lastPredictionProposal: undefined
-          });
-          addToConversationHistory(conversationId, 'assistant', response);
-        }
-        return response;
+      // Show what assumptions were made
+      let validationInfo = '';
+      const assumptions = [];
+
+      if (predictionData.targetDate === Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60)) {
+        assumptions.push('Used default date: 30 days from now');
+      }
+      if (predictionData.targetValue === 0) {
+        assumptions.push('No specific target value set');
+      }
+      if (predictionData.category === 3) {
+        assumptions.push('Categorized as: Custom prediction');
+      }
+
+      if (assumptions.length > 0) {
+        validationInfo = `\n\n📋 **Auto-filled:**\n${assumptions.map(a => `• ${a}`).join('\n')}`;
       }
 
       try {
-        // Create the prediction on the recommended chain
-        const { createChainPrediction, recommendChainForUser } = await import('./dual-chain-service');
+        // Prepare transaction data for user's wallet to sign
+        const { recommendChainForUser } = await import('./dual-chain-service');
         const recommendedChain = recommendChainForUser({ isNewUser: true }); // Default to Base for hackathon
 
-        // Set up bot wallet for the recommended chain
-        const botPrivateKey = process.env.BOT_PRIVATE_KEY;
-        if (!botPrivateKey) {
-          throw new Error('Bot wallet not configured');
-        }
-
-        const { ethers } = await import('ethers');
         const { CHAIN_CONFIG } = await import('./dual-chain-service');
         const config = CHAIN_CONFIG[recommendedChain];
-        const provider = new ethers.JsonRpcProvider(config.rpcUrl);
-        const botWallet = new ethers.Wallet(botPrivateKey, provider);
 
-        // Create prediction on-chain
-        const result = await createChainPrediction(
-          recommendedChain,
-          {
-            title: predictionData.title || 'AI-Generated Prediction',
-            description: predictionData.description || 'Prediction created via AI chat',
-            targetDate: predictionData.targetDate || Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60), // 30 days from now
-            targetValue: predictionData.targetValue || 0,
-            category: predictionData.category || 3, // CUSTOM
-            network: predictionData.network || recommendedChain,
-            emoji: predictionData.emoji || '🔮',
-            autoResolvable: false
-          },
-          botWallet
-        );
+        // Prepare transaction parameters for user's wallet
+        const transactionParams = {
+          title: predictionData.title || 'AI-Generated Prediction',
+          description: predictionData.description || 'Prediction created via AI chat',
+          targetDate: predictionData.targetDate || Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60), // 30 days from now
+          targetValue: predictionData.targetValue || 0,
+          category: predictionData.category || 3, // CUSTOM
+          network: predictionData.network || recommendedChain,
+          emoji: predictionData.emoji || '🔮',
+          autoResolvable: false,
+          chain: recommendedChain,
+          contractAddress: config.contractAddress,
+          chainId: config.id
+        };
 
-        if (result.success) {
-          const chainEmoji = config.emoji;
-          const successResponse = `✅ Prediction created successfully on ${config.name}!\n\n**${predictionData.title || 'AI-Generated Prediction'}**\n\n${chainEmoji} Transaction: ${result.txHash}\n\nYour prediction is now live! Check the Live Markets tab to see it and start voting. Other users can participate by staking ${config.nativeCurrency.symbol}!`;
+        const chainEmoji = config.emoji;
 
-          if (conversationId) {
-            addToConversationHistory(conversationId, 'assistant', successResponse);
-          }
-          return successResponse;
-        } else {
-          throw new Error(result.error || 'Unknown error creating prediction');
+        // Return response with embedded transaction data for immediate wallet trigger
+        const walletTriggerResponse = `🚀 **Ready to Create Prediction!**\n\n**${transactionParams.title}**\n\n${chainEmoji} **Chain:** ${config.name}\n💰 **Gas:** ~$0.01\n\n⚡ **Sending to your wallet now...**\n\n_Please sign the transaction to create your prediction!_${validationInfo}\n\n<!-- WALLET_TRIGGER:${JSON.stringify(transactionParams)} -->`;
+
+        if (conversationId) {
+          addToConversationHistory(conversationId, 'assistant', walletTriggerResponse);
         }
+
+        return walletTriggerResponse;
       } catch (error: any) {
-        console.error('Error creating prediction on-chain:', error);
-        const errorResponse = `❌ I encountered an error creating your prediction on-chain: ${error.message}\n\nPlease try again or create the prediction manually in the Live Markets tab.`;
+        console.error('Error preparing prediction transaction:', error);
+        const errorResponse = `❌ I encountered an error preparing your prediction: ${error.message}\n\nPlease try again or create the prediction manually in the Live Markets tab.`;
 
         if (conversationId) {
           addToConversationHistory(conversationId, 'assistant', errorResponse);
@@ -438,15 +435,18 @@ Prediction Resolution Status:
         1. IGNORE market information and focus ONLY on creating the prediction proposal
         2. NEVER respond with market statistics when a prediction is requested
         3. ALWAYS respond with a structured proposal in this EXACT format:
-        "🔮 **Proposed Prediction:** [Clear title]
+        "🔮 **Proposed Prediction:** [Concise title, max 80 chars]
 
-        📝 **Description:** [Detailed description]
+        📝 **Description:** [Brief, clear description]
 
-        🎯 **Target:** [Specific measurable outcome by specific date]
+        🎯 **Target:** [Specific outcome by date]
 
-        ⛓️ **Recommended Chain:** Base Sepolia (free test ETH, perfect for demos)
+        ⛓️ **Chain:** Base Sepolia (test ETH)
 
         Would you like to create this prediction?"
+
+        4. Keep responses CONCISE and TO THE POINT
+        5. If @username or .eth is used, mention if it was resolved to an address
 
         2. Extract key details:
         - WHO: The person/entity making the prediction
@@ -557,6 +557,86 @@ Prediction Resolution Status:
     console.error('Error calling AI model API:', error);
     return `I encountered an issue processing your request. Could you please clarify your prediction proposal? 🤔`;
   }
+}
+
+/**
+ * Parse prediction with aggressive defaults - prioritize completion over perfection
+ */
+async function parseAndCreatePredictionWithDefaults(aiProposal: string): Promise<any> {
+  console.log('🚀 Parsing prediction with aggressive defaults...');
+
+  // Extract title (between ** markers or after "Proposed Prediction:")
+  let title = 'AI-Generated Prediction';
+  const titleMatch = aiProposal.match(/\*\*Proposed Prediction:\*\*\s*([^\n*]+)/i) ||
+                    aiProposal.match(/Proposed Prediction:\s*([^\n]+)/i);
+  if (titleMatch) {
+    title = titleMatch[1].trim().replace(/\*+/g, '').trim();
+  }
+
+  // Extract description (after "Description:" or use title as fallback)
+  let description = title;
+  const descMatch = aiProposal.match(/\*\*Description:\*\*\s*([^\n*]+)/i) ||
+                    aiProposal.match(/Description:\s*([^\n]+)/i);
+  if (descMatch) {
+    description = descMatch[1].trim();
+  }
+
+  // Extract target date - be aggressive about parsing
+  let targetDate = Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60); // Default: 30 days
+
+  // Look for date patterns in the AI response
+  const datePatterns = [
+    /by\s+(\w+\s+\d{1,2},?\s+\d{4})/i,           // "by August 1st, 2025"
+    /(\d{1,2}\.\d{1,2}\.\d{4})/i,                // "01.08.2025"
+    /(\d{1,2}\/\d{1,2}\/\d{4})/i,                // "08/01/2025"
+    /(\w+\s+\d{1,2},?\s+\d{4})/i,                // "August 1, 2025"
+  ];
+
+  for (const pattern of datePatterns) {
+    const match = aiProposal.match(pattern);
+    if (match) {
+      try {
+        const parsedDate = new Date(match[1]);
+        if (!isNaN(parsedDate.getTime()) && parsedDate.getTime() > Date.now()) {
+          targetDate = Math.floor(parsedDate.getTime() / 1000);
+          console.log(`✅ Parsed date: ${match[1]} → ${new Date(targetDate * 1000)}`);
+          break;
+        }
+      } catch (e) {
+        console.log(`⚠️ Failed to parse date: ${match[1]}`);
+      }
+    }
+  }
+
+  // Extract target value (number of push-ups, etc.)
+  let targetValue = 0;
+  const valueMatch = aiProposal.match(/(\d+(?:,\d{3})*)\s*(?:push-ups?|pressups?|squats?|reps?)/i);
+  if (valueMatch) {
+    targetValue = parseInt(valueMatch[1].replace(/,/g, ''));
+  }
+
+  // Determine category based on content
+  let category = 3; // CUSTOM default
+  const lowerContent = aiProposal.toLowerCase();
+  if (lowerContent.includes('push-up') || lowerContent.includes('pressup') ||
+      lowerContent.includes('squat') || lowerContent.includes('fitness')) {
+    category = 0; // FITNESS
+  }
+
+  // Default to Base Sepolia for hackathon
+  const network = 'base';
+  const emoji = '🔵';
+
+  return {
+    title: title.substring(0, 200), // Truncate if too long
+    description: description.substring(0, 1000), // Truncate if too long
+    targetDate,
+    targetValue,
+    category,
+    network,
+    emoji,
+    autoResolvable: false
+  };
 }
 
 /**

@@ -109,26 +109,33 @@ export class EnhancedMessageStore {
       ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     });
 
-    // Initialize Redis with error handling
-    try {
-      if (this.config.redis.url) {
-        this.redis = new Redis(this.config.redis.url);
-      } else {
-        this.redis = new Redis({
-          host: this.config.redis.host,
-          port: this.config.redis.port,
-          password: this.config.redis.password,
-          maxRetriesPerRequest: 3,
-          lazyConnect: true, // Don't connect immediately
+    // Initialize Redis with error handling (only if URL is provided)
+    if (this.config.redis.url && this.config.redis.url !== 'redis://localhost:6379') {
+      try {
+        this.redis = new Redis(this.config.redis.url, {
+          maxRetriesPerRequest: 1,
+          lazyConnect: true,
+          enableOfflineQueue: false,
         });
-      }
 
-      // Test Redis connection
-      this.redis.ping().catch((error) => {
-        console.warn('⚠️ Redis connection failed, falling back to PostgreSQL only:', error.message);
-      });
-    } catch (error) {
-      console.warn('⚠️ Redis initialization failed, falling back to PostgreSQL only:', error);
+        // Test Redis connection
+        this.redis.ping().catch((error) => {
+          console.warn('⚠️ Redis connection failed, falling back to PostgreSQL only:', error.message);
+          this.redis = undefined; // Disable Redis
+        });
+
+        // Handle Redis errors gracefully
+        this.redis.on('error', (error) => {
+          console.warn('⚠️ Redis error, disabling Redis cache:', error.message);
+          this.redis = undefined;
+        });
+
+      } catch (error) {
+        console.warn('⚠️ Redis initialization failed, falling back to PostgreSQL only:', error);
+        this.redis = undefined;
+      }
+    } else {
+      console.log('📝 Redis not configured, using PostgreSQL only');
     }
 
     this.initializeDatabase();

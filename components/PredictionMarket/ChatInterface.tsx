@@ -21,6 +21,7 @@ import {
   useAccount,
   useWriteContract,
   useWaitForTransactionReceipt,
+  useSwitchChain,
 } from "wagmi";
 import {
   DEFAULT_FALLBACK_ADDRESS,
@@ -96,7 +97,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [pendingPrediction, setPendingPrediction] = useState<{
     id: string;
     content: string;
+    transactionParams?: any;
   } | null>(null);
+
+  // Track processed wallet triggers to prevent duplicates
+  const [processedTriggers, setProcessedTriggers] = useState<Set<string>>(
+    new Set()
+  );
   const [isCreatingPrediction, setIsCreatingPrediction] = useState(false);
   const [chatMode, setChatMode] = useState<ChatMode>(CHAT_MODES.AI_BOT);
   const [isStreamActive, setIsStreamActive] = useState(false);
@@ -146,10 +153,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     "0x7E28ed4e4ac222DdC51bd09902FcB62B70AF525c";
 
   // Wagmi hooks for contract interaction
+  const { address, isConnected, chain } = useAccount();
+  const { switchChain } = useSwitchChain();
   const {
     writeContract,
     data: hash,
     isPending: isContractPending,
+    error: writeError,
   } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed } =
     useWaitForTransactionReceipt({
@@ -356,25 +366,135 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   };
 
-  // Handle prediction confirmation
+  // Create prediction via wallet transaction
+  const handleCreatePrediction = useCallback(
+    async (transactionParams: any) => {
+      console.log("🎯 handleCreatePrediction called with:", transactionParams);
+      console.log(
+        "💰 Wallet status - Connected:",
+        isConnected,
+        "Address:",
+        address,
+        "Current Chain:",
+        chain?.id
+      );
+      console.log("🔄 Already creating prediction:", isCreatingPrediction);
+
+      if (!transactionParams || isCreatingPrediction) {
+        console.log("❌ Early return - no params or already creating");
+        return;
+      }
+
+      if (!isConnected || !address) {
+        console.error("❌ Wallet not connected!");
+        setError("Please connect your wallet first");
+        return;
+      }
+
+      setIsCreatingPrediction(true);
+
+      try {
+        const targetChainId = transactionParams.chainId;
+        console.log(
+          `🔗 Target chain ID: ${targetChainId}, Current chain ID: ${chain?.id}`
+        );
+
+        // Check if we need to switch chains
+        if (chain?.id !== targetChainId) {
+          console.log(`🔄 Switching to chain ${targetChainId}...`);
+          try {
+            await switchChain({ chainId: targetChainId });
+            console.log(`✅ Successfully switched to chain ${targetChainId}`);
+          } catch (switchError) {
+            console.error("❌ Failed to switch chain:", switchError);
+            setError(
+              `Please switch to the correct network (Chain ID: ${targetChainId})`
+            );
+            setIsCreatingPrediction(false);
+            return;
+          }
+        }
+
+        console.log(`🔄 Creating prediction with params:`, transactionParams);
+        console.log(`📋 Contract address:`, transactionParams.contractAddress);
+        console.log(`📋 Function args:`, [
+          transactionParams.title,
+          transactionParams.description,
+          BigInt(transactionParams.targetDate),
+          BigInt(transactionParams.targetValue),
+          transactionParams.category,
+          transactionParams.network,
+          transactionParams.emoji,
+          transactionParams.autoResolvable,
+        ]);
+
+        await writeContract({
+          address: transactionParams.contractAddress as `0x${string}`,
+          abi: predictionMarketABI,
+          functionName: "createPrediction",
+          args: [
+            transactionParams.title,
+            transactionParams.description,
+            BigInt(transactionParams.targetDate),
+            BigInt(transactionParams.targetValue),
+            transactionParams.category,
+            transactionParams.network,
+            transactionParams.emoji,
+            transactionParams.autoResolvable,
+          ],
+        });
+
+        console.log(
+          "✅ writeContract called successfully - wallet should prompt for signature"
+        );
+      } catch (error) {
+        console.error("❌ Error creating prediction:", error);
+        console.error("❌ Write error details:", writeError);
+        setError(
+          `Transaction failed: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`
+        );
+        setIsCreatingPrediction(false);
+      }
+    },
+    [
+      isCreatingPrediction,
+      writeContract,
+      isConnected,
+      address,
+      chain,
+      switchChain,
+      writeError,
+      setError,
+    ]
+  );
+
+  // Handle prediction confirmation - trigger wallet transaction
   const handleConfirmPrediction = useCallback(() => {
-    if (pendingPrediction) {
-      // Here, integrate with smart contract to create prediction on-chain
-      console.log("Confirming prediction:", pendingPrediction.content);
+    console.log("🎯 Button clicked! Pending prediction:", pendingPrediction);
 
-      // Add confirmation message
-      const confirmationMessage: ChatMessage = {
-        id: `confirm_${Date.now()}`,
-        sender: "You",
-        content: `Confirmed prediction: ${pendingPrediction.content}`,
-        timestamp: Date.now(),
-        messageType: "user",
-      };
+    if (pendingPrediction?.transactionParams) {
+      console.log(
+        "🚀 Creating prediction via button:",
+        pendingPrediction.content
+      );
+      console.log(
+        "📋 Transaction params:",
+        pendingPrediction.transactionParams
+      );
+      console.log("💰 Wallet connected:", !!address);
+      console.log("🔗 Chain ID:", pendingPrediction.transactionParams.chainId);
 
+      // Trigger the wallet transaction
+      handleCreatePrediction(pendingPrediction.transactionParams);
+
+      // Clear the pending prediction
       setPendingPrediction(null);
-      // In a real implementation, this would trigger the smart contract interaction
+    } else {
+      console.error("❌ No transaction params found in pending prediction");
     }
-  }, [pendingPrediction]);
+  }, [pendingPrediction, handleCreatePrediction, address]);
 
   const handleEditPrediction = useCallback(() => {
     if (pendingPrediction) {
@@ -485,59 +605,61 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     [isTyping, typingTimeout]
   );
 
-  // Create prediction via wallet transaction
-  const handleCreatePrediction = useCallback(
-    async (transactionParams: any) => {
-      if (!transactionParams || isCreatingPrediction) return;
-
-      setIsCreatingPrediction(true);
-
-      try {
-        console.log(`🔄 Creating prediction with params:`, transactionParams);
-        await writeContract({
-          address: transactionParams.contractAddress as `0x${string}`,
-          abi: predictionMarketABI,
-          functionName: "createPrediction",
-          args: [
-            transactionParams.title,
-            transactionParams.description,
-            BigInt(transactionParams.targetDate),
-            BigInt(transactionParams.targetValue),
-            transactionParams.category,
-            transactionParams.network,
-            transactionParams.emoji,
-            transactionParams.autoResolvable,
-          ],
-        });
-      } catch (error) {
-        console.error("Error creating prediction:", error);
-        setIsCreatingPrediction(false);
-      }
-    },
-    [isCreatingPrediction, writeContract]
-  );
-
-  // Parse messages for wallet transaction triggers
+  // Parse messages for wallet transaction triggers and show button instead of auto-triggering
   useEffect(() => {
-    const lastMessage = displayMessages[displayMessages.length - 1];
+    console.log("🔍 Checking for wallet triggers...");
+    console.log("📝 Conversation history length:", conversationHistory.length);
+    console.log("🔄 Is creating prediction:", isCreatingPrediction);
+
+    if (conversationHistory.length === 0 || isCreatingPrediction) return;
+
+    const lastMessage = conversationHistory[conversationHistory.length - 1];
+    console.log("📨 Last message:", lastMessage);
+
     if (
       lastMessage?.content?.includes("<!-- WALLET_TRIGGER:") &&
-      !isCreatingPrediction
+      lastMessage.messageType === "bot"
     ) {
+      console.log("🎯 Wallet trigger found in message!");
+
+      // Create unique trigger ID to prevent duplicates
+      const triggerId = `${lastMessage.id}_${lastMessage.timestamp}`;
+
+      if (processedTriggers.has(triggerId)) {
+        console.log("⏭️ Wallet trigger already processed, skipping");
+        return;
+      }
+
       try {
         const match = lastMessage.content.match(
           /<!-- WALLET_TRIGGER:(.*?) -->/
         );
+        console.log("🔍 Regex match result:", match);
+
         if (match) {
           const transactionParams = JSON.parse(match[1]);
-          console.log(`🚀 Wallet trigger detected, creating prediction...`);
-          handleCreatePrediction(transactionParams);
+          console.log(`🎯 Wallet trigger detected, showing create button...`);
+          console.log("📋 Parsed transaction params:", transactionParams);
+
+          // Mark this trigger as processed
+          setProcessedTriggers((prev) => new Set(prev).add(triggerId));
+
+          // Show pending prediction with transaction params for button
+          setPendingPrediction({
+            id: `pred_${Date.now()}`,
+            content: transactionParams.title || "Create Prediction",
+            transactionParams,
+          });
+        } else {
+          console.log("❌ No match found in wallet trigger regex");
         }
       } catch (error) {
-        console.error("Error parsing wallet trigger:", error);
+        console.error("❌ Error parsing wallet trigger:", error);
       }
+    } else {
+      console.log("❌ No wallet trigger found in last message");
     }
-  }, [displayMessages, isCreatingPrediction, handleCreatePrediction]);
+  }, [conversationHistory, isCreatingPrediction, processedTriggers]);
 
   // Handle contract transaction success
   useEffect(() => {
@@ -545,11 +667,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       console.log(`✅ Transaction confirmed: ${hash}`);
       setIsCreatingPrediction(false);
 
+      // Clear pending prediction to prevent duplicate button
+      if (pendingPrediction) {
+        console.log(
+          `🧹 Clearing pending prediction after successful transaction`
+        );
+        setPendingPrediction(null);
+      }
+
       // Invalidate predictions cache to refresh Live Markets immediately
       invalidatePredictions();
       console.log(`🔄 Cache invalidated - Live Markets will refresh`);
     }
-  }, [isConfirmed, hash, invalidatePredictions]);
+  }, [isConfirmed, hash, invalidatePredictions, pendingPrediction]);
 
   // Focus input when component mounts
   useEffect(() => {
@@ -845,23 +975,66 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
         )}
 
+        {/* Transaction Error Indicator */}
+        {writeError && (
+          <div className="mb-2 text-left animate-fadeIn">
+            <div className="inline-block p-3 rounded-lg text-sm max-w-md bg-red-700 text-white shadow-lg">
+              <div className="flex items-center gap-2">
+                <span className="text-red-300">❌</span>
+                <span className="font-bold text-xs">Transaction Failed</span>
+              </div>
+              <div className="mt-1 text-xs text-red-200">
+                {writeError.message || "Unknown error occurred"}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Scroll anchor */}
         <div ref={messagesEndRef} />
 
         {pendingPrediction && (
-          <div className="mt-2 p-2 bg-yellow-800 text-white rounded text-xs">
-            <p className="font-bold">Pending Prediction Proposal:</p>
-            <p>{pendingPrediction.content}</p>
-            <div className="mt-1 flex justify-start">
+          <div className="mt-2 p-3 bg-gradient-to-r from-blue-900 to-purple-900 text-white rounded-lg border border-blue-700 shadow-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-blue-300">🚀</span>
+              <p className="font-bold text-sm">Ready to Create Prediction</p>
+            </div>
+            <p className="text-xs text-blue-100 mb-3">
+              {pendingPrediction.content}
+            </p>
+
+            {pendingPrediction.transactionParams && (
+              <div className="text-xs text-gray-300 mb-3 space-y-1">
+                <div>
+                  ⛓️ Chain: {pendingPrediction.transactionParams.network}
+                </div>
+                <div>💰 Gas: ~$0.01</div>
+                <div>
+                  🎯 Target: {pendingPrediction.transactionParams.targetValue}{" "}
+                  push-ups
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-2">
               <button
                 onClick={handleConfirmPrediction}
-                className="bg-green-600 hover:bg-green-700 text-white px-2 py-0.5 rounded mr-2 text-xs"
+                disabled={isCreatingPrediction || isContractPending}
+                className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-3 py-2 rounded text-sm font-medium transition-colors flex items-center justify-center gap-2"
               >
-                Confirm
+                {isCreatingPrediction || isContractPending ? (
+                  <>
+                    <FaSpinner className="animate-spin" size={12} />
+                    Creating...
+                  </>
+                ) : (
+                  <>💰 Create Prediction</>
+                )}
               </button>
               <button
                 onClick={handleEditPrediction}
-                className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-0.5 rounded text-xs"
+                disabled={isCreatingPrediction || isContractPending}
+                className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-800 text-white px-3 py-2 rounded text-sm transition-colors"
               >
                 Edit
               </button>

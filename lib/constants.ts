@@ -132,32 +132,216 @@ export const fitnessLeaderboardABI = [
 // Complete ABI for the prediction market contract
 export const predictionMarketABI = [
   // View Functions
-  "function getPrediction(uint256 _predictionId) external view returns (tuple(uint256 id, address creator, string title, string description, uint256 targetDate, uint256 targetValue, uint256 currentValue, uint8 category, string network, string emoji, uint256 totalStaked, uint256 yesVotes, uint256 noVotes, uint8 status, uint8 outcome, uint256 createdAt, bool autoResolvable))",
-  "function getUserVote(uint256 _predictionId, address _user) external view returns (tuple(bool isYes, uint256 amount, bool claimed))",
-  "function getTotalPredictions() external view returns (uint256)",
-  "function getParticipants(uint256 _predictionId) external view returns (address[])",
-  "function getTotalFeePercentage() external view returns (uint256)",
-  "function charityFeePercentage() external view returns (uint256)",
-  "function maintenanceFeePercentage() external view returns (uint256)",
-  "function charityAddress() external view returns (address)",
-  "function maintenanceAddress() external view returns (address)",
+  {
+    name: "getPrediction",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "_predictionId", type: "uint256" }
+    ],
+    outputs: [
+      {
+        type: "tuple",
+        components: [
+          { name: "id", type: "uint256" },
+          { name: "creator", type: "address" },
+          { name: "title", type: "string" },
+          { name: "description", type: "string" },
+          { name: "targetDate", type: "uint256" },
+          { name: "targetValue", type: "uint256" },
+          { name: "currentValue", type: "uint256" },
+          { name: "category", type: "uint8" },
+          { name: "network", type: "string" },
+          { name: "emoji", type: "string" },
+          { name: "totalStaked", type: "uint256" },
+          { name: "yesVotes", type: "uint256" },
+          { name: "noVotes", type: "uint256" },
+          { name: "status", type: "uint8" },
+          { name: "outcome", type: "uint8" },
+          { name: "createdAt", type: "uint256" },
+          { name: "autoResolvable", type: "bool" }
+        ]
+      }
+    ]
+  },
+  {
+    name: "getUserVote",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "_predictionId", type: "uint256" },
+      { name: "_user", type: "address" }
+    ],
+    outputs: [
+      {
+        type: "tuple",
+        components: [
+          { name: "isYes", type: "bool" },
+          { name: "amount", type: "uint256" },
+          { name: "claimed", type: "bool" }
+        ]
+      }
+    ]
+  },
+  {
+    name: "getTotalPredictions",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }]
+  },
+  {
+    name: "getParticipants",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "_predictionId", type: "uint256" }],
+    outputs: [{ name: "", type: "address[]" }]
+  },
+  {
+    name: "getTotalFeePercentage",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }]
+  },
+  {
+    name: "charityFeePercentage",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }]
+  },
+  {
+    name: "maintenanceFeePercentage",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }]
+  },
+  {
+    name: "charityAddress",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }]
+  },
+  {
+    name: "maintenanceAddress",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }]
+  },
 
   // State-Changing Functions
-  "function createPrediction(string memory _title, string memory _description, uint256 _targetDate, uint256 _targetValue, uint8 _category, string memory _network, string memory _emoji, bool _autoResolvable) external returns (uint256)",
-  "function vote(uint256 _predictionId, bool _isYes) external payable",
-  "function claimReward(uint256 _predictionId) external",
-  "function claimRefund(uint256 _predictionId) external",
-  "function autoResolvePrediction(uint256 _predictionId) external",
+  {
+    name: "createPrediction",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_title", type: "string" },
+      { name: "_description", type: "string" },
+      { name: "_targetDate", type: "uint256" },
+      { name: "_targetValue", type: "uint256" },
+      { name: "_category", type: "uint8" },
+      { name: "_network", type: "string" },
+      { name: "_emoji", type: "string" },
+      { name: "_autoResolvable", type: "bool" }
+    ],
+    outputs: [{ name: "", type: "uint256" }]
+  },
+  {
+    name: "vote",
+    type: "function",
+    stateMutability: "payable",
+    inputs: [
+      { name: "_predictionId", type: "uint256" },
+      { name: "_isYes", type: "bool" }
+    ],
+    outputs: []
+  },
+  {
+    name: "claimReward",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_predictionId", type: "uint256" }],
+    outputs: []
+  },
+  {
+    name: "claimRefund",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_predictionId", type: "uint256" }],
+    outputs: []
+  },
+  {
+    name: "autoResolvePrediction",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_predictionId", type: "uint256" }],
+    outputs: []
+  },
 
   // Owner Functions
-  "function resolvePrediction(uint256 _predictionId, uint8 _outcome) external",
-  "function cancelPrediction(uint256 _predictionId) external",
-  "function updatePredictionValue(uint256 _predictionId, uint256 _currentValue) external",
-  "function updateFeePercentages(uint256 _newCharityFeePercentage, uint256 _newMaintenanceFeePercentage) external",
-  "function updateCharityAddress(address _newCharityAddress) external",
-  "function updateMaintenanceAddress(address _newMaintenanceAddress) external",
-  "function transferOwnership(address _newOwner) external"
-];
+  {
+    name: "resolvePrediction",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_predictionId", type: "uint256" },
+      { name: "_outcome", type: "uint8" }
+    ],
+    outputs: []
+  },
+  {
+    name: "cancelPrediction",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_predictionId", type: "uint256" }],
+    outputs: []
+  },
+  {
+    name: "updatePredictionValue",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_predictionId", type: "uint256" },
+      { name: "_currentValue", type: "uint256" }
+    ],
+    outputs: []
+  },
+  {
+    name: "updateFeePercentages",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_newCharityFeePercentage", type: "uint256" },
+      { name: "_newMaintenanceFeePercentage", type: "uint256" }
+    ],
+    outputs: []
+  },
+  {
+    name: "updateCharityAddress",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_newCharityAddress", type: "address" }],
+    outputs: []
+  },
+  {
+    name: "updateMaintenanceAddress",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_newMaintenanceAddress", type: "address" }],
+    outputs: []
+  },
+  {
+    name: "transferOwnership",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_newOwner", type: "address" }],
+    outputs: []
+  }
+] as const;
 
 /**
  * Base Batches Buildathon Constants

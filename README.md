@@ -285,6 +285,25 @@ Each blockchain has a distinctive color:
 - ✅ **Multi-Chain Support**: CELO mainnet and Base Sepolia integration
 - ✅ **Real-time Updates**: Predictions appear immediately in Live Markets
 
+### XMTP Message Processing Architecture
+
+The system supports two processing modes for optimal performance:
+
+**1. Queue-based Processing** (when Redis is available):
+
+- Messages are queued for the XMTP bot service
+- Supports real-time XMTP network integration
+- Requires Redis for message queuing
+- Best for production environments
+
+**2. Direct Processing** (PostgreSQL-only fallback):
+
+- Immediate AI responses without queue timeouts
+- More efficient when Redis is unavailable
+- Uses PostgreSQL for message persistence
+- Automatically detects and switches to this mode
+- Ideal for development and simplified deployments
+
 ### Testing XMTP Integration
 
 **Quick Test Flow**:

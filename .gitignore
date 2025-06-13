@@ -28,6 +28,11 @@ yarn-error.log*
 # local env files
 .env*.local
 
+# Redis database files
+*.rdb
+dump.rdb
+redis.conf
+
 # vercel
 .vercel
 

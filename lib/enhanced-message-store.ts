@@ -109,17 +109,22 @@ export class EnhancedMessageStore {
       ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     });
 
-    // Initialize Redis with error handling (only if URL is provided)
+    // Initialize Redis with error handling (only if URL is provided and not localhost)
     if (this.config.redis.url && this.config.redis.url !== 'redis://localhost:6379') {
       try {
         this.redis = new Redis(this.config.redis.url, {
           maxRetriesPerRequest: 1,
           lazyConnect: true,
           enableOfflineQueue: false,
+          connectTimeout: 2000, // 2 second timeout
+          commandTimeout: 1000, // 1 second command timeout
         });
 
-        // Test Redis connection
-        this.redis.ping().catch((error) => {
+        // Test Redis connection with timeout
+        Promise.race([
+          this.redis.ping(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 2000))
+        ]).catch((error) => {
           console.warn('⚠️ Redis connection failed, falling back to PostgreSQL only:', error.message);
           this.redis = undefined; // Disable Redis
         });
@@ -195,11 +200,25 @@ export class EnhancedMessageStore {
   }
 
   /**
+   * Check if Redis is available
+   */
+  isRedisAvailable(): boolean {
+    return !!this.redis;
+  }
+
+  /**
+   * Check if system is in PostgreSQL-only mode
+   */
+  isPostgreSQLOnlyMode(): boolean {
+    return !this.redis;
+  }
+
+  /**
    * Set XMTP client for sync operations
    */
   setXMTPClient(client: Client): void {
     this.xmtpClient = client;
-    
+
     if (this.config.xmtp.enableSync) {
       this.startSyncInterval();
     }

@@ -1,5 +1,34 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { enhancedMessageStore } from '@/lib/enhanced-message-store';
+import { enhancedMessageStore, StoredMessage } from '@/lib/enhanced-message-store';
+
+/**
+ * Check if the bot service is available and responsive
+ */
+async function checkBotServiceAvailability(): Promise<boolean> {
+  try {
+    // Check if bot environment variables are configured
+    const botConfigured = !!(
+      process.env.BOT_PRIVATE_KEY &&
+      process.env.ENCRYPTION_KEY &&
+      process.env.OPENAI_API_KEY &&
+      process.env.XMTP_ENV
+    );
+
+    if (!botConfigured) {
+      return false;
+    }
+
+    // Try to import and check the queue system
+    const { getQueueStats } = await import('@/lib/xmtp-message-queue');
+    const stats = getQueueStats();
+
+    // If we can get stats, the queue system is working
+    return true;
+  } catch (error) {
+    console.log(`🔍 Bot service availability check failed:`, error instanceof Error ? error.message : String(error));
+    return false;
+  }
+}
 
 /**
  * API endpoint to send a message to the XMTP bot
@@ -37,38 +66,73 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Use message queue system for proper XMTP integration
-    try {
-      // Import message queue system
-      const { queueMessage, waitForMessageResponse } = await import('../../../lib/xmtp-message-queue');
+    // Check if we should use direct processing (more efficient when Redis unavailable)
+    const { shouldUseDirectProcessing, processMessageDirect } = await import('@/lib/xmtp-direct-processor');
 
-      // Queue the message for the bot service to process
-      const messageId = queueMessage(userAddress, message);
-      console.log(`📨 Queued message ${messageId} for bot processing`);
+    if (shouldUseDirectProcessing()) {
+      console.log(`📝 Redis not configured, using PostgreSQL only`);
 
-      // Try to wait for bot response (with shorter timeout for better UX)
       try {
-        const botResponse = await waitForMessageResponse(messageId, 10000); // 10 second timeout
+        const result = await processMessageDirect(userAddress, message, conversationId, context);
 
         return res.status(200).json({
-          response: botResponse,
+          response: result.response,
           botAddress: process.env.PREDICTION_BOT_XMTP_ADDRESS,
           timestamp: new Date().toISOString(),
-          source: 'xmtp_queue_processed',
-          messageId
+          source: result.source,
+          conversationId: result.conversationId
         });
-      } catch (timeoutError) {
-        console.log(`⏰ Message ${messageId} timed out, falling back to direct AI response`);
+      } catch (directError) {
+        console.error('❌ Direct processing failed:', directError);
+        // Fall through to queue-based processing
+      }
+    }
+
+    // Check if we have a running bot service for queue-based processing
+    const botServiceAvailable = await checkBotServiceAvailability();
+
+    if (botServiceAvailable) {
+      // Use message queue system for proper XMTP integration
+      try {
+        // Import message queue system
+        const { queueMessage, waitForMessageResponse } = await import('@/lib/xmtp-message-queue');
+
+        // Queue the message for the bot service to process
+        const messageId = queueMessage(userAddress, message);
+        console.log(`📨 Queued message ${messageId} for bot processing`);
+
+        // Try to wait for bot response (with shorter timeout for better UX)
+        try {
+          const botResponse = await waitForMessageResponse(messageId, 5000); // 5 second timeout
+
+          return res.status(200).json({
+            response: botResponse,
+            botAddress: process.env.PREDICTION_BOT_XMTP_ADDRESS,
+            timestamp: new Date().toISOString(),
+            source: 'xmtp_queue_processed',
+            messageId
+          });
+        } catch (timeoutError) {
+          console.log(`⏰ Message ${messageId} timed out, falling back to direct AI response`);
+          // Fall through to direct AI processing
+        }
+      } catch (queueError) {
+        console.log(`❌ Queue system error, falling back to direct AI response:`, queueError instanceof Error ? queueError.message : String(queueError));
         // Fall through to direct AI processing
       }
+    } else {
+      console.log(`🤖 Bot service not available, using direct AI processing`);
+    }
 
+    // Direct AI processing (fallback or when bot service unavailable)
+    try {
       // Check if user is asking about live markets
       const lowerMessage = message.toLowerCase();
 
       if (lowerMessage.includes('live') && (lowerMessage.includes('market') || lowerMessage.includes('prediction'))) {
         // Use enhanced contract data service for live markets
         try {
-          const { getMarketSummaryForBot } = await import('../../../lib/contract-data-service');
+          const { getMarketSummaryForBot } = await import('@/lib/contract-data-service');
           const response = await getMarketSummaryForBot();
 
           return res.status(200).json({
@@ -85,7 +149,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Handle network stats queries
       if (lowerMessage.includes('network stat') || lowerMessage.includes('fitness stat') || lowerMessage.includes('how many')) {
         try {
-          const { getNetworkStatsForBot } = await import('../../../lib/contract-data-service');
+          const { getNetworkStatsForBot } = await import('@/lib/contract-data-service');
           const response = await getNetworkStatsForBot();
 
           return res.status(200).json({
@@ -100,7 +164,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // For now, use direct AI service call until we implement proper XMTP user clients
-      const { generatePredictionProposal } = await import('../../../lib/ai-bot-service');
+      const { generatePredictionProposal } = await import('@/lib/ai-bot-service');
       // Use provided conversation ID or create one based on request info
       const finalConversationId = conversationId || `api_${req.headers['x-forwarded-for'] || 'unknown'}_${Date.now()}`;
 

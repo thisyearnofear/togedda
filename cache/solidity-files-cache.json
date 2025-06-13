@@ -1,0 +1,113 @@
+{
+  "_format": "hh-sol-cache-2",
+  "files": {
+    "/Users/udingethe/Desktop/papa-code/minikit-miniapp/contracts/ImperfectFormPredictionMarketV2Fixed.sol": {
+      "lastModificationDate": 1749778445535,
+      "contentHash": "454acdf6a1b2c01802218c0d6f4917f0",
+      "sourceName": "contracts/ImperfectFormPredictionMarketV2Fixed.sol",
+      "solcConfig": {
+        "version": "0.8.19",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "viaIR": true,
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.19"
+      ],
+      "artifacts": [
+        "ImperfectFormPredictionMarketV2Fixed"
+      ]
+    },
+    "/Users/udingethe/Desktop/papa-code/minikit-miniapp/contracts/ImperfectFormPredictionMarketV2_DEPRECATED.sol": {
+      "lastModificationDate": 1749778965540,
+      "contentHash": "0c29330c0b4b1abefea9964ee4df29f3",
+      "sourceName": "contracts/ImperfectFormPredictionMarketV2_DEPRECATED.sol",
+      "solcConfig": {
+        "version": "0.8.19",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "viaIR": true,
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.17"
+      ],
+      "artifacts": [
+        "ImperfectFormPredictionMarketV2"
+      ]
+    },
+    "/Users/udingethe/Desktop/papa-code/minikit-miniapp/contracts/interfaces/IImperfectFormPredictionMarketV2_REFERENCE.sol": {
+      "lastModificationDate": 1749778996553,
+      "contentHash": "45d390470a7bcc9c6dac6a44e4906fae",
+      "sourceName": "contracts/interfaces/IImperfectFormPredictionMarketV2_REFERENCE.sol",
+      "solcConfig": {
+        "version": "0.8.19",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "viaIR": true,
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.17"
+      ],
+      "artifacts": [
+        "IImperfectFormPredictionMarketV2"
+      ]
+    }
+  }
+}

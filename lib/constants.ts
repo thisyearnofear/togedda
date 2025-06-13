@@ -351,7 +351,7 @@ export const predictionMarketABI = [
 /**
  * Address of the deployed ImperfectFormPredictionMarketV2 contract on Base Sepolia
  */
-export const PREDICTION_MARKET_ADDRESS = "0x9B4Be1030eDC90205C10aEE54920192A13c12Cba";
+export const PREDICTION_MARKET_ADDRESS = "0xeF7009384cF166eF52e0F3529AcB79Ff53A2a3CA";
 
 /**
  * Address of the deployed PredictionBot contract on Base Sepolia

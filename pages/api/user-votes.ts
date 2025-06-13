@@ -63,27 +63,90 @@ export default async function handler(
       });
     }
 
-    // In a real implementation, this would query the blockchain or database
-    // For now, we'll simulate user votes based on the address
+    // Fetch all predictions from both chains
     const predictions = await getAllChainPredictions();
-    
-    // Simulate user votes (in production, this would come from contract events or database)
+
+    // Get user votes from blockchain for each prediction
     const userVotes: UserVote[] = [];
-    
-    // For demo purposes, create some sample votes for specific addresses
-    if (address.toLowerCase() === '0x55a5705453ee82c742274154136fce8149597058') {
-      // Test user papa with some sample votes
-      userVotes.push({
-        predictionId: 1,
-        predictionTitle: 'The celo community will not reach 10,000 total squats by 15th June 2025',
-        chain: 'celo',
-        isYes: false, // Betting against the negative prediction (so betting FOR reaching 10k squats)
-        amount: 2.5,
-        timestamp: Date.now() - 86400000, // 1 day ago
-        status: 'active',
-        outcome: 'unresolved',
-        claimed: false,
-      });
+
+    for (const prediction of predictions) {
+      try {
+        // Import the dual-chain service to get the correct contract
+        const { getChainContract } = await import('@/lib/dual-chain-service');
+        const contract = getChainContract(prediction.chain);
+
+        // Get user's vote for this prediction
+        const vote = await contract.getUserVote(prediction.id, address);
+
+        // If user has voted (amount > 0), add to results
+        if (vote.amount && vote.amount.toString() !== '0') {
+          const { ethers } = await import('ethers');
+          const amount = Number(ethers.formatEther(vote.amount));
+
+          userVotes.push({
+            predictionId: prediction.id,
+            predictionTitle: prediction.title,
+            chain: prediction.chain,
+            isYes: vote.isYes,
+            amount: amount,
+            timestamp: prediction.createdAt * 1000,
+            status: prediction.status === 0 ? 'active' :
+                   prediction.status === 1 ? 'resolved' : 'expired',
+            outcome: prediction.status === 1 ?
+                    (prediction.outcome === 1 ? 'yes' : 'no') : 'unresolved',
+            claimed: vote.claimed,
+            // Calculate potential reward (simplified - would need more complex logic)
+            potentialReward: prediction.status === 1 &&
+                           ((prediction.outcome === 1 && vote.isYes) ||
+                            (prediction.outcome === 0 && !vote.isYes)) ?
+                           amount * 1.6 : 0, // Simplified 60% return
+          });
+        }
+      } catch (error) {
+        // Skip predictions where we can't get user vote (user hasn't voted)
+        console.log(`No vote found for prediction ${prediction.id} by user ${address}`);
+        continue;
+      }
+    }
+
+    // Add some demo data for testing if no real votes found
+    if (userVotes.length === 0 && address.toLowerCase() === '0x55a5705453ee82c742274154136fce8149597058') {
+      userVotes.push(
+        {
+          predictionId: 1,
+          predictionTitle: 'The celo community will not reach 10,000 total squats by 15th June 2025',
+          chain: 'celo',
+          isYes: false,
+          amount: 2.5,
+          timestamp: Date.now() - 86400000,
+          status: 'active',
+          outcome: 'unresolved',
+          claimed: false,
+        },
+        {
+          predictionId: 3,
+          predictionTitle: 'No base user will complete 500 squats in a single week by 15th June 2025',
+          chain: 'base',
+          isYes: true,
+          amount: 0.01,
+          timestamp: Date.now() - 172800000, // 2 days ago
+          status: 'active',
+          outcome: 'unresolved',
+          claimed: false,
+        },
+        {
+          predictionId: 2,
+          predictionTitle: 'Resolved prediction example',
+          chain: 'celo',
+          isYes: true,
+          amount: 1.0,
+          timestamp: Date.now() - 604800000, // 1 week ago
+          status: 'resolved',
+          outcome: 'yes',
+          claimed: false,
+          potentialReward: 1.6,
+        }
+      );
       
       userVotes.push({
         predictionId: 3,

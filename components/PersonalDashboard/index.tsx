@@ -11,6 +11,7 @@ import TargetsAndStreaks from "@/components/TargetsAndStreaks";
 import Confetti from "@/components/Confetti";
 import { toast } from "react-hot-toast";
 import { FaShare, FaArrowRight, FaFire, FaMedal } from "react-icons/fa";
+import UserPredictionStats from "./UserPredictionStats";
 
 // Simple conditional rendering component
 const WebAppOnly = ({ children }: { children: React.ReactNode }) => {
@@ -329,13 +330,8 @@ export default function PersonalDashboard({
     // Calculate rankings
     calculateRankings(stats);
 
-    // TODO: Add prediction stats when available
-    stats.predictions = {
-      total: 5,
-      correct: 3,
-      pending: 1,
-      staked: 120,
-    };
+    // Prediction stats are now handled by UserPredictionStats component
+    // which fetches real data from the user-votes API
 
     setUserStats(stats);
   }, [
@@ -882,77 +878,7 @@ export default function PersonalDashboard({
             {/* Prediction Stats */}
             <div className="border-2 border-white p-4 rounded-lg">
               <h3 className="text-center mb-4">Prediction Stats</h3>
-
-              {isNewUser || userStats.predictions.total === 0 ? (
-                <div className="text-center mb-4">
-                  <div className="flex justify-between mb-4">
-                    <div className="text-center flex-1">
-                      <div className="text-blue-500 text-xl sm:text-2xl mb-1">
-                        0
-                      </div>
-                      <div className="text-xs">Total</div>
-                    </div>
-                    <div className="text-center flex-1">
-                      <div className="text-green-500 text-xl sm:text-2xl mb-1">
-                        0
-                      </div>
-                      <div className="text-xs">Correct</div>
-                    </div>
-                    <div className="text-center flex-1">
-                      <div className="text-yellow-500 text-xl sm:text-2xl mb-1">
-                        0
-                      </div>
-                      <div className="text-xs">Pending</div>
-                    </div>
-                  </div>
-                  <div className="text-xs mb-4 border-t border-gray-700 pt-4">
-                    <p className="mb-2">
-                      Stake CELO on fitness challenges in the{" "}
-                      <span className="text-yellow-400">Predictions</span> tab
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      15% of all stakes go to charity, 80% to the winning
-                      predictors
-                    </p>
-                  </div>
-                  <div className="text-xs text-gray-300 mb-2">
-                    &ldquo;Health + wellness = good times.&rdquo;
-                  </div>
-                  <div className="text-xs text-celo pulse-animation">
-                    Do well for you, do good for others
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="flex justify-between mb-4">
-                    <div className="text-center flex-1">
-                      <div className="text-blue-500 text-xl sm:text-2xl mb-1">
-                        {userStats.predictions.total}
-                      </div>
-                      <div className="text-xs">Total</div>
-                    </div>
-                    <div className="text-center flex-1">
-                      <div className="text-green-500 text-xl sm:text-2xl mb-1">
-                        {userStats.predictions.correct}
-                      </div>
-                      <div className="text-xs">Correct</div>
-                    </div>
-                    <div className="text-center flex-1">
-                      <div className="text-yellow-500 text-xl sm:text-2xl mb-1">
-                        {userStats.predictions.pending}
-                      </div>
-                      <div className="text-xs">Pending</div>
-                    </div>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="text-xs mb-1">Total Staked</div>
-                    <div className="text-celo text-xl">
-                      {userStats.predictions.staked} CELO
-                    </div>
-                  </div>
-                </>
-              )}
+              <UserPredictionStats isNewUser={isNewUser} />
             </div>
           </div>
         </>

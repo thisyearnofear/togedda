@@ -1,10 +1,10 @@
 # Imperfect Form Prediction Market Contracts
 
-This directory contains the smart contracts for the Imperfect Form prediction market functionality, designed specifically for the Farcaster mini app environment and CELO mainnet deployment.
+This directory contains the smart contracts for the Imperfect Form prediction market functionality, designed specifically for the Farcaster mini app environment with multi-chain deployment support.
 
 ## Contract Overview
 
-### ImperfectFormPredictionMarket.sol
+### ImperfectFormPredictionMarketV2Fixed.sol ✅ **CURRENT ACTIVE CONTRACT**
 
 The main prediction market contract that handles:
 
@@ -13,15 +13,261 @@ The main prediction market contract that handles:
 - Resolving predictions
 - Claiming rewards for correct predictions
 
-### ImperfectFormPredictionMarketFactory.sol
+**Key Features:**
+
+- Fixed event parameter encoding issues
+- Optimized for compilation with IR optimizer
+- Supports multi-chain deployment
+- 15% charity fee to Greenpill Kenya
+- 5% maintenance fee
+
+### ImperfectFormPredictionMarketV2_DEPRECATED.sol ⚠️ **REFERENCE ONLY**
+
+Previous version with event encoding issues. Kept for reference - use `ImperfectFormPredictionMarketV2Fixed.sol` instead.
+
+### ImperfectFormPredictionMarketFactoryV2.sol
 
 A factory contract that can deploy multiple prediction market instances if needed.
 
-### interfaces/IImperfectFormPredictionMarket.sol
+### Reference Files
 
-Interface for the prediction market contract to be used by the frontend.
+- **interfaces/IImperfectFormPredictionMarketV2_REFERENCE.sol**: Interface definition for reference
+- **base/PredictionBot_REFERENCE.sol**: Alternative bot architecture contract (not currently used)
 
-## Deployment Instructions for V2 Contracts on CELO Mainnet using Remix
+**Note**: The current XMTP integration uses direct contract calls rather than a separate PredictionBot contract.
+
+## Current XMTP Integration (Active)
+
+### Architecture Overview
+
+The app features a **fully functional XMTP V3 integration** with AI-powered prediction creation:
+
+```
+User → XMTP Chat → AI Bot Service → Prediction Market Contract
+                                 ↓
+                            Live Markets UI
+```
+
+### Key Components
+
+**Frontend (Browser SDK)**:
+
+- Real-time chat interface in PredictionMarket component
+- Conversation history and message caching
+- Direct user-to-bot messaging
+
+**Backend (Node SDK)**:
+
+- AI bot service with OpenAI GPT-4 integration
+- Natural language prediction parsing
+- Direct smart contract interaction
+- Message queue system for reliability
+
+**Smart Contract Integration**:
+
+- **Direct calls** to `ImperfectFormPredictionMarketV2Fixed`
+- No intermediate bot contract required
+- Simpler, more efficient architecture
+
+### Current Functionality ✅
+
+1. **Natural Language Prediction Creation**:
+
+   ```
+   User: "i predict 0x55A5... will do 5000 pressups by 01.08.2025"
+   Bot: "I'll create that prediction for you!"
+   → Creates on-chain prediction automatically
+   ```
+
+2. **Live Market Integration**:
+
+   - Predictions appear immediately in Live Markets
+   - Full voting and resolution functionality
+   - Multi-chain support (CELO mainnet + Base Sepolia)
+
+3. **AI-Powered Parsing**:
+
+   - Extracts prediction details from natural language
+   - Handles dates, addresses, target values
+   - Categorizes predictions automatically
+
+4. **Real-time Messaging**:
+   - XMTP V3 streaming for instant responses
+   - Conversation persistence and history
+   - Error handling and retry logic
+
+### Environment Configuration
+
+```bash
+# XMTP AI Bot Configuration
+BOT_PRIVATE_KEY=0x...                    # Bot's wallet private key
+ENCRYPTION_KEY=0x...                     # XMTP encryption key
+XMTP_ENV=dev                            # XMTP environment
+OPENAI_API_KEY=sk-proj-...              # OpenAI API key
+PREDICTION_BOT_XMTP_ADDRESS=0x7E28...   # Bot's XMTP address
+```
+
+### API Endpoints
+
+- `/api/xmtp/send-message` - Send message to AI bot
+- `/api/xmtp/create-prediction` - Create prediction via bot
+- `/api/xmtp/bot-status` - Check bot status
+- `/api/xmtp/conversation-history` - Get chat history
+
+### Alternative: PredictionBot Contract Architecture
+
+The reference `PredictionBot_REFERENCE.sol` contract represents an **alternative architecture** that could be used for:
+
+**Potential Use Cases**:
+
+1. **Fee Collection**: Charge users for AI prediction creation services
+2. **Access Control**: Limit who can create predictions through the bot
+3. **Rate Limiting**: Prevent spam by requiring payment per prediction
+4. **Multi-Bot Support**: Deploy multiple specialized bots with different capabilities
+5. **Governance**: Allow community voting on bot parameters and fees
+
+**Current vs Alternative Architecture**:
+
+```bash
+# Current (Direct) - ACTIVE
+User → AI Bot → Prediction Market Contract
+
+# Alternative (Intermediate Contract) - REFERENCE ONLY
+User → AI Bot → PredictionBot Contract → Prediction Market Contract
+                      ↓
+                 Fee Collection
+```
+
+**Why Direct Architecture is Preferred**:
+
+- ✅ **Simpler**: Fewer contracts to maintain
+- ✅ **Cheaper**: Lower gas costs (no intermediate contract)
+- ✅ **Faster**: Direct contract interaction
+- ✅ **More Reliable**: Fewer points of failure
+- ✅ **User-Friendly**: No additional fees for bot usage
+
+**When to Consider PredictionBot Contract**:
+
+- If you need to monetize AI prediction services
+- If you want to implement sophisticated access controls
+- If you plan to deploy multiple specialized bots
+- If you need detailed analytics on bot usage
+
+## Current Deployments
+
+### Base Sepolia (Chain ID: 84532) ✅ **ACTIVE**
+
+- **Contract Address**: `0xeF7009384cF166eF52e0F3529AcB79Ff53A2a3CA`
+- **Deployment Date**: January 12, 2025
+- **Status**: Active and tested
+- **Explorer**: [View on BaseScan](https://sepolia.basescan.org/address/0xeF7009384cF166eF52e0F3529AcB79Ff53A2a3CA)
+- **Test Transaction**: [0x55b9080281f63eb675d8af5e4bad1f10eb0a50be68025273f2d971c27d99d9c1](https://sepolia.basescan.org/tx/0x55b9080281f63eb675d8af5e4bad1f10eb0a50be68025273f2d971c27d99d9c1)
+
+### CELO Mainnet (Chain ID: 42220) ✅ **ACTIVE**
+
+- **Contract Address**: `0x4d6b336F174f17daAf63D233E1E05cB105562304`
+- **Status**: Active and tested
+- **Explorer**: [View on CELO Explorer](https://explorer.celo.org/address/0x4d6b336F174f17daAf63D233E1E05cB105562304)
+
+### Previous Base Sepolia (DEPRECATED) ❌
+
+- **Contract Address**: `0x9B4Be1030eDC90205C10aEE54920192A13c12Cba`
+- **Issue**: Event encoding problems causing transaction reverts
+- **Status**: Deprecated - do not use
+
+## Recent Fixes (January 2025)
+
+### Issue Resolution: Base Sepolia Contract Deployment
+
+**Problem**: The original Base Sepolia contract (`0x9B4Be1030eDC90205C10aEE54920192A13c12Cba`) was experiencing transaction reverts due to event parameter encoding issues.
+
+**Root Cause**:
+
+- Event definitions used `Category` enum type instead of `uint8`
+- Solidity ABI encoding had issues with enum parameters in events
+- Contract was hitting "stack too deep" compilation errors
+
+**Solution**:
+
+1. **Fixed Event Parameters**: Changed enum types to `uint8` in event definitions
+2. **IR Optimizer**: Enabled `viaIR: true` in Hardhat config to resolve stack depth issues
+3. **Proper ABI Format**: Updated frontend to use proper JSON ABI instead of string-based definitions
+4. **Comprehensive Testing**: Deployed and tested new contract with successful prediction creation
+
+**New Contract Features**:
+
+- ✅ Event parameters properly encoded as `uint8` instead of enum
+- ✅ Compiles with IR optimizer to handle complex functions
+- ✅ Tested prediction creation, voting, and resolution
+- ✅ Compatible with existing frontend code
+- ✅ Same fee structure (15% charity, 5% maintenance)
+
+## Deployment Instructions for Base Sepolia using Hardhat
+
+### Prerequisites
+
+1. Node.js and npm installed
+2. Hardhat development environment
+3. Private key with Base Sepolia ETH
+4. Access to Base Sepolia RPC
+
+### Quick Deployment Steps
+
+1. **Install Dependencies**
+
+```bash
+npm install --save-dev hardhat @nomicfoundation/hardhat-toolbox
+```
+
+2. **Configure Hardhat** (`hardhat.config.js`)
+
+```javascript
+require("@nomicfoundation/hardhat-toolbox");
+require("dotenv").config({ path: ".env.local" });
+
+module.exports = {
+  solidity: {
+    version: "0.8.19",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200,
+      },
+      viaIR: true, // CRITICAL: Enables IR optimizer for complex contracts
+    },
+  },
+  networks: {
+    baseSepolia: {
+      url: "https://sepolia.base.org",
+      accounts: process.env.BOT_PRIVATE_KEY
+        ? [process.env.BOT_PRIVATE_KEY]
+        : [],
+      chainId: 84532,
+    },
+  },
+};
+```
+
+3. **Deploy Contract**
+
+```bash
+npx hardhat run scripts/deploy-fixed.js --network baseSepolia
+```
+
+4. **Verify Deployment**
+
+- Check transaction on [BaseScan](https://sepolia.basescan.org)
+- Test prediction creation through frontend
+- Verify contract state variables
+
+### Environment Variables Required
+
+```bash
+# .env.local
+BOT_PRIVATE_KEY=0x... # Private key with Base Sepolia ETH
+```
+
+## Deployment Instructions for CELO Mainnet using Remix
 
 ### Prerequisites
 

@@ -417,6 +417,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
         console.log(`🔄 Creating prediction with params:`, transactionParams);
         console.log(`📋 Contract address:`, transactionParams.contractAddress);
+        console.log("📋 Target chain ID:", transactionParams.chainId);
+        console.log("📋 Current chain ID:", chain?.id);
+        console.log("📋 Current chain name:", chain?.name);
         console.log(`📋 Function args:`, [
           transactionParams.title,
           transactionParams.description,
@@ -427,6 +430,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           transactionParams.emoji,
           transactionParams.autoResolvable,
         ]);
+
+        // Double-check we're on the right network before sending
+        if (chain?.id !== transactionParams.chainId) {
+          throw new Error(
+            `Network mismatch: Expected ${transactionParams.chainId}, got ${chain?.id}`
+          );
+        }
 
         await writeContract({
           address: transactionParams.contractAddress as `0x${string}`,
@@ -665,6 +675,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   useEffect(() => {
     if (isConfirmed && hash) {
       console.log(`✅ Transaction confirmed: ${hash}`);
+      console.log(
+        `🔗 View on BaseScan: https://sepolia.basescan.org/tx/${hash}`
+      );
       setIsCreatingPrediction(false);
 
       // Clear pending prediction to prevent duplicate button
@@ -675,9 +688,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         setPendingPrediction(null);
       }
 
-      // Invalidate predictions cache to refresh Live Markets immediately
-      invalidatePredictions();
-      console.log(`🔄 Cache invalidated - Live Markets will refresh`);
+      // Add a delay before refreshing to allow blockchain indexing
+      setTimeout(() => {
+        console.log(`🔄 Refreshing predictions after 3 second delay...`);
+        invalidatePredictions();
+        console.log(`🔄 Cache invalidated - Live Markets will refresh`);
+      }, 3000);
     }
   }, [isConfirmed, hash, invalidatePredictions, pendingPrediction]);
 
@@ -970,6 +986,25 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               </div>
               <div className="mt-1 text-xs text-green-200">
                 TX: {hash.slice(0, 10)}...{hash.slice(-8)}
+              </div>
+              <div className="mt-2 flex gap-2">
+                <a
+                  href={`https://sepolia.basescan.org/tx/${hash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded"
+                >
+                  View on BaseScan
+                </a>
+                <button
+                  onClick={() => {
+                    console.log("🔄 Manual refresh triggered");
+                    invalidatePredictions();
+                  }}
+                  className="text-xs bg-purple-600 hover:bg-purple-700 px-2 py-1 rounded"
+                >
+                  Refresh Markets
+                </button>
               </div>
             </div>
           </div>

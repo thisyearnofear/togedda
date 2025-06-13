@@ -28,7 +28,7 @@ export const CHAIN_CONFIG = {
     id: 84532,
     name: "Base Sepolia",
     rpcUrl: "https://sepolia.base.org",
-    contractAddress: "0x9B4Be1030eDC90205C10aEE54920192A13c12Cba",
+    contractAddress: "0xeF7009384cF166eF52e0F3529AcB79Ff53A2a3CA",
     nativeCurrency: {
       name: "Ethereum",
       symbol: "ETH",
@@ -102,37 +102,43 @@ export async function getAllChainPredictions(): Promise<ChainPrediction[]> {
       let totalPredictions = 0;
       try {
         // Try to get the prediction count from contract (if available)
-        totalPredictions = await contract.predictionCount();
+        const contractTotal = await contract.getTotalPredictions();
+        totalPredictions = Number(contractTotal.toString()); // Convert BigInt to number
         console.log(`📊 ${config.name} has ${totalPredictions} total predictions`);
       } catch (error) {
         // Fallback: scan for predictions up to a reasonable limit
-        console.log(`⚠️ No predictionCount() method, scanning for predictions...`);
-        totalPredictions = 20; // Scan up to 20 predictions
+        console.log(`⚠️ No getTotalPredictions() method, scanning for predictions...`);
+        totalPredictions = 100; // Increased scan limit to catch more predictions
       }
 
-      // Fetch all predictions dynamically
-      for (let id = 1; id <= totalPredictions; id++) {
+      // Fetch all predictions dynamically - scan more comprehensively
+      // Start from ID 1 since our contract predictions start from 1, not 0
+      const maxId = Math.max(totalPredictions, 50); // Ensure we scan at least 50 IDs
+      let foundPredictions = 0;
+      let consecutiveFailures = 0;
+
+      for (let id = 1; id <= maxId; id++) {
         try {
           const prediction = await contract.getPrediction(id);
 
           const chainPrediction: ChainPrediction = {
-            id: Number(prediction.id),
+            id: Number(prediction.id.toString()),
             chain,
             creator: prediction.creator,
             title: prediction.title,
             description: prediction.description,
-            targetDate: Number(prediction.targetDate),
-            targetValue: Number(prediction.targetValue),
-            currentValue: Number(prediction.currentValue),
-            category: prediction.category,
+            targetDate: Number(prediction.targetDate.toString()),
+            targetValue: Number(prediction.targetValue.toString()),
+            currentValue: Number(prediction.currentValue.toString()),
+            category: Number(prediction.category.toString()),
             network: prediction.network,
             emoji: prediction.emoji,
             totalStaked: Number(ethers.formatEther(prediction.totalStaked)),
             yesVotes: Number(ethers.formatEther(prediction.yesVotes)),
             noVotes: Number(ethers.formatEther(prediction.noVotes)),
-            status: prediction.status,
-            outcome: prediction.outcome,
-            createdAt: Number(prediction.createdAt),
+            status: Number(prediction.status.toString()),
+            outcome: Number(prediction.outcome.toString()),
+            createdAt: Number(prediction.createdAt.toString()),
             autoResolvable: prediction.autoResolvable,
             chainMetadata: {
               currency: config.nativeCurrency.symbol,
@@ -142,13 +148,29 @@ export async function getAllChainPredictions(): Promise<ChainPrediction[]> {
           };
 
           allPredictions.push(chainPrediction);
+          foundPredictions++;
+          consecutiveFailures = 0; // Reset failure counter
         } catch (error) {
-          // Stop scanning when we hit a non-existent prediction
+          consecutiveFailures++;
           const errorMessage = error instanceof Error ? error.message : String(error);
-          if (errorMessage?.includes('revert') || errorMessage?.includes('invalid')) {
-            console.log(`📍 Reached end of predictions at ID ${id - 1} on ${config.name}`);
+
+          // If we hit 5 consecutive failures and haven't found any predictions, likely no predictions exist
+          if (consecutiveFailures >= 5 && foundPredictions === 0) {
+            console.log(`📍 No predictions found after ${consecutiveFailures} attempts on ${config.name}`);
             break;
           }
+
+          // If we've found predictions but hit 3 consecutive failures, we've likely reached the end
+          if (consecutiveFailures >= 3 && foundPredictions > 0) {
+            console.log(`📍 Reached end of predictions at ID ${id - consecutiveFailures} on ${config.name}`);
+            break;
+          }
+
+          if (errorMessage?.includes('revert') || errorMessage?.includes('invalid')) {
+            // This is expected for non-existent predictions, continue scanning
+            continue;
+          }
+
           console.log(`⚠️ Error fetching prediction ${id} on ${config.name}:`, errorMessage);
         }
       }

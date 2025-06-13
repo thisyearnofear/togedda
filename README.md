@@ -9,7 +9,7 @@ A retro-gamified fitness companion application built as a Farcaster Mini App. Th
 
 - **Live Demo:** [imperfectminiapp.vercel.app](https://imperfectminiapp.vercel.app)
 - **CELO Contract:** [`0x4d6b336F174f17daAf63D233E1E05cB105562304`](https://explorer.celo.org/mainnet/address/0x4d6b336F174f17daAf63D233E1E05cB105562304)
-- **Base Sepolia Contract:** [`0x9B4Be1030eDC90205C10aEE54920192A13c12Cba`](https://sepolia.basescan.org/address/0x9B4Be1030eDC90205C10aEE54920192A13c12Cba)
+- **Base Sepolia Contract:** [`0xeF7009384cF166eF52e0F3529AcB79Ff53A2a3CA`](https://sepolia.basescan.org/address/0xeF7009384cF166eF52e0F3529AcB79Ff53A2a3CA) ✅ **ACTIVE**
 - **Documentation:** [Deployment Guide](./docs/DEPLOYMENT_GUIDE.md) | [Technical Guide](./docs/TECHNICAL_GUIDE.md)
 
 ![Imperfect Form](./public/og.png)
@@ -19,9 +19,9 @@ A retro-gamified fitness companion application built as a Farcaster Mini App. Th
 - **Collective Goals**: Community challenges like Mount Olympus and Kenya Run
 - **Real-time Leaderboards**: Compete with other fitness enthusiasts across multiple chains
 - **AI-Powered Prediction Markets**: Auto-resolving predictions with external data integration
-- **Real-time XMTP Chat**: Live messaging with conversation history and message caching
+- **XMTP V3 Chat Integration**: Live AI bot messaging with natural language prediction creation
 - **Advanced Data Caching**: React Query integration for optimized performance
-- **AI-Powered Predictions**: Natural language prediction creation via secure messaging
+- **Direct Smart Contract Integration**: AI bot creates predictions directly on-chain
 - **Multi-Chain Analytics**: View aggregated fitness data across Base, Celo, Polygon, and Monad
 - **Retro Gaming Aesthetic**: Pixel-perfect arcade-style UI with Press Start 2P font
 - **Farcaster Integration**: Native sign-in, sharing, and notifications within Farcaster
@@ -189,13 +189,21 @@ The app operates on multiple blockchain networks with deployed prediction market
 - **Explorer:** [CELO Explorer](https://explorer.celo.org/mainnet/address/0x4d6b336F174f17daAf63D233E1E05cB105562304)
 - **Status:** ✅ Live with real CELO tokens
 
-**Base Sepolia** (Hackathon/Testing)
+**Base Sepolia** (Hackathon/Testing) ✅ **ACTIVE**
+
+- **Contract:** `ImperfectFormPredictionMarketV2Fixed`
+- **Address:** `0xeF7009384cF166eF52e0F3529AcB79Ff53A2a3CA`
+- **Explorer:** [Base Sepolia Scan](https://sepolia.basescan.org/address/0xeF7009384cF166eF52e0F3529AcB79Ff53A2a3CA)
+- **Deployment Date:** January 12, 2025
+- **Test Transaction:** [0x55b9080281f63eb675d8af5e4bad1f10eb0a50be68025273f2d971c27d99d9c1](https://sepolia.basescan.org/tx/0x55b9080281f63eb675d8af5e4bad1f10eb0a50be68025273f2d971c27d99d9c1)
+- **Status:** ✅ Live with test ETH - Fixed event encoding issues
+
+**Previous Base Sepolia** (DEPRECATED) ❌
 
 - **Contract:** `ImperfectFormPredictionMarketV2`
 - **Address:** `0x9B4Be1030eDC90205C10aEE54920192A13c12Cba`
-- **Explorer:** [Base Sepolia Scan](https://sepolia.basescan.org/address/0x9B4Be1030eDC90205C10aEE54920192A13c12Cba)
-- **PredictionBot:** `0x5552e0ca9fd8e71bc2D0941619248f91d30CDa0E`
-- **Status:** ✅ Live with test ETH
+- **Issue:** Event encoding problems causing transaction reverts
+- **Status:** Deprecated - do not use
 
 #### Supported Networks
 
@@ -270,10 +278,35 @@ Each blockchain has a distinctive color:
 ### Key Features
 
 - ✅ **On-Demand Resolution**: User-triggered prediction resolution (optimal performance)
-- ✅ **XMTP AI Bot**: Natural language prediction creation via secure messaging
+- ✅ **XMTP V3 AI Bot**: Natural language prediction creation via secure messaging
+- ✅ **Direct Contract Integration**: AI bot creates predictions directly on-chain
 - ✅ **External API Integration**: CoinGecko, OpenWeatherMap, TimeZoneDB, Web3.bio
 - ✅ **Smart Contract Automation**: Handles payouts and platform fees
-- ✅ **Eligibility Validation**: Smart checks for resolution readiness
+- ✅ **Multi-Chain Support**: CELO mainnet and Base Sepolia integration
+- ✅ **Real-time Updates**: Predictions appear immediately in Live Markets
+
+### Testing XMTP Integration
+
+**Quick Test Flow**:
+
+1. Navigate to the app's Prediction Market section
+2. Open the AI Chat interface
+3. Send a message like: `"i predict 0x55A5... will do 5000 pressups by 01.08.2025"`
+4. Bot responds with prediction proposal
+5. Confirm with `"yes"`
+6. Prediction appears in Live Markets immediately
+
+**API Testing**:
+
+```bash
+# Check bot status
+curl http://localhost:3000/api/xmtp/bot-status
+
+# Send test message
+curl -X POST http://localhost:3000/api/xmtp/send-message \
+  -H "Content-Type: application/json" \
+  -d '{"message": "create a test prediction", "userAddress": "0x..."}'
+```
 
 📚 **For detailed API documentation and testing guides, see [docs/TECHNICAL_GUIDE.md](docs/TECHNICAL_GUIDE.md)**
 
@@ -437,15 +470,22 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 - ✅ Smart contract automation and payout distribution
 - ✅ Real-time monitoring and resolution system
 
-### Phase 3: Messaging & Social Features ✅ **IN PROGRESS**
+### Phase 3: Messaging & Social Features ✅ **COMPLETED**
 
-- ✅ **XMTP Integration**: Hybrid Browser + Node SDK architecture for secure messaging
+- ✅ **XMTP V3 Integration**: Hybrid Browser + Node SDK architecture for secure messaging
 - ✅ **AI Prediction Bot**: Natural language prediction creation via XMTP chat
 - ✅ **Real-time Chat**: Browser SDK for user-facing chat with conversation history
 - ✅ **Backend AI Service**: Node SDK for secure AI bot operations and automation
+- ✅ **Direct Contract Integration**: AI bot creates predictions directly on-chain
+- ✅ **Multi-Chain Support**: Works with CELO mainnet and Base Sepolia
+- ✅ **Live Market Integration**: Predictions appear immediately in Live Markets UI
+
+### Phase 4: Advanced Social Features 🔮 **FUTURE**
+
 - 🔮 **Group Chat Support**: Multi-user XMTP conversations for fitness groups
 - 🔮 **AI Fitness Agents**: Smart agents that track progress and facilitate challenges
 - 🔮 **Mini App Games**: Multiplayer fitness games within group chats
+- 🔮 **PredictionBot Contract**: Fee-based bot services with access controls
 
 _Phase 2 & 3 align with the Base Batches Messaging Buildathon, combining AI agents + crypto + mini apps for secure fitness community messaging._
 

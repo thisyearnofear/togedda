@@ -31,6 +31,7 @@ const voteABI = [
 ] as const;
 import { parseEther } from "viem";
 import PredictionCard from "./PredictionCard";
+import ChainAwarePredictionCard from "./ChainAwarePredictionCard";
 import ChatButton from "./ChatButton";
 import {
   FaLightbulb,
@@ -42,6 +43,8 @@ import {
 } from "react-icons/fa";
 import WarpcastWallet from "@/components/WarpcastWallet";
 import ChatInterface from "./ChatInterface";
+import { type SupportedChain, CHAIN_CONFIG } from "@/lib/dual-chain-service";
+import { predictionMarketABI } from "@/lib/constants";
 
 const PredictionMarket: React.FC = () => {
   const { address } = useAccount();
@@ -71,13 +74,34 @@ const PredictionMarket: React.FC = () => {
     description: "",
   });
   const [isSubmittingSuggestion, setIsSubmittingSuggestion] = useState(false);
+  const [expandedNetworks, setExpandedNetworks] = useState<{
+    [key: string]: boolean;
+  }>({});
 
-  // Network information
+  // Dual-chain network configuration - focused on CELO + Base
   const networks = [
-    { id: "celo", name: "Celo Mainnet", emoji: "🟡", color: "celo" },
-    { id: "polygon", name: "Polygon Mainnet", emoji: "🟣", color: "polygon" },
-    { id: "base", name: "Base Sepolia", emoji: "🔵", color: "base-chain" },
-    { id: "monad", name: "Monad Testnet", emoji: "⚫", color: "monad" },
+    {
+      id: "celo",
+      name: "CELO Mainnet",
+      emoji: "🟡",
+      color: "celo",
+      tagline: "Real Impact, Real Money",
+      description: "Production network supporting Greenpill Kenya charity",
+      stakingNote: "Stakes help fund environmental initiatives",
+      isProduction: true,
+      currency: "CELO",
+    },
+    {
+      id: "base",
+      name: "Base Sepolia",
+      emoji: "🔵",
+      color: "base-chain",
+      tagline: "Build & Experiment",
+      description: "Testnet for builders and hackathon participants",
+      stakingNote: "Free testnet ETH - perfect for experimentation",
+      isProduction: false,
+      currency: "ETH",
+    },
   ];
 
   // Convert ChainPrediction[] to Prediction[] format for compatibility
@@ -122,9 +146,77 @@ const PredictionMarket: React.FC = () => {
     prefetchChainPredictions();
   }, [prefetchChainPredictions]);
 
-  const handleVote = () => {
+  const handleVote = async (
+    predictionId: number,
+    isYes: boolean,
+    amount: string
+  ) => {
+    if (!address) {
+      toast.error("Please connect your wallet first");
+      return;
+    }
+
+    try {
+      // Find the prediction to determine which chain to use
+      const prediction = chainPredictions.find((p) => p.id === predictionId);
+      if (!prediction) {
+        toast.error("Prediction not found");
+        return;
+      }
+
+      const chain = prediction.chain;
+      const chainConfig = CHAIN_CONFIG[chain];
+
+      console.log(
+        `🔄 Voting on ${chainConfig.name} prediction ${predictionId}: ${
+          isYes ? "YES" : "NO"
+        } with ${amount} ${chainConfig.nativeCurrency.symbol}`
+      );
+
+      // Use the chain-specific contract address and ABI
+      const hash = await writeContractAsync({
+        address: chainConfig.contractAddress as `0x${string}`,
+        abi: predictionMarketABI,
+        functionName: "vote",
+        args: [BigInt(predictionId), isYes],
+        value: parseEther(amount),
+      });
+
+      toast.success(
+        `Transaction sent! You voted ${isYes ? "YES" : "NO"} with ${amount} ${
+          chainConfig.nativeCurrency.symbol
+        }`
+      );
+
+      console.log(`✅ Vote transaction sent: ${hash}`);
+
+      // Invalidate cache to trigger refresh after voting
+      invalidatePredictions();
+    } catch (error: any) {
+      console.error("Error voting:", error);
+
+      if (
+        error.message &&
+        (error.message.includes("rejected") || error.message.includes("denied"))
+      ) {
+        toast.error("Transaction cancelled by user");
+      } else {
+        toast.error(error.message || "Transaction failed");
+      }
+    }
+  };
+
+  // Simple wrapper for PredictionCard component that expects no parameters
+  const handleVoteSimple = () => {
     // Invalidate cache to trigger refresh after voting
     invalidatePredictions();
+  };
+
+  const toggleNetworkExpansion = (networkId: string) => {
+    setExpandedNetworks((prev) => ({
+      ...prev,
+      [networkId]: !prev[networkId],
+    }));
   };
 
   const handleOpenChat = () => {
@@ -271,39 +363,58 @@ const PredictionMarket: React.FC = () => {
     },
   ];
 
-  // Group predictions by network and prioritize active ones
-  const getNetworkPredictions = () => {
-    const networkGroups: { [key: string]: Prediction[] } = {};
+  // Group predictions by chain using dual-chain service data
+  const getChainPredictions = () => {
+    const chainGroups: { [key: string]: Prediction[] } = {};
 
-    // Initialize with empty arrays for all networks
+    // Initialize with empty arrays for supported chains
     networks.forEach((network) => {
-      networkGroups[network.id] = [];
+      chainGroups[network.id] = [];
     });
 
-    // Group active predictions by network
-    predictions
-      .filter((p) => p.status === PredictionStatus.ACTIVE)
-      .forEach((prediction) => {
-        const networkKey = prediction.network.toLowerCase();
-        if (networkGroups[networkKey]) {
-          networkGroups[networkKey].push(prediction);
-        }
-      });
-
-    // For networks with no active predictions, add hardcoded fallback
-    networks.forEach((network, index) => {
-      if (
-        networkGroups[network.id].length === 0 &&
-        hardcodedPredictions[index]
-      ) {
-        networkGroups[network.id].push(hardcodedPredictions[index]);
+    // Group predictions by chain from dual-chain service
+    chainPredictions.forEach((chainPred) => {
+      const chainKey = chainPred.chain; // 'celo' or 'base'
+      if (chainGroups[chainKey]) {
+        // Convert ChainPrediction to Prediction format
+        const prediction: Prediction = {
+          id: chainPred.id,
+          creator: chainPred.creator,
+          title: chainPred.title,
+          description: chainPred.description,
+          targetDate: chainPred.targetDate,
+          targetValue: chainPred.targetValue,
+          currentValue: chainPred.currentValue,
+          category: chainPred.category as PredictionCategory,
+          network: chainPred.network,
+          emoji: chainPred.emoji,
+          totalStaked: chainPred.totalStaked,
+          yesVotes: chainPred.yesVotes,
+          noVotes: chainPred.noVotes,
+          status: chainPred.status as PredictionStatus,
+          outcome: chainPred.outcome as PredictionOutcome,
+          createdAt: chainPred.createdAt,
+          autoResolvable: chainPred.autoResolvable,
+        };
+        chainGroups[chainKey].push(prediction);
       }
     });
 
-    return networkGroups;
+    // Add fallback predictions for empty chains (only for supported networks)
+    const celoFallback = hardcodedPredictions.find((p) => p.network === "celo");
+    const baseFallback = hardcodedPredictions.find((p) => p.network === "base");
+
+    if (chainGroups["celo"].length === 0 && celoFallback) {
+      chainGroups["celo"].push(celoFallback);
+    }
+    if (chainGroups["base"].length === 0 && baseFallback) {
+      chainGroups["base"].push(baseFallback);
+    }
+
+    return chainGroups;
   };
 
-  const networkPredictions = getNetworkPredictions();
+  const networkPredictions = getChainPredictions();
 
   return (
     <WarpcastWallet>
@@ -369,10 +480,32 @@ const PredictionMarket: React.FC = () => {
         {activeTab === "markets" && (
           <>
             <div className="text-center mb-6">
-              <div className="inline-block border-2 border-white p-2 rounded-lg bg-black bg-opacity-50">
-                <span className="text-yellow-400 text-sm">
-                  🏆 Stake CELO, help charity
-                </span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+                {/* CELO Messaging */}
+                <div className="border-2 border-yellow-400 p-3 rounded-lg bg-black bg-opacity-50">
+                  <div className="flex items-center justify-center mb-1">
+                    <span className="text-yellow-400 text-lg mr-2">🟡</span>
+                    <span className="text-yellow-400 text-sm font-bold">
+                      CELO Mainnet
+                    </span>
+                  </div>
+                  <p className="text-yellow-300 text-xs">
+                    🏆 Real stakes, real charity impact
+                  </p>
+                </div>
+
+                {/* Base Messaging */}
+                <div className="border-2 border-blue-400 p-3 rounded-lg bg-black bg-opacity-50">
+                  <div className="flex items-center justify-center mb-1">
+                    <span className="text-blue-400 text-lg mr-2">🔵</span>
+                    <span className="text-blue-400 text-sm font-bold">
+                      Base Sepolia
+                    </span>
+                  </div>
+                  <p className="text-blue-300 text-xs">
+                    🛠️ Build, experiment, learn together
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -406,34 +539,89 @@ const PredictionMarket: React.FC = () => {
                 <div className="loading-spinner"></div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 gap-6">
                 {networks.map((network) => {
                   const networkPreds = networkPredictions[network.id] || [];
                   const activePreds = networkPreds.filter(
                     (p) => p.status === PredictionStatus.ACTIVE
                   );
-                  const displayPreds =
+                  const allDisplayPreds =
                     activePreds.length > 0 ? activePreds : networkPreds;
+                  const isExpanded = expandedNetworks[network.id] || false;
+                  const maxVisible = 2;
+                  const displayPreds = isExpanded
+                    ? allDisplayPreds
+                    : allDisplayPreds.slice(0, maxVisible);
+                  const hasMore = allDisplayPreds.length > maxVisible;
+
+                  // Get chain-specific styling
+                  const chainColors = {
+                    celo: {
+                      border: "border-yellow-400",
+                      bg: "bg-yellow-900",
+                      text: "text-yellow-400",
+                      accent: "text-yellow-300",
+                    },
+                    base: {
+                      border: "border-blue-400",
+                      bg: "bg-blue-900",
+                      text: "text-blue-400",
+                      accent: "text-blue-300",
+                    },
+                  };
+
+                  const colors = chainColors[
+                    network.id as keyof typeof chainColors
+                  ] || {
+                    border: "border-gray-400",
+                    bg: "bg-gray-900",
+                    text: "text-gray-400",
+                    accent: "text-gray-300",
+                  };
 
                   return (
                     <div
                       key={network.id}
-                      className={`border-2 border-${network.color} rounded-lg p-4 bg-black bg-opacity-70`}
+                      className={`border-2 ${colors.border} rounded-lg p-4 bg-black bg-opacity-70`}
                     >
-                      <div className="flex items-center justify-between mb-2">
+                      {/* Chain Header */}
+                      <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center">
                           <div
-                            className={`w-10 h-10 rounded-full bg-${network.color} flex items-center justify-center mr-3`}
+                            className={`w-12 h-12 rounded-full ${colors.bg} bg-opacity-30 flex items-center justify-center mr-3 border ${colors.border}`}
                           >
-                            <span className="text-xl">{network.emoji}</span>
+                            <span className="text-2xl">{network.emoji}</span>
                           </div>
-                          <h3 className="text-lg font-bold">{network.name}</h3>
+                          <div>
+                            <h3 className={`text-lg font-bold ${colors.text}`}>
+                              {network.name}
+                            </h3>
+                            <p className={`text-xs ${colors.accent}`}>
+                              {network.tagline}
+                            </p>
+                          </div>
                         </div>
-                        {activePreds.length > 1 && (
-                          <span className="text-xs bg-purple-600 px-2 py-1 rounded">
-                            {activePreds.length} active
-                          </span>
-                        )}
+                        <div className="text-right">
+                          {activePreds.length > 0 && (
+                            <span
+                              className={`text-xs ${colors.bg} bg-opacity-50 ${colors.text} px-2 py-1 rounded border ${colors.border}`}
+                            >
+                              {activePreds.length} active
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Chain Description */}
+                      <div
+                        className={`${colors.bg} bg-opacity-20 border ${colors.border} rounded p-2 mb-3`}
+                      >
+                        <p className={`text-xs ${colors.accent} mb-1`}>
+                          {network.description}
+                        </p>
+                        <p className={`text-xs ${colors.text} font-medium`}>
+                          💰 {network.stakingNote}
+                        </p>
                       </div>
 
                       {displayPreds.length > 0 ? (
@@ -442,34 +630,53 @@ const PredictionMarket: React.FC = () => {
                             .slice(0, 2)
                             .map((prediction, predIndex) => (
                               <div key={`${prediction.id}-${predIndex}`}>
-                                <PredictionCard
+                                <ChainAwarePredictionCard
                                   prediction={prediction}
                                   onVote={handleVote}
                                   simplified={true}
+                                  chain={network.id as SupportedChain}
                                 />
                               </div>
                             ))}
-                          {displayPreds.length > 2 && (
+                          {hasMore && (
                             <div className="text-center">
                               <button
-                                onClick={() => setActiveTab("chat")}
-                                className="text-xs text-purple-400 hover:text-purple-300"
+                                onClick={() =>
+                                  toggleNetworkExpansion(network.id)
+                                }
+                                className={`text-xs ${colors.text} hover:${colors.accent} flex items-center justify-center mx-auto`}
                               >
-                                +{displayPreds.length - 2} more predictions
+                                {isExpanded ? (
+                                  <>
+                                    <span className="mr-1">▲</span>
+                                    Show less
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="mr-1">▼</span>+
+                                    {allDisplayPreds.length - maxVisible} more
+                                    predictions
+                                  </>
+                                )}
                               </button>
                             </div>
                           )}
                         </div>
                       ) : (
                         <div className="text-center py-4">
-                          <p className="text-gray-400 mb-2">
-                            No active predictions for {network.name}
+                          <p className={`${colors.accent} mb-2`}>
+                            No active predictions on {network.name}
+                          </p>
+                          <p className={`text-xs ${colors.text} mb-3`}>
+                            {network.id === "celo"
+                              ? "Create predictions with real CELO stakes that support charity!"
+                              : "Perfect for experimenting with free testnet ETH!"}
                           </p>
                           <button
                             onClick={() => setActiveTab("chat")}
-                            className="text-sm text-purple-400 hover:text-purple-300"
+                            className={`text-sm ${colors.text} hover:${colors.accent} border ${colors.border} px-3 py-1 rounded`}
                           >
-                            Create one via AI chat →
+                            Create via AI chat →
                           </button>
                         </div>
                       )}
@@ -592,7 +799,7 @@ const PredictionMarket: React.FC = () => {
                             <PredictionCard
                               key={prediction.id}
                               prediction={prediction}
-                              onVote={handleVote}
+                              onVote={handleVoteSimple}
                               simplified={false}
                             />
                           ))}
@@ -630,7 +837,7 @@ const PredictionMarket: React.FC = () => {
                             <div key={prediction.id} className="relative">
                               <PredictionCard
                                 prediction={prediction}
-                                onVote={handleVote}
+                                onVote={handleVoteSimple}
                                 simplified={false}
                               />
                               <div className="absolute top-2 right-2">
@@ -710,7 +917,7 @@ const PredictionMarket: React.FC = () => {
                             <PredictionCard
                               key={prediction.id}
                               prediction={prediction}
-                              onVote={handleVote}
+                              onVote={handleVoteSimple}
                               simplified={false}
                             />
                           ))}

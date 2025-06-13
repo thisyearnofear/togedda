@@ -39,6 +39,10 @@ import { type StoredMessage } from "@/lib/xmtp-message-store";
 import { useXMTPConnectionStatus } from "@/hooks/use-xmtp-auth";
 import { useXMTPConversations } from "@/hooks/use-xmtp-conversations";
 import { predictionMarketABI } from "@/lib/constants";
+import NetworkMismatchModal from "@/components/NetworkMismatchModal";
+import NetworkSwitchButton from "@/components/NetworkSwitchButton";
+import { getChainName } from "@/lib/config/chains";
+import TransactionSuccessModal from "./TransactionSuccessModal";
 
 interface ChatMessage {
   id: string;
@@ -113,6 +117,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   );
   const [currentThinkingMessage, setCurrentThinkingMessage] = useState("");
   const [communityMessages, setCommunityMessages] = useState<ChatMessage[]>([]);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successModalData, setSuccessModalData] = useState<{
+    type: "prediction" | "stake" | "claim";
+    hash?: string;
+    title?: string;
+  }>({ type: "prediction" });
 
   // Dynamic thinking messages
   const thinkingMessages = [
@@ -244,7 +254,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             id: "ai_welcome",
             sender: "PredictionBot",
             content:
-              '🤖 Ready to help with predictions and market insights!\n\nTry asking:\n• "What markets are live?"\n• "Create a Bitcoin prediction"\n• "Show me fitness stats"\n\n✨ No setup required - start chatting immediately! 🚀',
+              '🤖 **AI Fitness Agent Ready!** Powered by XMTP & Base\n\n💬 **Just talk naturally! Try saying:**\n• "I predict I\'ll do 500 pushups by March 15th"\n• "What prediction markets are live?"\n• "Start a pushup challenge for our group"\n• "Give me some motivation to stay hard"\n• "Show me the fitness leaderboard"\n\n🔥 **CARRY THE BOATS!** 🚣🌊\n✨ Use the Quick Actions above or just chat naturally!',
             timestamp: Date.now() - 300000,
             messageType: "bot" as const,
           },
@@ -311,8 +321,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       setTypingTimeout(null);
     }
 
-    // Scroll to bottom to show user's message
-    setTimeout(() => scrollToBottom(), 50);
+    // Removed autoscroll - let users control their own scrolling
 
     try {
       if (chatMode === CHAT_MODES.AI_BOT) {
@@ -346,8 +355,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           content: messageToSend,
         });
       }
-      // Force scroll to show user's message and focus back on input
-      scrollToBottomForced();
+      // Focus back on input without forced scrolling
       setTimeout(() => {
         if (inputRef.current) {
           inputRef.current.focus();
@@ -365,6 +373,20 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       setCurrentThinkingMessage("");
     }
   };
+
+  // Network mismatch state
+  const [showNetworkMismatch, setShowNetworkMismatch] = useState(false);
+  const [networkMismatchData, setNetworkMismatchData] = useState<{
+    currentChainId: number;
+    targetChainId: number;
+    targetChainName: string;
+    transactionParams: any;
+  } | null>(null);
+
+  // Prevent infinite network switch loops
+  const [lastNetworkSwitchAttempt, setLastNetworkSwitchAttempt] =
+    useState<number>(0);
+  const NETWORK_SWITCH_COOLDOWN = 5000; // 5 seconds
 
   // Create prediction via wallet transaction
   const handleCreatePrediction = useCallback(
@@ -399,20 +421,39 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           `🔗 Target chain ID: ${targetChainId}, Current chain ID: ${chain?.id}`
         );
 
-        // Check if we need to switch chains
-        if (chain?.id !== targetChainId) {
-          console.log(`🔄 Switching to chain ${targetChainId}...`);
-          try {
-            await switchChain({ chainId: targetChainId });
-            console.log(`✅ Successfully switched to chain ${targetChainId}`);
-          } catch (switchError) {
-            console.error("❌ Failed to switch chain:", switchError);
+        // Check if we need to switch chains (ensure both are numbers for comparison)
+        const currentChainId = Number(chain?.id);
+        const targetChainIdNum = Number(targetChainId);
+
+        if (currentChainId !== targetChainIdNum) {
+          console.log(`🔄 Network mismatch detected - showing switch UI`);
+
+          // Check cooldown to prevent infinite loops
+          const now = Date.now();
+          if (now - lastNetworkSwitchAttempt < NETWORK_SWITCH_COOLDOWN) {
+            console.log(
+              `⏳ Network switch cooldown active, showing manual retry message`
+            );
             setError(
-              `Please switch to the correct network (Chain ID: ${targetChainId})`
+              `Network switch in progress. Please wait a moment and try again, or switch networks manually in your wallet.`
             );
             setIsCreatingPrediction(false);
             return;
           }
+
+          // Get target chain name using centralized utility
+          const targetChainName = getChainName(targetChainId);
+
+          // Show network mismatch modal instead of generic error
+          setNetworkMismatchData({
+            currentChainId: chain?.id || 0,
+            targetChainId,
+            targetChainName,
+            transactionParams,
+          });
+          setShowNetworkMismatch(true);
+          setIsCreatingPrediction(false);
+          return;
         }
 
         console.log(`🔄 Creating prediction with params:`, transactionParams);
@@ -474,9 +515,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       isConnected,
       address,
       chain,
-      switchChain,
       writeError,
       setError,
+      lastNetworkSwitchAttempt,
     ]
   );
 
@@ -512,6 +553,72 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       setPendingPrediction(null);
     }
   }, [pendingPrediction]);
+
+  // Handle network switching from mismatch modal
+  const handleNetworkSwitch = useCallback(async () => {
+    if (!networkMismatchData) return;
+
+    // Set cooldown timestamp to prevent infinite loops
+    setLastNetworkSwitchAttempt(Date.now());
+
+    try {
+      console.log(
+        `🔄 Switching to chain ${networkMismatchData.targetChainId}...`
+      );
+      await switchChain({ chainId: networkMismatchData.targetChainId });
+      console.log(
+        `✅ Successfully switched to ${networkMismatchData.targetChainName}`
+      );
+
+      // Close modal
+      setShowNetworkMismatch(false);
+      setNetworkMismatchData(null);
+
+      // For Coinbase Smart Wallet and other wallets that don't immediately update chain state,
+      // wait longer and check multiple times before retrying
+      let retryCount = 0;
+      const maxRetries = 10;
+      const checkAndRetry = () => {
+        retryCount++;
+        console.log(
+          `🔍 Checking chain state (attempt ${retryCount}/${maxRetries}), current chain: ${chain?.id}, target: ${networkMismatchData.targetChainId}`
+        );
+
+        if (chain?.id === networkMismatchData.targetChainId) {
+          console.log(
+            `✅ Chain state updated successfully, retrying prediction creation`
+          );
+          if (networkMismatchData.transactionParams) {
+            handleCreatePrediction(networkMismatchData.transactionParams);
+          }
+        } else if (retryCount < maxRetries) {
+          console.log(`⏳ Chain state not updated yet, waiting...`);
+          setTimeout(checkAndRetry, 500);
+        } else {
+          console.log(
+            `⚠️ Chain state didn't update after ${maxRetries} attempts, user may need to manually retry`
+          );
+          setError(
+            `Network switch completed, but chain state is still updating. Please try creating the prediction again in a moment.`
+          );
+        }
+      };
+
+      // Start checking after a short delay
+      setTimeout(checkAndRetry, 1000);
+    } catch (switchError) {
+      console.error("❌ Failed to switch chain:", switchError);
+      setError(
+        `Failed to switch to ${networkMismatchData.targetChainName}. Please try manually switching in your wallet.`
+      );
+    }
+  }, [
+    networkMismatchData,
+    switchChain,
+    handleCreatePrediction,
+    chain?.id,
+    setLastNetworkSwitchAttempt,
+  ]);
 
   // Connection status indicator
   const getConnectionStatus = () => {
@@ -576,14 +683,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     []
   );
 
-  // Auto-scroll when messages change, but only if user is near bottom
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      scrollToBottom(true, false); // Don't force scroll unless user is near bottom
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, [displayMessages.length, scrollToBottom]);
+  // Removed auto-scroll - users can scroll manually as needed
 
   // Force scroll when user sends a message
   const scrollToBottomForced = useCallback(() => {
@@ -680,6 +780,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       );
       setIsCreatingPrediction(false);
 
+      // Show success modal with prediction details
+      setSuccessModalData({
+        type: "prediction",
+        hash: hash,
+        title: pendingPrediction?.content || "New Prediction",
+      });
+      setShowSuccessModal(true);
+
       // Clear pending prediction to prevent duplicate button
       if (pendingPrediction) {
         console.log(
@@ -717,6 +825,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               ? "AI Assistant & Community Chat"
               : "Prediction Chat (Beta)"}
           </h3>
+
+          {/* Agent Status Indicator - NEW */}
+          <div className="flex items-center gap-1 text-xs">
+            <FaCircle className="text-green-400 animate-pulse" size={8} />
+            <span className="text-green-300">Agent Active</span>
+          </div>
 
           {/* Authentication Status */}
           <div className="flex items-center gap-2 text-xs">
@@ -826,6 +940,80 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           <FaUsers className="inline mr-1" />
           💬 Community
         </button>
+      </div>
+
+      {/* Enhanced Quick Actions - Clearer and More Intuitive */}
+      <div className="p-2 bg-black bg-opacity-10 border-b border-purple-800">
+        <div className="text-xs text-gray-400 mb-2 font-bold">
+          ⚡ Quick Actions:
+        </div>
+        <div className="grid grid-cols-2 gap-1">
+          {/* Prediction Actions */}
+          <button
+            onClick={() =>
+              setNewMessage("I predict I'll do 500 pushups by March 15th")
+            }
+            className="px-2 py-1 bg-purple-800 hover:bg-purple-700 text-purple-100 rounded text-xs transition-colors flex items-center justify-center gap-1"
+            title="Create a fitness prediction with stakes"
+          >
+            🔮 <span className="hidden sm:inline">Create</span> Prediction
+          </button>
+
+          <button
+            onClick={() => setNewMessage("What prediction markets are live?")}
+            className="px-2 py-1 bg-blue-800 hover:bg-blue-700 text-blue-100 rounded text-xs transition-colors flex items-center justify-center gap-1"
+            title="View all active prediction markets"
+          >
+            📊 <span className="hidden sm:inline">View</span> Markets
+          </button>
+
+          {/* Fitness Actions */}
+          <button
+            onClick={() =>
+              setNewMessage("Start a pushup challenge for our group")
+            }
+            className="px-2 py-1 bg-green-800 hover:bg-green-700 text-green-100 rounded text-xs transition-colors flex items-center justify-center gap-1"
+            title="Create a group fitness challenge"
+          >
+            🏋️ <span className="hidden sm:inline">Start</span> Challenge
+          </button>
+
+          <button
+            onClick={() =>
+              setNewMessage("Give me some motivation to stay hard")
+            }
+            className="px-2 py-1 bg-red-800 hover:bg-red-700 text-red-100 rounded text-xs transition-colors flex items-center justify-center gap-1"
+            title="Get motivational message"
+          >
+            🔥 <span className="hidden sm:inline">Get</span> Motivated
+          </button>
+        </div>
+
+        {/* Advanced Actions - Collapsible */}
+        <details className="mt-2">
+          <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-300 transition-colors">
+            ⚙️ More Actions...
+          </summary>
+          <div className="grid grid-cols-2 gap-1 mt-1">
+            <button
+              onClick={() => setNewMessage("Show me the fitness leaderboard")}
+              className="px-2 py-1 bg-yellow-800 hover:bg-yellow-700 text-yellow-100 rounded text-xs transition-colors flex items-center justify-center gap-1"
+              title="View group fitness rankings"
+            >
+              🏆 Leaderboard
+            </button>
+
+            <button
+              onClick={() =>
+                setNewMessage("Help me understand how prediction markets work")
+              }
+              className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-100 rounded text-xs transition-colors flex items-center justify-center gap-1"
+              title="Learn about prediction markets"
+            >
+              ❓ Help
+            </button>
+          </div>
+        </details>
       </div>
 
       {/* Authentication Error Display */}
@@ -1048,6 +1236,53 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   🎯 Target: {pendingPrediction.transactionParams.targetValue}{" "}
                   push-ups
                 </div>
+
+                {/* Network mismatch warning with switch button */}
+                {Number(chain?.id) !==
+                  Number(pendingPrediction.transactionParams.chainId) && (
+                  <div className="bg-gradient-to-r from-red-900 to-yellow-900 bg-opacity-40 border-2 border-yellow-500 rounded-lg p-4 mt-2 animate-fadeIn">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2 text-yellow-300 text-sm font-semibold">
+                          <span className="text-lg animate-bounce">⚠️</span>
+                          <span>Wrong Network!</span>
+                        </div>
+                        <div className="text-yellow-200 text-sm mt-1">
+                          Switch to{" "}
+                          <span className="font-bold text-yellow-100">
+                            {getChainName(
+                              pendingPrediction.transactionParams.chainId
+                            )}
+                          </span>{" "}
+                          to create your prediction
+                        </div>
+                      </div>
+
+                      {/* Prominent Network Switch Button */}
+                      <NetworkSwitchButton
+                        targetChainId={
+                          pendingPrediction.transactionParams.chainId
+                        }
+                        targetChainName={getChainName(
+                          pendingPrediction.transactionParams.chainId
+                        )}
+                        size="md"
+                        variant="warning"
+                        className="ml-2 flex-shrink-0 animate-pulse"
+                        onSuccess={() => {
+                          // Auto-retry prediction creation after successful network switch
+                          setTimeout(() => {
+                            if (pendingPrediction?.transactionParams) {
+                              handleCreatePrediction(
+                                pendingPrediction.transactionParams
+                              );
+                            }
+                          }, 1000);
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1090,9 +1325,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               onChange={handleInputChange}
               placeholder={
                 chatMode === CHAT_MODES.AI_BOT
-                  ? "Ask about markets, create predictions, get insights..."
+                  ? "Try: 'I predict 500 pushups by March 15th' or 'What markets are live?'"
                   : xmtpReady
-                  ? "Chat with the community..."
+                  ? "Chat with community: 'Start a group challenge' or 'Who wants to join?'"
                   : "Set up community chat first..."
               }
               className={`w-full bg-black border-2 p-2 text-white text-sm rounded-lg focus:outline-none transition-all duration-200 ${
@@ -1201,6 +1436,32 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
         </div>
       </form>
+
+      {/* Network Mismatch Modal */}
+      <NetworkMismatchModal
+        isOpen={showNetworkMismatch}
+        onClose={() => {
+          setShowNetworkMismatch(false);
+          setNetworkMismatchData(null);
+          setIsCreatingPrediction(false);
+        }}
+        onSwitchNetwork={handleNetworkSwitch}
+        currentChainId={networkMismatchData?.currentChainId || 0}
+        targetChainId={networkMismatchData?.targetChainId || 0}
+        targetChainName={networkMismatchData?.targetChainName || ""}
+        isLoading={isCreatingPrediction}
+      />
+
+      {/* Transaction Success Modal */}
+      <TransactionSuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        transactionType={successModalData.type}
+        transactionHash={successModalData.hash}
+        predictionTitle={successModalData.title}
+        currency="ETH"
+        chain="base"
+      />
     </div>
   );
 };

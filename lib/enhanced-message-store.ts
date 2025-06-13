@@ -12,6 +12,7 @@
 
 import { Pool } from 'pg';
 import Redis from 'ioredis';
+import { Redis as UpstashRedis } from '@upstash/redis';
 import { Client } from '@xmtp/node-sdk';
 
 export interface StoredMessage {
@@ -93,7 +94,7 @@ const DEFAULT_CONFIG: MessageStoreConfig = {
 
 export class EnhancedMessageStore {
   private pg: Pool;
-  private redis?: Redis;
+  private redis?: Redis | UpstashRedis;
   private xmtpClient?: Client;
   private config: MessageStoreConfig;
   private syncInterval?: NodeJS.Timeout;
@@ -109,16 +110,28 @@ export class EnhancedMessageStore {
       ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     });
 
-    // Initialize Redis with error handling (only if URL is provided and not localhost)
-    if (this.config.redis.url && this.config.redis.url !== 'redis://localhost:6379') {
+    // Initialize Redis with error handling (if URL is provided)
+    if (this.config.redis.url) {
       try {
-        this.redis = new Redis(this.config.redis.url, {
-          maxRetriesPerRequest: 1,
-          lazyConnect: true,
-          enableOfflineQueue: false,
-          connectTimeout: 2000, // 2 second timeout
-          commandTimeout: 1000, // 1 second command timeout
-        });
+        // Use ioredis for local Redis, @upstash/redis for remote
+        if (this.config.redis.url.startsWith('redis://localhost') || this.config.redis.url.startsWith('redis://127.0.0.1')) {
+          // Local Redis using ioredis
+          this.redis = new Redis(this.config.redis.url, {
+            maxRetriesPerRequest: 3,
+            lazyConnect: false, // Connect immediately
+            enableOfflineQueue: true, // Allow queuing when offline
+            connectTimeout: 5000,
+            commandTimeout: 3000,
+          });
+          console.log('🔗 Connecting to local Redis...');
+        } else {
+          // Remote Redis using @upstash/redis
+          this.redis = new UpstashRedis({
+            url: this.config.redis.url,
+            token: process.env.REDIS_TOKEN || '',
+          });
+          console.log('🔗 Connecting to remote Redis...');
+        }
 
         // Test Redis connection with timeout
         Promise.race([
@@ -129,11 +142,13 @@ export class EnhancedMessageStore {
           this.redis = undefined; // Disable Redis
         });
 
-        // Handle Redis errors gracefully
-        this.redis.on('error', (error) => {
-          console.warn('⚠️ Redis error, disabling Redis cache:', error.message);
-          this.redis = undefined;
-        });
+        // Handle Redis errors gracefully (only for ioredis)
+        if ('on' in this.redis) {
+          this.redis.on('error', (error) => {
+            console.warn('⚠️ Redis error, disabling Redis cache:', error.message);
+            this.redis = undefined;
+          });
+        }
 
       } catch (error) {
         console.warn('⚠️ Redis initialization failed, falling back to PostgreSQL only:', error);
@@ -677,7 +692,10 @@ export class EnhancedMessageStore {
     await this.pg.end();
 
     if (this.redis) {
-      await this.redis.quit();
+      // Only ioredis has quit method, Upstash Redis doesn't need explicit cleanup
+      if ('quit' in this.redis) {
+        await this.redis.quit();
+      }
     }
 
     console.log('✅ Enhanced message store connections closed');

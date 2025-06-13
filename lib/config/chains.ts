@@ -1,4 +1,4 @@
-import { base, celo, polygon } from "viem/chains";
+import { base, baseSepolia, celo, polygon } from "viem/chains";
 import { Chain } from "viem";
 
 // Define custom chain configurations for networks not in viem/chains
@@ -25,7 +25,7 @@ export const monad = {
 } as const satisfies Chain;
 
 // Supported chains configuration
-export const supportedChains = [base, celo, polygon, monad] as const;
+export const supportedChains = [base, baseSepolia, celo, polygon, monad] as const;
 
 // Chain metadata for UI display
 export const chainMetadata = {
@@ -37,6 +37,16 @@ export const chainMetadata = {
     bgColor: "bg-base-chain",
     textColor: "text-white",
     description: "Coinbase's L2 built on Optimism",
+    category: "layer2" as const,
+  },
+  [baseSepolia.id]: {
+    name: "Base Sepolia",
+    shortName: "BASE_SEPOLIA",
+    icon: "🔵",
+    color: "#0052FF",
+    bgColor: "bg-base-chain",
+    textColor: "text-white",
+    description: "Base testnet for development and demos",
     category: "layer2" as const,
   },
   [celo.id]: {
@@ -78,6 +88,13 @@ export const rpcConfig = {
     fallbacks: [
       "https://base-mainnet.public.blastapi.io",
       "https://base.llamarpc.com",
+    ],
+  },
+  [baseSepolia.id]: {
+    primary: "https://sepolia.base.org",
+    fallbacks: [
+      "https://base-sepolia.public.blastapi.io",
+      "https://sepolia.base.org",
     ],
   },
   [celo.id]: {
@@ -135,6 +152,97 @@ export function getAllChainIds() {
 
 export function isChainSupported(chainId: number): boolean {
   return getAllChainIds().includes(chainId as SupportedChainId);
+}
+
+/**
+ * Get user-friendly chain name by chain ID
+ * Centralized function to avoid hardcoded chain names throughout the app
+ */
+export function getChainName(chainId: number): string {
+  const metadata = getChainMetadata(chainId);
+  if (metadata) {
+    return metadata.name;
+  }
+
+  // Fallback for common chains not in our metadata
+  switch (chainId) {
+    case 8453:
+      return "Base Mainnet";
+    case 84532:
+      return "Base Sepolia";
+    case 42220:
+      return "CELO Mainnet";
+    case 1:
+      return "Ethereum Mainnet";
+    case 137:
+      return "Polygon";
+    default:
+      return `Chain ${chainId}`;
+  }
+}
+
+/**
+ * Get chain-specific information for network switching UI
+ */
+export function getChainSwitchInfo(chainId: number) {
+  const metadata = getChainMetadata(chainId);
+  const name = getChainName(chainId);
+
+  return {
+    name,
+    isTestnet: chainId === 84532, // Base Sepolia
+    isProduction: chainId === 42220 || chainId === 8453, // CELO Mainnet or Base Mainnet
+    faucetUrl: chainId === 84532 ? "https://www.alchemy.com/faucets/base-sepolia" : null,
+    explorerUrl: getExplorerUrl(chainId),
+    description: getChainDescription(chainId),
+    emoji: metadata?.icon || "⛓️",
+    color: metadata?.color || "#666666",
+  };
+}
+
+/**
+ * Get block explorer URL for a chain
+ */
+export function getExplorerUrl(chainId: number): string {
+  switch (chainId) {
+    case 8453:
+      return "https://basescan.org";
+    case 84532:
+      return "https://sepolia.basescan.org";
+    case 42220:
+      return "https://celoscan.io";
+    case 1:
+      return "https://etherscan.io";
+    case 137:
+      return "https://polygonscan.com";
+    default:
+      return "";
+  }
+}
+
+/**
+ * Get chain description for UI
+ */
+export function getChainDescription(chainId: number): string {
+  const metadata = getChainMetadata(chainId);
+  if (metadata?.description) {
+    return metadata.description;
+  }
+
+  switch (chainId) {
+    case 8453:
+      return "Coinbase's L2 for production apps";
+    case 84532:
+      return "Base testnet for development and demos";
+    case 42220:
+      return "Mobile-first DeFi platform";
+    case 1:
+      return "Ethereum mainnet";
+    case 137:
+      return "Ethereum scaling solution";
+    default:
+      return "Blockchain network";
+  }
 }
 
 // Type exports

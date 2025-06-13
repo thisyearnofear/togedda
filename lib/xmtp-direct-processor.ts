@@ -50,6 +50,32 @@ export async function processMessageDirect(
     let response: string;
     let source: string;
 
+    // Handle group fitness commands (new for hackathon)
+    if (message.startsWith('/')) {
+      try {
+        const { processGroupFitnessCommand } = await import('./group-fitness-agent');
+        response = await processGroupFitnessCommand(message, userAddress, finalConversationId);
+
+        if (response) {
+          source = 'group_fitness_agent';
+          if (finalConfig.enableLogging) {
+            console.log(`🏋️ Processed group fitness command in ${Date.now() - startTime}ms`);
+          }
+        } else {
+          // Fall through to other processing if command not recognized
+          response = await processWithAI(message, finalConversationId, context);
+          source = 'ai_direct';
+        }
+      } catch (error) {
+        if (finalConfig.enableLogging) {
+          console.error('Error processing group fitness command:', error);
+        }
+        // Fall through to AI processing
+        response = await processWithAI(message, finalConversationId, context);
+        source = 'ai_direct_fallback';
+      }
+    }
+
     // Handle live markets query
     if (lowerMessage.includes('live') && (lowerMessage.includes('market') || lowerMessage.includes('prediction'))) {
       try {

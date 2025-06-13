@@ -45,7 +45,10 @@ interface ChainAwarePredictionCardProps {
     amount: string
   ) => Promise<void>;
   simplified?: boolean;
-  chain?: SupportedChain; // Add chain information
+  chain?: SupportedChain;
+  compact?: boolean; // New compact mode
+  expanded?: boolean; // Whether card is expanded
+  onToggleExpand?: () => void; // Toggle expansion
 }
 
 const ChainAwarePredictionCard: React.FC<ChainAwarePredictionCardProps> = ({
@@ -53,6 +56,9 @@ const ChainAwarePredictionCard: React.FC<ChainAwarePredictionCardProps> = ({
   onVote,
   simplified = false,
   chain,
+  compact = false,
+  expanded = false,
+  onToggleExpand,
 }) => {
   const { address } = useAccount();
   const { connect, connectors } = useConnect();
@@ -61,6 +67,8 @@ const ChainAwarePredictionCard: React.FC<ChainAwarePredictionCardProps> = ({
   const { isFarcasterEnvironment } = useAppEnvironment();
   const [isVoting, setIsVoting] = useState(false);
   const [amount, setAmount] = useState("0.1");
+  const [customAmount, setCustomAmount] = useState("");
+  const [showCustomInput, setShowCustomInput] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showSharePrompt, setShowSharePrompt] = useState(false);
   const [showWalletOptions, setShowWalletOptions] = useState(false);
@@ -220,18 +228,23 @@ Check it out: ${env.NEXT_PUBLIC_URL}`;
     }
   };
 
-  // Simplified version for the network cards
-  if (simplified) {
+  // Compact mobile-first version
+  if (simplified || compact) {
+    const truncatedTitle =
+      prediction.title.length > 50
+        ? prediction.title.substring(0, 50) + "..."
+        : prediction.title;
+
     return (
       <div className="relative">
         <Confetti active={showConfetti} />
 
         {showSharePrompt && userVote && (
           <div
-            className={`absolute top-0 right-0 left-0 ${colors.button} text-white p-2 rounded-t-lg flex items-center justify-between z-10`}
+            className={`absolute top-0 right-0 left-0 ${colors.button} text-white p-1 rounded-t-lg flex items-center justify-between z-10`}
           >
             <div className="flex items-center">
-              <FaFireAlt className="mr-2 animate-pulse" />
+              <FaFireAlt className="mr-1 animate-pulse" size={12} />
               <span className="text-xs">Share!</span>
             </div>
             <button
@@ -243,116 +256,152 @@ Check it out: ${env.NEXT_PUBLIC_URL}`;
           </div>
         )}
 
-        {/* Chain indicator with resolution info */}
-        <div
-          className={`flex items-center justify-between mb-2 p-2 ${colors.bg} bg-opacity-20 border ${colors.border} rounded`}
-        >
-          <div className="flex items-center">
-            <span className="text-lg mr-2">{chainConfig.emoji}</span>
-            <div>
-              <span className={`text-xs font-medium ${colors.text}`}>
-                {chainConfig.name}
-              </span>
-              <div className={`text-xs ${colors.accent}`}>
-                Resolves {timeLeft}
-              </div>
-            </div>
-          </div>
+        {/* Compact header with chain badge and time */}
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-2">
-            {prediction.autoResolvable && (
-              <span
-                className={`text-xs ${colors.text} bg-opacity-50 ${colors.bg} px-1 rounded`}
-              >
-                Auto-resolve
-              </span>
-            )}
-            <a
-              href={`${chainConfig.blockExplorer}/address/${chainConfig.contractAddress}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`text-xs ${colors.accent} hover:${colors.text}`}
-              title="View contract on explorer"
+            <span className="text-sm">{chainConfig.emoji}</span>
+            <span className={`text-xs font-medium ${colors.text}`}>
+              {chainConfig.name.split(" ")[0]} {/* Just "CELO" or "Base" */}
+            </span>
+            <span className="text-xs text-gray-400">•</span>
+            <span className="text-xs text-gray-400">
+              {timeLeft.replace(" left", "")}
+            </span>
+          </div>
+          {onToggleExpand && (
+            <button
+              onClick={onToggleExpand}
+              className="text-xs text-gray-400 hover:text-gray-300"
             >
-              <FaExternalLinkAlt />
-            </a>
-          </div>
+              {expanded ? "▲" : "▼"}
+            </button>
+          )}
         </div>
 
-        <h2 className="text-base font-bold mb-3">{prediction.title}</h2>
-
-        <div className="flex justify-between mb-3">
-          <div className="text-center">
-            <p className="text-sm text-gray-400">YES</p>
-            <p className="text-lg font-bold">{odds.yes}%</p>
-          </div>
-          <div className="text-center">
-            <p className="text-sm text-gray-400">NO</p>
-            <p className="text-lg font-bold">{odds.no}%</p>
-          </div>
-          <div className="text-center">
-            <p className="text-sm text-gray-400">Total</p>
-            <p className="text-lg font-bold">
-              {prediction.totalStaked.toFixed(1)}{" "}
-              {chainConfig.nativeCurrency.symbol}
-            </p>
-          </div>
-        </div>
-
-        {/* Staking recommendations */}
-        <div
-          className={`${colors.bg} bg-opacity-10 border ${colors.border} rounded p-2 mb-3`}
+        {/* Compact title */}
+        <h3
+          className="text-sm font-medium mb-2 leading-tight"
+          title={prediction.title}
         >
-          <div className="flex items-center justify-between mb-1">
-            <span className={`text-xs ${colors.text} font-medium`}>
-              Recommended stakes:
-            </span>
-            <span className={`text-xs ${colors.accent}`}>
-              {stakingRecs.note}
-            </span>
+          {truncatedTitle}
+        </h3>
+
+        {/* Compact odds display */}
+        <div className="flex items-center justify-between mb-3 text-xs">
+          <div className="flex items-center space-x-3">
+            <span className="text-green-400 font-medium">YES {odds.yes}%</span>
+            <span className="text-red-400 font-medium">NO {odds.no}%</span>
           </div>
-          <div className="flex space-x-1">
-            {stakingRecs.recommendedAmounts.map((amt) => (
+          <span className="text-gray-400">
+            {prediction.totalStaked.toFixed(1)}{" "}
+            {chainConfig.nativeCurrency.symbol}
+          </span>
+        </div>
+
+        {/* Simplified staking with custom input option */}
+        {expanded && (
+          <div className="mb-3 p-2 bg-gray-900 bg-opacity-30 rounded">
+            <div className="flex flex-wrap gap-1 mb-2">
+              {stakingRecs.recommendedAmounts.slice(0, 3).map((amt) => (
+                <button
+                  key={amt}
+                  onClick={() => {
+                    setAmount(amt);
+                    setShowCustomInput(false);
+                  }}
+                  className={`text-xs px-2 py-1 rounded ${
+                    amount === amt && !showCustomInput
+                      ? `${colors.bg} bg-opacity-50 ${colors.text}`
+                      : `bg-gray-800 text-gray-300 hover:bg-gray-700`
+                  }`}
+                >
+                  {amt}
+                </button>
+              ))}
               <button
-                key={amt}
-                onClick={() => setAmount(amt)}
-                className={`text-xs px-2 py-1 rounded border ${colors.border} ${
-                  amount === amt
+                onClick={() => setShowCustomInput(!showCustomInput)}
+                className={`text-xs px-2 py-1 rounded ${
+                  showCustomInput
                     ? `${colors.bg} bg-opacity-50 ${colors.text}`
-                    : `hover:${colors.bg} hover:bg-opacity-30 ${colors.accent}`
+                    : `bg-gray-800 text-gray-300 hover:bg-gray-700`
                 }`}
               >
-                {amt} {chainConfig.nativeCurrency.symbol}
+                Custom
               </button>
-            ))}
-          </div>
-        </div>
+            </div>
 
-        <div className="flex space-x-2">
+            {showCustomInput && (
+              <div className="flex items-center space-x-2">
+                <input
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  placeholder="0.1"
+                  value={customAmount}
+                  onChange={(e) => setCustomAmount(e.target.value)}
+                  className="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-white"
+                />
+                <span className="text-xs text-gray-400">
+                  {chainConfig.nativeCurrency.symbol}
+                </span>
+                <button
+                  onClick={() => {
+                    if (customAmount && parseFloat(customAmount) > 0) {
+                      setAmount(customAmount);
+                    }
+                  }}
+                  className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded"
+                >
+                  Set
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Compact action buttons */}
+        <div className="flex items-center space-x-1">
+          {!expanded && (
+            <div className="flex items-center space-x-1 text-xs text-gray-400">
+              <span>{amount}</span>
+              <span>{chainConfig.nativeCurrency.symbol}</span>
+            </div>
+          )}
+
           <button
             onClick={() => handleVote(true)}
             disabled={isVoting}
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-sm flex items-center justify-center disabled:opacity-50"
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-medium disabled:opacity-50 transition-colors"
           >
-            <FaArrowUp className="mr-1" /> YES
+            YES
           </button>
+
           <button
             onClick={() => handleVote(false)}
             disabled={isVoting}
-            className="flex-1 bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-sm flex items-center justify-center disabled:opacity-50"
+            className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-medium disabled:opacity-50 transition-colors"
           >
-            <FaArrowDown className="mr-1" /> NO
+            NO
           </button>
+
+          {!expanded && onToggleExpand && (
+            <button
+              onClick={onToggleExpand}
+              className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-xs transition-colors"
+              title="More options"
+            >
+              ⋯
+            </button>
+          )}
         </div>
 
         {userVote && (
-          <div className="mt-2">
-            <button
-              onClick={handleShare}
-              className={`w-full ${colors.button} text-white px-2 py-1 rounded text-sm flex items-center justify-center animate-pulse`}
-            >
-              <FaShare className="mr-1" /> Share Position
-            </button>
-          </div>
+          <button
+            onClick={handleShare}
+            className={`w-full mt-2 ${colors.button} text-white px-2 py-1 rounded text-xs flex items-center justify-center hover:opacity-90 transition-opacity`}
+          >
+            <FaShare className="mr-1" size={10} /> Share
+          </button>
         )}
       </div>
     );

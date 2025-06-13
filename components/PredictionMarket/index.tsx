@@ -69,6 +69,37 @@ const PredictionMarket: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"markets" | "past" | "chat">(
     "markets"
   );
+
+  // Mobile-first UI state
+  const [viewMode, setViewMode] = useState<"compact" | "detailed">("compact");
+  const [selectedChain, setSelectedChain] = useState<"all" | "celo" | "base">(
+    "all"
+  );
+  const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
+  const [showChainDetails, setShowChainDetails] = useState(false);
+
+  // Helper functions for mobile-first UI
+  const toggleCardExpansion = (predictionId: number) => {
+    const newExpanded = new Set(expandedCards);
+    if (newExpanded.has(predictionId)) {
+      newExpanded.delete(predictionId);
+    } else {
+      newExpanded.add(predictionId);
+    }
+    setExpandedCards(newExpanded);
+  };
+
+  const filterPredictionsByChain = (predictions: Prediction[]) => {
+    if (selectedChain === "all") return predictions;
+    return predictions.filter((p) =>
+      selectedChain === "celo"
+        ? p.network.toLowerCase().includes("celo")
+        : selectedChain === "base"
+        ? p.network.toLowerCase().includes("base")
+        : true
+    );
+  };
+
   const [suggestFormData, setSuggestFormData] = useState({
     title: "",
     description: "",
@@ -128,16 +159,30 @@ const PredictionMarket: React.FC = () => {
   // Last refresh time from React Query
   const lastRefresh = dataUpdatedAt ? new Date(dataUpdatedAt) : null;
 
-  // Enhanced refresh function with cache invalidation
+  // Enhanced refresh function with cache invalidation and better UX
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   const handleRefresh = async () => {
+    if (isRefreshing) return; // Prevent multiple simultaneous refreshes
+
     try {
+      setIsRefreshing(true);
       console.log("🔄 Refreshing predictions...");
+
+      // Clear cache first for immediate feedback
       invalidatePredictions();
+
+      // Fetch fresh data
       await refetchPredictions();
-      toast.success("Predictions refreshed!");
+
+      // Show success with count
+      const count = chainPredictions.length;
+      toast.success(`✅ Refreshed ${count} predictions!`);
     } catch (error) {
       console.error("❌ Failed to refresh predictions:", error);
-      toast.error("Failed to refresh predictions");
+      toast.error("Failed to refresh predictions. Please try again.");
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -400,6 +445,14 @@ const PredictionMarket: React.FC = () => {
       }
     });
 
+    // Sort predictions by creation date (newest first) for each chain
+    Object.keys(chainGroups).forEach((chainKey) => {
+      chainGroups[chainKey].sort((a, b) => {
+        // Sort by createdAt timestamp, newest first
+        return (b.createdAt || 0) - (a.createdAt || 0);
+      });
+    });
+
     // Add fallback predictions for empty chains (only for supported networks)
     const celoFallback = hardcodedPredictions.find((p) => p.network === "celo");
     const baseFallback = hardcodedPredictions.find((p) => p.network === "base");
@@ -414,7 +467,7 @@ const PredictionMarket: React.FC = () => {
     return chainGroups;
   };
 
-  const networkPredictions = getChainPredictions();
+  const chainGroups = getChainPredictions();
 
   return (
     <WarpcastWallet>
@@ -429,12 +482,22 @@ const PredictionMarket: React.FC = () => {
             )}
             <button
               onClick={handleRefresh}
-              disabled={isLoading}
-              className="text-sm bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white px-3 py-1 rounded flex items-center space-x-1"
-              title="Refresh predictions from both chains"
+              disabled={isLoading || isRefreshing}
+              className={`text-sm px-3 py-1 rounded flex items-center space-x-1 transition-all duration-200 ${
+                isRefreshing
+                  ? "bg-green-600 text-white"
+                  : "bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white"
+              }`}
+              title={
+                isRefreshing
+                  ? "Refreshing..."
+                  : "Refresh predictions from both chains"
+              }
             >
-              <FaSync className={`${isLoading ? "animate-spin" : ""}`} />
-              <span>Refresh</span>
+              <FaSync
+                className={`${isLoading || isRefreshing ? "animate-spin" : ""}`}
+              />
+              <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
             </button>
           </div>
         </div>
@@ -479,210 +542,156 @@ const PredictionMarket: React.FC = () => {
         {/* Markets Tab Content */}
         {activeTab === "markets" && (
           <>
-            <div className="text-center mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
-                {/* CELO Messaging */}
-                <div className="border-2 border-yellow-400 p-3 rounded-lg bg-black bg-opacity-50">
-                  <div className="flex items-center justify-center mb-1">
-                    <span className="text-yellow-400 text-lg mr-2">🟡</span>
-                    <span className="text-yellow-400 text-sm font-bold">
-                      CELO Mainnet
-                    </span>
-                  </div>
-                  <p className="text-yellow-300 text-xs">
-                    🏆 Real stakes, real charity impact
-                  </p>
-                </div>
+            {/* Simplified Chain Filter & Controls */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setSelectedChain("all")}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                    selectedChain === "all"
+                      ? "bg-purple-600 text-white"
+                      : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                  }`}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setSelectedChain("celo")}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                    selectedChain === "celo"
+                      ? "bg-yellow-600 text-white"
+                      : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                  }`}
+                >
+                  🟡 CELO
+                </button>
+                <button
+                  onClick={() => setSelectedChain("base")}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                    selectedChain === "base"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                  }`}
+                >
+                  🔵 Base
+                </button>
+              </div>
 
-                {/* Base Messaging */}
-                <div className="border-2 border-blue-400 p-3 rounded-lg bg-black bg-opacity-50">
-                  <div className="flex items-center justify-center mb-1">
-                    <span className="text-blue-400 text-lg mr-2">🔵</span>
-                    <span className="text-blue-400 text-sm font-bold">
-                      Base Sepolia
-                    </span>
-                  </div>
-                  <p className="text-blue-300 text-xs">
-                    🛠️ Build, experiment, learn together
-                  </p>
-                </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() =>
+                    setViewMode(viewMode === "compact" ? "detailed" : "compact")
+                  }
+                  className="px-3 py-1 rounded text-xs bg-gray-800 text-gray-300 hover:bg-gray-700 transition-colors"
+                >
+                  {viewMode === "compact" ? "📋 Detailed" : "📱 Compact"}
+                </button>
+                <button
+                  onClick={() => setShowChainDetails(!showChainDetails)}
+                  className="px-3 py-1 rounded text-xs bg-gray-800 text-gray-300 hover:bg-gray-700 transition-colors"
+                >
+                  ℹ️ Info
+                </button>
               </div>
             </div>
 
-            <div className="bg-green-900 bg-opacity-20 border border-green-800 rounded-lg p-3 mb-6">
-              <div className="text-center">
-                <p className="text-sm text-gray-300">
-                  15% to{" "}
-                  <a
-                    href="https://explorer.gitcoin.co/#/round/42220/31/57"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-green-400 underline"
-                  >
-                    Greenpill Kenya
-                  </a>{" "}
-                  •{" "}
+            {/* Collapsible Chain Details */}
+            {showChainDetails && (
+              <div className="mb-4 p-3 bg-gray-900 bg-opacity-50 rounded-lg border border-gray-700">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-yellow-400">🟡</span>
+                    <span className="text-yellow-400 font-medium">
+                      CELO Mainnet
+                    </span>
+                    <span className="text-gray-400">
+                      Real stakes, charity impact
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-blue-400">🔵</span>
+                    <span className="text-blue-400 font-medium">
+                      Base Sepolia
+                    </span>
+                    <span className="text-gray-400">
+                      Free testnet, experimentation
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-2 text-xs text-center text-gray-400">
+                  15% of CELO stakes →{" "}
                   <a
                     href="https://warpcast.com/greenpillnetwork"
                     target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-green-400 underline"
+                    className="text-green-400 hover:underline"
                   >
                     @greenpillnetwork
-                  </a>
-                </p>
+                  </a>{" "}
+                  Kenya
+                </div>
               </div>
-            </div>
+            )}
 
             {isLoading ? (
               <div className="flex justify-center items-center py-12">
                 <div className="loading-spinner"></div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-6">
-                {networks.map((network) => {
-                  const networkPreds = networkPredictions[network.id] || [];
-                  const activePreds = networkPreds.filter(
-                    (p) => p.status === PredictionStatus.ACTIVE
+              <div className="space-y-3">
+                {(() => {
+                  // Combine and filter predictions based on selected chain
+                  const allPredictions = Object.entries(chainGroups).flatMap(
+                    ([chainKey, predictions]) =>
+                      predictions.map((p) => ({
+                        ...p,
+                        chainKey: chainKey as SupportedChain,
+                      }))
                   );
-                  const allDisplayPreds =
-                    activePreds.length > 0 ? activePreds : networkPreds;
-                  const isExpanded = expandedNetworks[network.id] || false;
-                  const maxVisible = 2;
-                  const displayPreds = isExpanded
-                    ? allDisplayPreds
-                    : allDisplayPreds.slice(0, maxVisible);
-                  const hasMore = allDisplayPreds.length > maxVisible;
 
-                  // Get chain-specific styling
-                  const chainColors = {
-                    celo: {
-                      border: "border-yellow-400",
-                      bg: "bg-yellow-900",
-                      text: "text-yellow-400",
-                      accent: "text-yellow-300",
-                    },
-                    base: {
-                      border: "border-blue-400",
-                      bg: "bg-blue-900",
-                      text: "text-blue-400",
-                      accent: "text-blue-300",
-                    },
-                  };
+                  const filteredPredictions =
+                    selectedChain === "all"
+                      ? allPredictions
+                      : allPredictions.filter((p) =>
+                          selectedChain === "celo"
+                            ? p.chainKey === "celo"
+                            : p.chainKey === "base"
+                        );
 
-                  const colors = chainColors[
-                    network.id as keyof typeof chainColors
-                  ] || {
-                    border: "border-gray-400",
-                    bg: "bg-gray-900",
-                    text: "text-gray-400",
-                    accent: "text-gray-300",
-                  };
+                  if (filteredPredictions.length === 0) {
+                    return (
+                      <div className="text-center py-8 text-gray-400">
+                        <p>
+                          No predictions found for{" "}
+                          {selectedChain === "all"
+                            ? "any chain"
+                            : selectedChain.toUpperCase()}
+                        </p>
+                        <p className="text-xs mt-1">
+                          Try switching chains or create a new prediction
+                        </p>
+                      </div>
+                    );
+                  }
 
-                  return (
+                  return filteredPredictions.map((prediction) => (
                     <div
-                      key={network.id}
-                      className={`border-2 ${colors.border} rounded-lg p-4 bg-black bg-opacity-70`}
+                      key={`${prediction.chainKey}-${prediction.id}`}
+                      className="bg-black border border-gray-800 rounded-lg p-3"
                     >
-                      {/* Chain Header */}
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center">
-                          <div
-                            className={`w-12 h-12 rounded-full ${colors.bg} bg-opacity-30 flex items-center justify-center mr-3 border ${colors.border}`}
-                          >
-                            <span className="text-2xl">{network.emoji}</span>
-                          </div>
-                          <div>
-                            <h3 className={`text-lg font-bold ${colors.text}`}>
-                              {network.name}
-                            </h3>
-                            <p className={`text-xs ${colors.accent}`}>
-                              {network.tagline}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          {activePreds.length > 0 && (
-                            <span
-                              className={`text-xs ${colors.bg} bg-opacity-50 ${colors.text} px-2 py-1 rounded border ${colors.border}`}
-                            >
-                              {activePreds.length} active
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Chain Description */}
-                      <div
-                        className={`${colors.bg} bg-opacity-20 border ${colors.border} rounded p-2 mb-3`}
-                      >
-                        <p className={`text-xs ${colors.accent} mb-1`}>
-                          {network.description}
-                        </p>
-                        <p className={`text-xs ${colors.text} font-medium`}>
-                          💰 {network.stakingNote}
-                        </p>
-                      </div>
-
-                      {displayPreds.length > 0 ? (
-                        <div className="space-y-3">
-                          {displayPreds
-                            .slice(0, 2)
-                            .map((prediction, predIndex) => (
-                              <div key={`${prediction.id}-${predIndex}`}>
-                                <ChainAwarePredictionCard
-                                  prediction={prediction}
-                                  onVote={handleVote}
-                                  simplified={true}
-                                  chain={network.id as SupportedChain}
-                                />
-                              </div>
-                            ))}
-                          {hasMore && (
-                            <div className="text-center">
-                              <button
-                                onClick={() =>
-                                  toggleNetworkExpansion(network.id)
-                                }
-                                className={`text-xs ${colors.text} hover:${colors.accent} flex items-center justify-center mx-auto`}
-                              >
-                                {isExpanded ? (
-                                  <>
-                                    <span className="mr-1">▲</span>
-                                    Show less
-                                  </>
-                                ) : (
-                                  <>
-                                    <span className="mr-1">▼</span>+
-                                    {allDisplayPreds.length - maxVisible} more
-                                    predictions
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="text-center py-4">
-                          <p className={`${colors.accent} mb-2`}>
-                            No active predictions on {network.name}
-                          </p>
-                          <p className={`text-xs ${colors.text} mb-3`}>
-                            {network.id === "celo"
-                              ? "Create predictions with real CELO stakes that support charity!"
-                              : "Perfect for experimenting with free testnet ETH!"}
-                          </p>
-                          <button
-                            onClick={() => setActiveTab("chat")}
-                            className={`text-sm ${colors.text} hover:${colors.accent} border ${colors.border} px-3 py-1 rounded`}
-                          >
-                            Create via AI chat →
-                          </button>
-                        </div>
-                      )}
+                      <ChainAwarePredictionCard
+                        prediction={prediction}
+                        onVote={handleVote}
+                        simplified={true}
+                        compact={viewMode === "compact"}
+                        expanded={expandedCards.has(prediction.id)}
+                        onToggleExpand={() =>
+                          toggleCardExpansion(prediction.id)
+                        }
+                        chain={prediction.chainKey}
+                      />
                     </div>
-                  );
-                })}
+                  ));
+                })()}
               </div>
             )}
 

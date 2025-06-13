@@ -1,7 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { Prediction, PredictionStatus, calculateOdds } from "@/lib/prediction-market-v2";
+import {
+  Prediction,
+  PredictionStatus,
+  calculateOdds,
+} from "@/lib/prediction-market-v2";
 import { formatDistanceToNow } from "date-fns";
 import { FaChevronDown, FaChevronUp, FaExternalLinkAlt } from "react-icons/fa";
 
@@ -23,9 +27,13 @@ const CompactPredictionList: React.FC<CompactPredictionListProps> = ({
   maxVisible = 2,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  
-  const activePredictions = predictions.filter(p => p.status === PredictionStatus.ACTIVE);
-  const displayPredictions = isExpanded ? activePredictions : activePredictions.slice(0, maxVisible);
+
+  const activePredictions = predictions
+    .filter((p) => p.status === PredictionStatus.ACTIVE)
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)); // Sort newest first
+  const displayPredictions = isExpanded
+    ? activePredictions
+    : activePredictions.slice(0, maxVisible);
   const hasMore = activePredictions.length > maxVisible;
 
   if (activePredictions.length === 0) {
@@ -57,12 +65,13 @@ const CompactPredictionList: React.FC<CompactPredictionListProps> = ({
           >
             <div className="flex items-start justify-between mb-2">
               <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-bold truncate" title={prediction.title}>
+                <h4
+                  className="text-sm font-bold truncate"
+                  title={prediction.title}
+                >
                   {prediction.title}
                 </h4>
-                <p className="text-xs text-gray-400">
-                  Ends {timeLeft}
-                </p>
+                <p className="text-xs text-gray-400">Ends {timeLeft}</p>
               </div>
               <div className="flex items-center ml-2">
                 <span className="text-lg">{prediction.emoji}</span>
@@ -86,7 +95,7 @@ const CompactPredictionList: React.FC<CompactPredictionListProps> = ({
                 <p className="font-bold">
                   {prediction.totalStaked.toFixed(2)}
                   <span className="text-xs ml-1">
-                    {networkName.includes('CELO') ? 'CELO' : 'ETH'}
+                    {networkName.includes("CELO") ? "CELO" : "ETH"}
                   </span>
                 </p>
               </div>
@@ -123,8 +132,8 @@ const CompactPredictionList: React.FC<CompactPredictionListProps> = ({
               </>
             ) : (
               <>
-                <FaChevronDown className="mr-1" />
-                +{activePredictions.length - maxVisible} more predictions
+                <FaChevronDown className="mr-1" />+
+                {activePredictions.length - maxVisible} more predictions
               </>
             )}
           </button>

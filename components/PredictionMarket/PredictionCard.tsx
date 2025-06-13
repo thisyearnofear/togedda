@@ -28,6 +28,7 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { env } from "@/lib/env";
 import Confetti from "@/components/Confetti";
+import TransactionSuccessModal from "./TransactionSuccessModal";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
 import { predictionMarketABI } from "@/lib/constants";
 import { parseEther } from "viem";
@@ -53,6 +54,12 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
   const [showConfetti, setShowConfetti] = useState(false);
   const [showSharePrompt, setShowSharePrompt] = useState(false);
   const [showWalletOptions, setShowWalletOptions] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successModalData, setSuccessModalData] = useState<{
+    type: "prediction" | "stake" | "claim";
+    hash?: string;
+    amount?: string;
+  }>({ type: "stake" });
   const [userVote, setUserVote] = useState<{
     isYes: boolean;
     amount: number;
@@ -107,7 +114,14 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
   useEffect(() => {
     if (isConfirmed && txHash) {
       console.log(`Transaction confirmed: ${txHash}`);
-      toast.success("Transaction confirmed!");
+
+      // Show success modal instead of just toast
+      setSuccessModalData({
+        type: successModalData.type,
+        hash: txHash,
+        amount: successModalData.amount,
+      });
+      setShowSuccessModal(true);
 
       // Refresh user vote data
       if (address && prediction.id) {
@@ -122,7 +136,14 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
           });
       }
     }
-  }, [isConfirmed, txHash, address, prediction.id]);
+  }, [
+    isConfirmed,
+    txHash,
+    address,
+    prediction.id,
+    successModalData.type,
+    successModalData.amount,
+  ]);
 
   // Handle wallet connection
   const handleConnectWallet = async (connectorId?: string) => {
@@ -182,10 +203,14 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
       // Store transaction hash
       setTxHash(hash);
 
-      // Show success feedback
-      setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 3000);
+      // Set success modal data for when transaction confirms
+      setSuccessModalData({
+        type: "stake",
+        hash: hash,
+        amount: amount,
+      });
 
+      // Show immediate feedback
       toast.success(
         `Transaction sent! You voted ${
           isYes ? "YES" : "NO"
@@ -271,9 +296,12 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
       // Store transaction hash
       setTxHash(hash);
 
-      // Show success feedback
-      setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 3000);
+      // Set success modal data for when transaction confirms
+      setSuccessModalData({
+        type: "claim",
+        hash: hash,
+        amount: userVote?.amount.toString(),
+      });
 
       toast.success("Transaction sent! Claiming your reward...");
 
@@ -640,6 +668,19 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
           )}
         </div>
       )}
+
+      {/* Transaction Success Modal */}
+      <TransactionSuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        transactionType={successModalData.type}
+        transactionHash={successModalData.hash}
+        predictionTitle={prediction.title}
+        stakeAmount={successModalData.amount}
+        currency="CELO"
+        chain="celo"
+        predictionId={prediction.id}
+      />
     </div>
   );
 };

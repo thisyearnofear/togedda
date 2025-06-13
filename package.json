@@ -18,7 +18,9 @@
     "bot:test": "ts-node --project tsconfig.node.json scripts/test-bot.ts",
     "keys:generate": "ts-node --project tsconfig.node.json scripts/generate-keys.ts",
     "xmtp:inbox-id": "node scripts/get-xmtp-inbox-id.js",
-    "setup:message-store": "ts-node --project tsconfig.node.json scripts/setup-message-store.ts"
+    "setup:message-store": "ts-node --project tsconfig.node.json scripts/setup-message-store.ts",
+    "agent:start": "ts-node --project tsconfig.node.json scripts/start-agent.ts",
+    "agent:dev": "nodemon --exec ts-node --project tsconfig.node.json scripts/start-agent.ts"
   },
   "dependencies": {
     "@coinbase/onchainkit": "^0.38.13",

@@ -160,10 +160,33 @@ export class XMTPClientManager {
         throw new Error("Conversation not found");
       }
 
+      console.log(`📤 Sending message to conversation: ${conversationId}`);
       await conversation.send(content);
       console.log("✅ Message sent successfully");
     } catch (error) {
       console.error("❌ Failed to send message:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send a reaction to a message (XMTP content type)
+   */
+  async sendReaction(conversationId: string, messageId: string, emoji: string): Promise<void> {
+    if (!this.client) throw new Error("XMTP client not initialized");
+
+    try {
+      const conversation = await this.client.conversations.getConversationById(conversationId);
+      if (!conversation) {
+        throw new Error("Conversation not found");
+      }
+
+      // For now, send as text - in production, use reaction content type
+      const reactionMessage = `${emoji} (reacting to message)`;
+      await conversation.send(reactionMessage);
+      console.log(`✅ Reaction sent: ${emoji}`);
+    } catch (error) {
+      console.error("❌ Failed to send reaction:", error);
       throw error;
     }
   }
@@ -177,20 +200,30 @@ export class XMTPClientManager {
         throw new Error("Conversation not found");
       }
 
-      // Browser SDK uses stream() method with callback
-      const stream = await conversation.stream((message) => {
-        // Check if message exists and has the expected properties
-        if (!message || !('senderInboxId' in message) || message.senderInboxId === this.client?.inboxId) return;
-        onMessage(message);
-      });
+      console.log(`🔄 Starting message stream for conversation: ${conversationId}`);
+
+      // Simplified streaming for hackathon - use polling for now
+      let isStreaming = true;
+      const pollInterval = setInterval(async () => {
+        if (!isStreaming) return;
+
+        try {
+          // Get recent messages (simplified approach)
+          const messages = await (conversation as any).messages?.({ limit: 5 }) || [];
+          for (const message of messages) {
+            if (message.senderInboxId === this.client?.inboxId) continue;
+            onMessage(message);
+          }
+        } catch (error) {
+          console.error(`❌ Polling error for ${conversationId}:`, error);
+        }
+      }, 2000); // Poll every 2 seconds
 
       // Return cleanup function
       return () => {
-        // End the stream if it has an end method
-        if (stream && typeof stream.end === 'function') {
-          stream.end();
-        }
-        console.log("🔄 Message stream cleanup requested");
+        isStreaming = false;
+        clearInterval(pollInterval);
+        console.log(`⏹️ Stopped message stream for conversation: ${conversationId}`);
       };
     } catch (error) {
       console.error("❌ Failed to stream messages:", error);
@@ -202,20 +235,35 @@ export class XMTPClientManager {
     if (!this.client) throw new Error("XMTP client not initialized");
 
     try {
-      // Browser SDK uses streamAllMessages with callback
-      const stream = await this.client.conversations.streamAllMessages((message) => {
-        // Check if message exists and has the expected properties
-        if (!message || !('senderInboxId' in message) || message.senderInboxId === this.client?.inboxId) return;
-        onMessage(message);
-      });
+      console.log("🔄 Starting stream for all conversations");
+
+      // Sync conversations first (best practice from docs)
+      await this.client.conversations.sync();
+
+      // Simplified streaming for hackathon - use polling
+      let isStreaming = true;
+      const pollInterval = setInterval(async () => {
+        if (!isStreaming) return;
+
+        try {
+          const conversations = await this.client!.conversations.list();
+          for (const conversation of conversations) {
+            const messages = await (conversation as any).messages?.({ limit: 3 }) || [];
+            for (const message of messages) {
+              if (message.senderInboxId === this.client?.inboxId) continue;
+              onMessage(message);
+            }
+          }
+        } catch (error) {
+          console.error("❌ All messages polling error:", error);
+        }
+      }, 3000); // Poll every 3 seconds
 
       // Return cleanup function
       return () => {
-        // End the stream if it has an end method
-        if (stream && typeof stream.end === 'function') {
-          stream.end();
-        }
-        console.log("🔄 All messages stream cleanup requested");
+        isStreaming = false;
+        clearInterval(pollInterval);
+        console.log("⏹️ Stopped all messages stream");
       };
     } catch (error) {
       console.error("❌ Failed to stream all messages:", error);
@@ -227,19 +275,59 @@ export class XMTPClientManager {
     if (!this.client) throw new Error("XMTP client not initialized");
 
     try {
+      console.log("🔄 Syncing conversations from network...");
       await this.client.conversations.sync();
+
       const conversations = await this.client.conversations.list();
-      
+      console.log(`✅ Found ${conversations.length} conversations`);
+
       return conversations.map((conv: any) => ({
         id: conv.id,
         type: conv.version === "GROUP" ? "group" : "dm",
         title: conv.name || `Conversation ${conv.id.slice(0, 8)}`,
         memberCount: conv.members?.length || 2,
-        // Note: Getting last message would require additional API calls
+        lastMessageTime: conv.lastMessage?.sentAt || Date.now(),
       }));
     } catch (error) {
       console.error("❌ Failed to get conversations:", error);
       return [];
+    }
+  }
+
+  /**
+   * Sync specific conversation messages (XMTP best practice)
+   */
+  async syncConversation(conversationId: string): Promise<void> {
+    if (!this.client) throw new Error("XMTP client not initialized");
+
+    try {
+      const conversation = await this.client.conversations.getConversationById(conversationId);
+      if (!conversation) {
+        throw new Error("Conversation not found");
+      }
+
+      console.log(`🔄 Syncing conversation: ${conversationId}`);
+      await conversation.sync();
+      console.log(`✅ Conversation synced: ${conversationId}`);
+    } catch (error) {
+      console.error(`❌ Failed to sync conversation ${conversationId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if an identity is reachable on XMTP (simplified for hackathon)
+   */
+  async canMessage(address: string): Promise<boolean> {
+    if (!this.client) throw new Error("XMTP client not initialized");
+
+    try {
+      // Simplified check - assume most addresses can be messaged for demo
+      console.log(`🔍 Checking if can message: ${address}`);
+      return true; // For hackathon demo, assume all addresses are reachable
+    } catch (error) {
+      console.error(`❌ Failed to check if can message ${address}:`, error);
+      return false;
     }
   }
 

@@ -287,22 +287,39 @@ Each blockchain has a distinctive color:
 
 ### XMTP Message Processing Architecture
 
-The system supports two processing modes for optimal performance:
+The system supports multiple processing modes following official XMTP best practices:
 
-**1. Queue-based Processing** (when Redis is available):
+**1. XMTP Agent Service** (Production - NEW):
+
+- Dedicated agent following ephemeraHQ/xmtp-agent-examples patterns
+- Real-time message streaming with async iterators
+- Proper conversation sync and message handling
+- Group fitness commands and prediction markets
+- Start with: `npm run agent:start`
+
+**2. Queue-based Processing** (when Redis is available):
 
 - Messages are queued for the XMTP bot service
 - Supports real-time XMTP network integration
 - Requires Redis for message queuing
-- Best for production environments
+- Best for high-volume environments
 
-**2. Direct Processing** (PostgreSQL-only fallback):
+**3. Direct Processing** (PostgreSQL-only fallback):
 
 - Immediate AI responses without queue timeouts
 - More efficient when Redis is unavailable
 - Uses PostgreSQL for message persistence
 - Automatically detects and switches to this mode
 - Ideal for development and simplified deployments
+
+### XMTP Best Practices Implemented
+
+✅ **Conversation Sync**: Proper sync before streaming messages
+✅ **Async Iterators**: Using official streaming patterns
+✅ **Error Resilience**: Automatic stream restart on failures
+✅ **Address Resolution**: Inbox ID to address mapping
+✅ **Content Types**: Support for reactions and rich content
+✅ **Group Management**: Multi-user conversation handling
 
 ### Testing XMTP Integration
 

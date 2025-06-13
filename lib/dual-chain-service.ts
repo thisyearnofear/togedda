@@ -2,10 +2,14 @@
  * Dual-Chain Service for CELO Mainnet + Base Sepolia
  * Handles prediction market operations across both networks
  * Optimized for Base Batches Buildathon while maintaining CELO production functionality
+ *
+ * TODO: Consolidate with lib/config/chains.ts for better DRY principles
+ * This service maintains its own chain config for prediction-specific contracts
  */
 
 import { ethers } from "ethers";
 import { predictionMarketABI } from "./constants";
+import { getChainName, getChainSwitchInfo } from "./config/chains";
 
 // Chain configurations
 export const CHAIN_CONFIG = {

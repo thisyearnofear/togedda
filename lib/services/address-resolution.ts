@@ -17,13 +17,14 @@ export interface ResolvedProfile {
   username?: string;
   avatar?: string;
   ens?: string;
+  basename?: string; // Add Basenames support
   farcaster?: {
     fid?: number;
     username?: string;
     display_name?: string;
     pfp_url?: string;
   };
-  source: 'web3bio' | 'ensdata' | 'neynar' | 'cache';
+  source: 'web3bio' | 'ensdata' | 'neynar' | 'basenames' | 'cache';
   cached?: boolean;
 }
 
@@ -46,7 +47,7 @@ export async function resolveAddress(address: string): Promise<ResolvedProfile> 
 
   console.log(`Resolving address: ${normalizedAddress}`);
 
-  // Try Web3.bio first (most comprehensive)
+  // Try Web3.bio first (most comprehensive, includes Basenames)
   try {
     const web3bioResult = await resolveWithWeb3Bio(normalizedAddress);
     if (web3bioResult) {
@@ -55,6 +56,17 @@ export async function resolveAddress(address: string): Promise<ResolvedProfile> 
     }
   } catch (error) {
     console.warn('Web3.bio resolution failed:', error);
+  }
+
+  // Try Basenames directly as fallback
+  try {
+    const basenamesResult = await resolveWithBasenames(normalizedAddress);
+    if (basenamesResult) {
+      cacheResult(cacheKey, basenamesResult);
+      return basenamesResult;
+    }
+  } catch (error) {
+    console.warn('Basenames resolution failed:', error);
   }
 
   // Try ENSData second (good for ENS names)
@@ -90,11 +102,95 @@ export async function resolveAddress(address: string): Promise<ResolvedProfile> 
 }
 
 /**
- * Resolve using Web3.bio API directly
+ * Resolve using Basenames (Base ecosystem naming service)
+ */
+async function resolveWithBasenames(address: string): Promise<ResolvedProfile | null> {
+  try {
+    // Check if it's a .base.eth name first
+    if (address.endsWith('.base.eth')) {
+      // Resolve basename to address
+      const response = await fetch(`https://api.basenames.org/v1/name/${address}`, {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Imperfect-Form/1.0'
+        },
+        signal: AbortSignal.timeout(8000)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.address) {
+          return {
+            address: data.address.toLowerCase(),
+            displayName: address,
+            username: address,
+            basename: address,
+            avatar: data.avatar,
+            source: 'basenames'
+          };
+        }
+      }
+    } else {
+      // Reverse resolve address to basename
+      const response = await fetch(`https://api.basenames.org/v1/address/${address}`, {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Imperfect-Form/1.0'
+        },
+        signal: AbortSignal.timeout(8000)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.name) {
+          return {
+            address,
+            displayName: data.name,
+            username: data.name,
+            basename: data.name,
+            avatar: data.avatar,
+            source: 'basenames'
+          };
+        }
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.warn('Basenames API failed:', error);
+    return null;
+  }
+}
+
+/**
+ * Resolve using Web3.bio API directly (includes Basenames support)
  */
 async function resolveWithWeb3Bio(address: string): Promise<ResolvedProfile | null> {
   try {
-    // Call Web3.bio API directly
+    // Try Basenames specifically first via web3bio
+    const basenamesResponse = await fetch(`https://api.web3.bio/profile/basenames/${address}`, {
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Imperfect-Form/1.0'
+      },
+      signal: AbortSignal.timeout(8000)
+    });
+
+    if (basenamesResponse.ok) {
+      const basenamesProfile = await basenamesResponse.json();
+      if (basenamesProfile && basenamesProfile.identity) {
+        return {
+          address: basenamesProfile.address || address,
+          displayName: basenamesProfile.displayName || basenamesProfile.identity,
+          username: basenamesProfile.identity,
+          avatar: basenamesProfile.avatar,
+          basename: basenamesProfile.identity,
+          source: 'web3bio'
+        };
+      }
+    }
+
+    // Fall back to general web3bio profile lookup
     const response = await fetch(`https://api.web3.bio/profile/${address}`, {
       headers: {
         'Accept': 'application/json',
@@ -113,6 +209,19 @@ async function resolveWithWeb3Bio(address: string): Promise<ResolvedProfile | nu
       return null;
     }
 
+    // Look for Basenames profile first
+    const basenamesProfile = profiles.find(p => p.platform === 'basenames');
+    if (basenamesProfile) {
+      return {
+        address,
+        displayName: basenamesProfile.displayName || basenamesProfile.identity,
+        username: basenamesProfile.identity,
+        avatar: basenamesProfile.avatar,
+        basename: basenamesProfile.identity,
+        source: 'web3bio'
+      };
+    }
+
     // Get the first profile (usually ENS or primary)
     const profile = profiles[0];
 
@@ -122,6 +231,7 @@ async function resolveWithWeb3Bio(address: string): Promise<ResolvedProfile | nu
       username: profile.identity,
       avatar: profile.avatar,
       ens: profile.platform === 'ens' ? profile.identity : undefined,
+      basename: profile.platform === 'basenames' ? profile.identity : undefined,
       farcaster: profiles.find(p => p.platform === 'farcaster') ? {
         username: profiles.find(p => p.platform === 'farcaster')?.identity
       } : undefined,
@@ -253,12 +363,17 @@ function cacheResult(key: string, data: ResolvedProfile) {
 }
 
 /**
- * Get display name with fallback logic
+ * Get display name with fallback logic (prioritizes Basenames for Base ecosystem)
  */
 export function getDisplayName(profile: ResolvedProfile): string {
-  return profile.displayName || 
-         profile.username || 
-         profile.ens || 
+  // For Base ecosystem hackathon, prioritize Basenames
+  if (profile.basename) {
+    return profile.basename;
+  }
+
+  return profile.displayName ||
+         profile.username ||
+         profile.ens ||
          profile.farcaster?.username ||
          `${profile.address.slice(0, 6)}...${profile.address.slice(-4)}`;
 }
@@ -270,6 +385,7 @@ export function hasProfileData(profile: ResolvedProfile): boolean {
   return !!(
     profile.displayName ||
     profile.username ||
+    profile.basename ||
     profile.ens ||
     profile.farcaster?.username ||
     profile.avatar

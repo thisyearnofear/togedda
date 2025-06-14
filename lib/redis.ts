@@ -12,5 +12,10 @@ export const redis =
     ? new Redis({
         url: env.REDIS_URL.startsWith('https://') ? env.REDIS_URL : `https://${env.REDIS_URL}`,
         token: env.REDIS_TOKEN,
+        retry: {
+          retries: 3,
+          backoff: (retryCount) => Math.exp(retryCount) * 50,
+        },
+        automaticDeserialization: false,
       })
     : null;

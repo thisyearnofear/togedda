@@ -133,10 +133,10 @@ export class EnhancedMessageStore {
           console.log('🔗 Connecting to remote Redis...');
         }
 
-        // Test Redis connection with timeout
+        // Test Redis connection with longer timeout for production
         Promise.race([
           this.redis.ping(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 2000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 10000))
         ]).catch((error) => {
           console.warn('⚠️ Redis connection failed, falling back to PostgreSQL only:', error.message);
           this.redis = undefined; // Disable Redis

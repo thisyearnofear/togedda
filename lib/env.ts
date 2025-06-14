@@ -12,6 +12,9 @@ export const env = createEnv({
     REDIS_URL: z.string().optional(),
     REDIS_TOKEN: z.string().optional(),
     WEB3_BIO_API_KEY: z.string().optional(),
+
+    // Backend service URL
+    XMTP_BOT_SERVICE_URL: z.string().optional(),
     
     // Fallback service configuration
     ENABLE_WEB3BIO_FALLBACK: z

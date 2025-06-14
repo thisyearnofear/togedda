@@ -21,16 +21,15 @@ RUN apk add --no-cache \
 COPY package*.json ./
 COPY tsconfig*.json ./
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install dependencies with memory optimization
+RUN npm ci --only=production --maxsockets 1 && npm cache clean --force
 
-# Copy source code
+# Copy only necessary files for building
 COPY lib/ ./lib/
 COPY scripts/ ./scripts/
 COPY contracts/ ./contracts/
 
-# Build TypeScript
-RUN npm run build:bot || echo "No build:bot script, using ts-node"
+# Skip TypeScript compilation to save memory - we'll use ts-node at runtime
 
 # Stage 2: Production stage
 FROM node:18-alpine AS production
@@ -75,5 +74,5 @@ EXPOSE 3001
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start the bot service
-CMD ["npm", "run", "bot:build"]
+# Start the bot service using our lightweight starter
+CMD ["node", "scripts/start-bot-service.js"]

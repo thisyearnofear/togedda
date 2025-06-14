@@ -118,11 +118,15 @@ export async function getConversationHistory(
  */
 export async function checkBotServiceHealth(): Promise<boolean> {
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
     const response = await fetch(`${BOT_SERVICE_URL}/health`, {
       method: 'GET',
-      timeout: 5000, // 5 second timeout
+      signal: controller.signal,
     });
 
+    clearTimeout(timeoutId);
     return response.ok;
   } catch (error) {
     console.error('Bot service health check failed:', error);

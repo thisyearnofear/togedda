@@ -12,6 +12,7 @@ import { Client, type XmtpEnv } from '@xmtp/node-sdk';
 // Load environment variables
 config({ path: '.env.local' });
 import { ethers } from 'ethers';
+import { startHealthServer } from './health-server';
 import axios from 'axios';
 // AgentKit and Basenames integration
 import { getAgentKitInstance, generateAgentKitPredictionProposal } from './agentkit-integration';
@@ -812,6 +813,10 @@ export function generateKeys(): { privateKey: string; encryptionKey: string } {
 
 // If this file is run directly, start the service
 if (require.main === module) {
+  // Start health server first
+  startHealthServer(3001);
+
+  // Then start the AI bot service
   startAIBotService().catch((err) => {
     console.error('❌ Failed to start AI Bot service:', err);
     process.exit(1);

@@ -88,12 +88,17 @@ export async function POST(request: NextRequest) {
 
       // Default AI processing
       const { generatePredictionProposal } = await import('@/lib/ai-bot-service');
-      
+
       const enhancedMessage = context ?
         `[User Context: ${context.authType} auth${context.farcaster ? `, Farcaster: @${context.farcaster.username || context.farcaster.fid}` : ''}${context.environment ? `, Environment: ${context.environment}` : ''}] ${message}` :
         message;
 
-      const response = await generatePredictionProposal(enhancedMessage);
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) {
+        throw new Error('OpenAI API key not configured');
+      }
+
+      const response = await generatePredictionProposal(enhancedMessage, apiKey, conversationId);
 
       return NextResponse.json({
         response,

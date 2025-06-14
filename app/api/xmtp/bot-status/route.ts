@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     // Check database availability
     let dbStatus = 'not_configured';
     try {
-      const { pool } = await import('@/lib/db');
+      const pool = (await import('@/lib/db')).default;
       const result = await pool.query('SELECT 1');
       dbStatus = result ? 'connected' : 'connection_failed';
     } catch (error) {

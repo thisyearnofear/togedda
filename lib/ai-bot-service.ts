@@ -682,7 +682,7 @@ export async function proposePredictionToContract(predictionText: string, propos
     console.log(`Creating prediction via dual-chain service: ${predictionText} by ${proposerAddress}`);
 
     // Parse prediction data from text
-    const { parsePredictionFromText } = await import('../pages/api/xmtp/create-prediction');
+    const { parsePredictionFromText } = await import('./xmtp-prediction-helpers');
     const predictionData = parsePredictionFromText(predictionText);
 
     // Import dual-chain service

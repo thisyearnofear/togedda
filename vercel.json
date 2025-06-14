@@ -8,6 +8,10 @@
       "maxDuration": 60,
       "memory": 1024
     },
+    "app/api/xmtp/create-prediction/route.ts": {
+      "maxDuration": 90,
+      "memory": 1024
+    },
     "app/api/test-redis/route.ts": {
       "maxDuration": 15,
       "memory": 256

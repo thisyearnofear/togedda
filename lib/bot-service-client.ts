@@ -5,10 +5,10 @@
 
 import { env } from './env';
 
-// Default to local development, but use Northflank in production
+// Default to local development, but use Hetzner VPS in production
 const BOT_SERVICE_URL = env.XMTP_BOT_SERVICE_URL ||
   (process.env.NODE_ENV === 'production'
-    ? 'https://imperfect-form-xmtp-bot-6c494f875b-q9nfk.northflank.app'
+    ? 'http://157.180.36.156:3001' // Your Hetzner VPS
     : 'http://localhost:3001');
 
 export interface BotServiceResponse {

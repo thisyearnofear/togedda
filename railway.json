@@ -1,0 +1,96 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "npm install && npm run build:node",
+    "watchPatterns": [
+      "/lib/**",
+      "/scripts/**",
+      "/package.json",
+      "/tsconfig.node.json"
+    ]
+  },
+  "deploy": {
+    "numReplicas": 1,
+    "sleepApplication": false,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10,
+    "startCommand": "npm run bot:build",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 300
+  },
+  "environments": {
+    "production": {
+      "variables": {
+        "NODE_ENV": "production",
+        "XMTP_ENV": "production",
+        "BOT_PRIVATE_KEY": {
+          "description": "Private key for XMTP bot messaging",
+          "required": true
+        },
+        "ENCRYPTION_KEY": {
+          "description": "Encryption key for XMTP local database",
+          "required": true
+        },
+        "OPENAI_API_KEY": {
+          "description": "OpenAI API key for AI responses",
+          "required": true
+        },
+        "CDP_API_KEY_NAME": {
+          "description": "Coinbase Developer Platform API key name",
+          "required": true
+        },
+        "CDP_API_KEY_PRIVATE_KEY": {
+          "description": "Coinbase Developer Platform private key",
+          "required": true
+        },
+        "DATABASE_URL": {
+          "description": "PostgreSQL connection string",
+          "required": true
+        },
+        "REDIS_URL": {
+          "description": "Redis connection URL",
+          "required": true
+        },
+        "REDIS_TOKEN": {
+          "description": "Redis authentication token",
+          "required": false
+        },
+        "BASE_MAINNET_SWEAT_EQUITY_BOT_ADDRESS": {
+          "description": "SweatEquityBot contract address on Base mainnet",
+          "value": "0x89ED0a9739801634A61e791aB57ADc3298B685e9"
+        },
+        "BASE_MAINNET_PREDICTION_MARKET_ADDRESS": {
+          "description": "Prediction market contract address on Base mainnet",
+          "value": "0x0c38f4bd68d3f295F1C38eED3af96328Ce4CE2dB"
+        },
+        "CELO_PREDICTION_MARKET_ADDRESS": {
+          "description": "Prediction market contract address on CELO mainnet",
+          "value": "0xa226c82f1b6983aBb7287Cd4d83C2aEC802A183F"
+        },
+        "AI_MODEL_API": {
+          "description": "AI model API endpoint",
+          "value": "https://api.openai.com/v1/chat/completions"
+        },
+        "BASE_MAINNET_RPC_URL": {
+          "description": "Base mainnet RPC URL",
+          "value": "https://mainnet.base.org"
+        }
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "postgresql",
+      "config": {
+        "version": "15"
+      }
+    },
+    {
+      "name": "redis",
+      "config": {
+        "version": "7"
+      }
+    }
+  ]
+}

@@ -153,7 +153,7 @@ async function handleCreateChallenge(
 
 **Challenge Types:** pushups, squats, custom
 
-💡 **Tip:** Try natural language instead: "Start a pushup challenge for our group"`;
+💡 **Tip:** Try natural language instead: "Start a pushup challenge with jesse.base.eth"`;
   }
 
   const type = parts[1] as 'pushups' | 'squats' | 'custom';
@@ -401,7 +401,7 @@ function getHelpMessage(): string {
   return `🤖 **Group Fitness Agent - Just Talk Naturally!**
 
 💬 **Natural Language Commands:**
-• "Start a pushup challenge for our group"
+• "Start a pushup challenge with jesse.base.eth"
 • "Show me the fitness leaderboard"
 • "Give me some motivation to stay hard"
 • "I completed 150 pushups today"

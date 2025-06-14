@@ -1,0 +1,18 @@
+{
+  "network": "baseSepolia",
+  "chainId": "84532",
+  "contractAddress": "0x0c38f4bd68d3f295F1C38eED3af96328Ce4CE2dB",
+  "deployerAddress": "0x7E28ed4e4ac222DdC51bd09902FcB62B70AF525c",
+  "transactionHash": "0x1c5fab277465c0aa9a81e069536be37961c93bafc9d0de23b757bb37575b8f6b",
+  "timestamp": "2025-06-13T18:51:45.607Z",
+  "parameters": {
+    "charityAddress": "0x44770D93e1a426DDAf5923a738eaCe3D2FB65BC1",
+    "maintenanceAddress": "0x55A5705453Ee82c742274154136Fce8149597058"
+  },
+  "verification": {
+    "totalPredictions": "0",
+    "charityFeePercentage": "15",
+    "maintenanceFeePercentage": "5",
+    "totalFeePercentage": "20"
+  }
+}

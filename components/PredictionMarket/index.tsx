@@ -1,36 +1,27 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useAccount, useWriteContract } from "wagmi";
+import {
+  useAccount,
+  useWriteContract,
+  useSwitchChain,
+  useChainId,
+} from "wagmi";
 import { toast } from "react-hot-toast";
 import {
-  getAllPredictions,
   Prediction,
   PredictionStatus,
   PredictionCategory,
   PredictionOutcome,
-  PREDICTION_MARKET_ADDRESS,
 } from "@/lib/prediction-market-v2";
 import {
   useChainPredictions,
   useCacheInvalidation,
   usePrefetchData,
 } from "@/hooks/use-prediction-queries";
-// Simple ABI for vote function
-const voteABI = [
-  {
-    name: "vote",
-    type: "function",
-    inputs: [
-      { name: "predictionId", type: "uint256" },
-      { name: "vote", type: "bool" },
-    ],
-    outputs: [],
-    stateMutability: "payable",
-  },
-] as const;
+// Remove the incorrect simple ABI - we'll use the full predictionMarketABI
 import { parseEther } from "viem";
-import PredictionCard from "./PredictionCard";
+import { ethers } from "ethers";
 import ChainAwarePredictionCard from "./ChainAwarePredictionCard";
 import ChatButton from "./ChatButton";
 import {
@@ -43,12 +34,15 @@ import {
 } from "react-icons/fa";
 import WarpcastWallet from "@/components/WarpcastWallet";
 import ChatInterface from "./ChatInterface";
+import TransactionSuccessModal from "./TransactionSuccessModal";
 import { type SupportedChain, CHAIN_CONFIG } from "@/lib/dual-chain-service";
 import { predictionMarketABI } from "@/lib/constants";
 
 const PredictionMarket: React.FC = () => {
   const { address } = useAccount();
   const { writeContractAsync } = useWriteContract();
+  const { switchChain } = useSwitchChain();
+  const currentChainId = useChainId();
 
   // React Query hooks for data fetching with caching
   const {
@@ -77,6 +71,16 @@ const PredictionMarket: React.FC = () => {
   );
   const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
   const [showChainDetails, setShowChainDetails] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successModalData, setSuccessModalData] = useState<{
+    type: "stake" | "claim" | "prediction";
+    hash: string;
+    amount?: string;
+    predictionTitle?: string;
+    currency?: string;
+    chain?: "base" | "celo";
+    predictionId?: number;
+  }>({ type: "stake", hash: "", amount: "" });
 
   // Helper functions for mobile-first UI
   const toggleCardExpansion = (predictionId: number) => {
@@ -196,6 +200,10 @@ const PredictionMarket: React.FC = () => {
     isYes: boolean,
     amount: string
   ) => {
+    console.log(
+      `📥 handleVote received: predictionId=${predictionId}, isYes=${isYes}, amount=${amount}`
+    );
+
     if (!address) {
       toast.error("Please connect your wallet first");
       return;
@@ -205,12 +213,89 @@ const PredictionMarket: React.FC = () => {
       // Find the prediction to determine which chain to use
       const prediction = chainPredictions.find((p) => p.id === predictionId);
       if (!prediction) {
+        console.error(
+          `❌ Prediction ${predictionId} not found in chainPredictions:`,
+          chainPredictions.map((p) => ({
+            id: p.id,
+            title: p.title,
+            chain: p.chain,
+          }))
+        );
         toast.error("Prediction not found");
         return;
       }
 
       const chain = prediction.chain;
       const chainConfig = CHAIN_CONFIG[chain];
+
+      // Check if user is on the correct network
+      if (currentChainId !== chainConfig.id) {
+        console.log(
+          `🔄 User is on chain ${currentChainId}, need to switch to ${chainConfig.id} (${chainConfig.name})`
+        );
+
+        try {
+          toast.loading(`Switching to ${chainConfig.name}...`);
+          await switchChain({ chainId: chainConfig.id });
+          toast.dismiss();
+          toast.success(`Switched to ${chainConfig.name}`);
+
+          // Wait a moment for the chain switch to complete
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        } catch (switchError: any) {
+          toast.dismiss();
+          console.error("Chain switch error:", switchError);
+
+          if (
+            switchError.message?.includes("rejected") ||
+            switchError.message?.includes("denied")
+          ) {
+            toast.error("Chain switch cancelled by user");
+          } else {
+            toast.error(
+              `Failed to switch to ${chainConfig.name}. Please switch manually in your wallet.`
+            );
+          }
+          return;
+        }
+      }
+
+      // Check user's balance before proceeding
+      const provider = new ethers.JsonRpcProvider(chainConfig.rpcUrl);
+      const balance = await provider.getBalance(address);
+      const stakeAmount = parseEther(amount);
+      const estimatedGas = ethers.parseUnits("150000", "wei"); // Conservative gas estimate
+      const gasPrice = await provider.getFeeData();
+      const estimatedGasCost =
+        estimatedGas * (gasPrice.gasPrice || ethers.parseUnits("20", "gwei"));
+      const totalRequired = stakeAmount + estimatedGasCost;
+
+      console.log(`💰 Balance check:`, {
+        balance: ethers.formatEther(balance),
+        stakeAmount: ethers.formatEther(stakeAmount),
+        estimatedGasCost: ethers.formatEther(estimatedGasCost),
+        totalRequired: ethers.formatEther(totalRequired),
+        currency: chainConfig.nativeCurrency.symbol,
+      });
+
+      if (balance < totalRequired) {
+        const shortfall = totalRequired - balance;
+        toast.error(
+          `Insufficient balance. You need ${ethers.formatEther(
+            shortfall
+          )} more ${
+            chainConfig.nativeCurrency.symbol
+          } for this transaction (including gas fees).`
+        );
+        return;
+      }
+
+      console.log(`📋 Found prediction:`, {
+        id: prediction.id,
+        title: prediction.title,
+        chain: prediction.chain,
+        contractAddress: chainConfig.contractAddress,
+      });
 
       console.log(
         `🔄 Voting on ${chainConfig.name} prediction ${predictionId}: ${
@@ -219,6 +304,16 @@ const PredictionMarket: React.FC = () => {
       );
 
       // Use the chain-specific contract address and ABI
+      console.log(`🔧 Contract call details:`, {
+        address: chainConfig.contractAddress,
+        predictionId: predictionId,
+        isYes: isYes,
+        amount: amount,
+        valueInWei: parseEther(amount).toString(),
+        chain: chain,
+      });
+
+      console.log(`🚀 Submitting transaction...`);
       const hash = await writeContractAsync({
         address: chainConfig.contractAddress as `0x${string}`,
         abi: predictionMarketABI,
@@ -227,32 +322,84 @@ const PredictionMarket: React.FC = () => {
         value: parseEther(amount),
       });
 
+      console.log(`✅ Vote transaction sent: ${hash}`);
+      console.log(
+        `🔗 View on explorer: ${chainConfig.blockExplorer}/tx/${hash}`
+      );
+
       toast.success(
         `Transaction sent! You voted ${isYes ? "YES" : "NO"} with ${amount} ${
           chainConfig.nativeCurrency.symbol
         }`
       );
 
-      console.log(`✅ Vote transaction sent: ${hash}`);
+      // Show success modal with transaction details
+      setSuccessModalData({
+        type: "stake",
+        hash: hash,
+        amount: amount,
+        predictionTitle: prediction.title,
+        currency: chainConfig.nativeCurrency.symbol,
+        chain: chain,
+        predictionId: predictionId,
+      });
+      setShowSuccessModal(true);
 
-      // Invalidate cache to trigger refresh after voting
-      invalidatePredictions();
+      // Wait for transaction to be mined before refreshing data
+      console.log(
+        "⏳ Waiting for transaction to be mined before refreshing..."
+      );
+      setTimeout(() => {
+        console.log("🔄 Refreshing prediction data after transaction...");
+        invalidatePredictions();
+      }, 3000); // Wait 3 seconds for transaction to be mined
     } catch (error: any) {
       console.error("Error voting:", error);
 
-      if (
-        error.message &&
-        (error.message.includes("rejected") || error.message.includes("denied"))
-      ) {
-        toast.error("Transaction cancelled by user");
+      // Enhanced error handling
+      if (error.message) {
+        if (
+          error.message.includes("rejected") ||
+          error.message.includes("denied")
+        ) {
+          toast.error("Transaction cancelled by user");
+        } else if (error.message.includes("insufficient funds")) {
+          toast.error("Insufficient funds for transaction");
+        } else if (error.message.includes("gas")) {
+          toast.error(
+            "Transaction failed due to gas issues. Try increasing gas limit."
+          );
+        } else if (error.message.includes("network")) {
+          toast.error(
+            "Network error. Please check your connection and try again."
+          );
+        } else if (error.message.includes("nonce")) {
+          toast.error("Transaction nonce error. Please try again.");
+        } else {
+          toast.error(`Transaction failed: ${error.message}`);
+        }
       } else {
-        toast.error(error.message || "Transaction failed");
+        toast.error("Transaction failed. Please try again.");
       }
+
+      // Log detailed error for debugging
+      console.error("🔍 Detailed error:", {
+        message: error.message,
+        code: error.code,
+        data: error.data,
+        stack: error.stack,
+      });
     }
   };
 
-  // Simple wrapper for PredictionCard component that expects no parameters
-  const handleVoteSimple = () => {
+  // Simple wrapper for PredictionCard component that matches the expected signature
+  const handleVoteSimple = async (
+    predictionId: number,
+    isYes: boolean,
+    amount: string
+  ): Promise<void> => {
+    // Call the main handleVote function
+    await handleVote(predictionId, isYes, amount);
     // Invalidate cache to trigger refresh after voting
     invalidatePredictions();
   };
@@ -301,8 +448,8 @@ const PredictionMarket: React.FC = () => {
       // Submit the suggestion with a 1 CELO fee
       // We use prediction ID 0 as a special case for suggestions
       const hash = await writeContractAsync({
-        address: PREDICTION_MARKET_ADDRESS as `0x${string}`,
-        abi: voteABI,
+        address: CHAIN_CONFIG.celo.contractAddress as `0x${string}`,
+        abi: predictionMarketABI,
         functionName: "vote",
         args: [BigInt(0), true], // Using ID 0 to indicate a suggestion fee
         value: parseEther("1"), // 1 CELO
@@ -454,15 +601,24 @@ const PredictionMarket: React.FC = () => {
     });
 
     // Add fallback predictions for empty chains (only for supported networks)
+    // Only show fallbacks if we're still loading or if there's an error
     const celoFallback = hardcodedPredictions.find((p) => p.network === "celo");
     const baseFallback = hardcodedPredictions.find((p) => p.network === "base");
 
-    if (chainGroups["celo"].length === 0 && celoFallback) {
+    if (chainGroups["celo"].length === 0 && celoFallback && isLoading) {
       chainGroups["celo"].push(celoFallback);
     }
-    if (chainGroups["base"].length === 0 && baseFallback) {
+    if (chainGroups["base"].length === 0 && baseFallback && isLoading) {
       chainGroups["base"].push(baseFallback);
     }
+
+    // Debug: Log what we're actually showing
+    console.log("📊 Chain groups for display:", {
+      celo: chainGroups["celo"].length,
+      base: chainGroups["base"].length,
+      isLoading,
+      chainPredictionsCount: chainPredictions.length,
+    });
 
     return chainGroups;
   };
@@ -805,7 +961,7 @@ const PredictionMarket: React.FC = () => {
                         </h3>
                         <div className="space-y-4">
                           {resolvedPredictions.map((prediction) => (
-                            <PredictionCard
+                            <ChainAwarePredictionCard
                               key={prediction.id}
                               prediction={prediction}
                               onVote={handleVoteSimple}
@@ -844,7 +1000,7 @@ const PredictionMarket: React.FC = () => {
                         <div className="space-y-4">
                           {eligiblePredictions.map((prediction) => (
                             <div key={prediction.id} className="relative">
-                              <PredictionCard
+                              <ChainAwarePredictionCard
                                 prediction={prediction}
                                 onVote={handleVoteSimple}
                                 simplified={false}
@@ -923,7 +1079,7 @@ const PredictionMarket: React.FC = () => {
                         </div>
                         <div className="space-y-4">
                           {expiredPredictions.map((prediction) => (
-                            <PredictionCard
+                            <ChainAwarePredictionCard
                               key={prediction.id}
                               prediction={prediction}
                               onVote={handleVoteSimple}
@@ -973,6 +1129,23 @@ const PredictionMarket: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Transaction Success Modal */}
+      <TransactionSuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        transactionType={successModalData.type}
+        transactionHash={successModalData.hash}
+        predictionTitle={successModalData.predictionTitle}
+        stakeAmount={successModalData.amount}
+        currency={successModalData.currency || "ETH"}
+        chain={successModalData.chain || "base"}
+        predictionId={successModalData.predictionId || 0}
+        onRefresh={() => {
+          console.log("🔄 Manual refresh triggered from success modal");
+          invalidatePredictions();
+        }}
+      />
     </WarpcastWallet>
   );
 };

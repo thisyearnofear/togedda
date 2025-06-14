@@ -308,7 +308,7 @@ Let's get moving! 💪`;
 • "Help me understand prediction markets" - Learn how they work
 
 **Group Fitness:**
-• "Start a pushup challenge for our group" - Create group challenge
+• "Start a pushup challenge with jesse.base.eth and bamstrong.base.eth" - Create group challenge
 • "Show me the fitness leaderboard" - View group standings
 • "Give me some motivation to stay hard" - Get Goggins motivation
 • "I completed 150 pushups today" - Update your progress

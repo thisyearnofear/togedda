@@ -8,7 +8,7 @@
  */
 
 import { ethers } from "ethers";
-import { predictionMarketABI } from "./constants";
+import { unifiedPredictionMarketABI } from "./unified-prediction-market-abi";
 import { getChainName, getChainSwitchInfo } from "./config/chains";
 
 // Chain configurations
@@ -16,33 +16,34 @@ export const CHAIN_CONFIG = {
   celo: {
     id: 42220,
     name: "CELO Mainnet",
-    rpcUrl: "https://forno.celo.org",
-    contractAddress: "0x4d6b336F174f17daAf63D233E1E05cB105562304",
+    rpcUrl:
+      "https://celo-mainnet.g.alchemy.com/v2/Tx9luktS3qyIwEKVtjnQrpq8t3MNEV-B",
+    contractAddress: "0xa226c82f1b6983aBb7287Cd4d83C2aEC802A183F", // New unified contract deployed
     nativeCurrency: {
       name: "CELO",
       symbol: "CELO",
-      decimals: 18
+      decimals: 18,
     },
     blockExplorer: "https://celoscan.io",
     color: "#fcb131",
     emoji: "🟡",
-    isProduction: true
+    isProduction: true,
   },
   base: {
-    id: 84532,
-    name: "Base Sepolia",
-    rpcUrl: "https://sepolia.base.org",
-    contractAddress: "0xeF7009384cF166eF52e0F3529AcB79Ff53A2a3CA",
+    id: 8453,
+    name: "Base Mainnet",
+    rpcUrl: "https://mainnet.base.org",
+    contractAddress: "0x89ED0a9739801634A61e791aB57ADc3298B685e9", // SweatEquityBot on Base mainnet
     nativeCurrency: {
       name: "Ethereum",
       symbol: "ETH",
-      decimals: 18
+      decimals: 18,
     },
-    blockExplorer: "https://sepolia.basescan.org",
-    color: "#416ced",
+    blockExplorer: "https://basescan.org",
+    color: "#0052FF",
     emoji: "🔵",
-    isProduction: false
-  }
+    isProduction: true,
+  },
 } as const;
 
 export type SupportedChain = keyof typeof CHAIN_CONFIG;
@@ -77,42 +78,67 @@ export interface ChainPrediction {
 
 /**
  * Get contract instance for a specific chain
+ * Uses direct ethers providers for reliability and correct ABI for each chain
  */
-export function getChainContract(chain: SupportedChain, signerOrProvider?: ethers.Signer | ethers.Provider) {
+export function getChainContract(
+  chain: SupportedChain,
+  signerOrProvider?: ethers.Signer | ethers.Provider
+) {
   const config = CHAIN_CONFIG[chain];
-  const provider = signerOrProvider || new ethers.JsonRpcProvider(config.rpcUrl);
-  
+
+  // Use provided signer/provider, or create a reliable ethers provider
+  const provider =
+    signerOrProvider ||
+    new ethers.JsonRpcProvider(config.rpcUrl, {
+      name: config.name,
+      chainId: config.id,
+    });
+
+  // Use the unified ABI for both chains
   return new ethers.Contract(
     config.contractAddress,
-    predictionMarketABI,
+    unifiedPredictionMarketABI,
     provider
   );
 }
 
 /**
  * Get all predictions from both chains
+ * Uses reliable ethers providers
  */
 export async function getAllChainPredictions(): Promise<ChainPrediction[]> {
   const allPredictions: ChainPrediction[] = [];
-  
+
   for (const [chainKey, config] of Object.entries(CHAIN_CONFIG)) {
     const chain = chainKey as SupportedChain;
-    
+
     try {
       console.log(`🔄 Fetching predictions from ${config.name}...`);
       const contract = getChainContract(chain);
-      
-      // Get total number of predictions from contract
+
+      // For Base mainnet, limit to recent SweatEquityBot-relevant predictions only
       let totalPredictions = 0;
-      try {
-        // Try to get the prediction count from contract (if available)
-        const contractTotal = await contract.getTotalPredictions();
-        totalPredictions = Number(contractTotal.toString()); // Convert BigInt to number
-        console.log(`📊 ${config.name} has ${totalPredictions} total predictions`);
-      } catch (error) {
-        // Fallback: scan for predictions up to a reasonable limit
-        console.log(`⚠️ No getTotalPredictions() method, scanning for predictions...`);
-        totalPredictions = 100; // Increased scan limit to catch more predictions
+      if (chain === "base") {
+        // Only show recent predictions to focus on SweatEquityBot innovation
+        totalPredictions = 10; // Limit Base to avoid showing old test predictions
+        console.log(
+          `🎯 ${config.name} - limiting to ${totalPredictions} recent predictions for SweatEquityBot focus`
+        );
+      } else {
+        try {
+          // Try to get the prediction count from contract (if available)
+          const contractTotal = await contract.getTotalPredictions();
+          totalPredictions = Number(contractTotal.toString()); // Convert BigInt to number
+          console.log(
+            `📊 ${config.name} has ${totalPredictions} total predictions`
+          );
+        } catch (error) {
+          // Fallback: scan for predictions up to a reasonable limit
+          console.log(
+            `⚠️ No getTotalPredictions() method, scanning for predictions...`
+          );
+          totalPredictions = 100; // Increased scan limit to catch more predictions
+        }
       }
 
       // Fetch all predictions dynamically - scan more comprehensively
@@ -147,8 +173,8 @@ export async function getAllChainPredictions(): Promise<ChainPrediction[]> {
             chainMetadata: {
               currency: config.nativeCurrency.symbol,
               explorerUrl: config.blockExplorer,
-              isProduction: config.isProduction
-            }
+              isProduction: config.isProduction,
+            },
           };
 
           allPredictions.push(chainPrediction);
@@ -156,35 +182,55 @@ export async function getAllChainPredictions(): Promise<ChainPrediction[]> {
           consecutiveFailures = 0; // Reset failure counter
         } catch (error) {
           consecutiveFailures++;
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
 
           // If we hit 5 consecutive failures and haven't found any predictions, likely no predictions exist
           if (consecutiveFailures >= 5 && foundPredictions === 0) {
-            console.log(`📍 No predictions found after ${consecutiveFailures} attempts on ${config.name}`);
+            console.log(
+              `📍 No predictions found after ${consecutiveFailures} attempts on ${config.name}`
+            );
             break;
           }
 
           // If we've found predictions but hit 3 consecutive failures, we've likely reached the end
           if (consecutiveFailures >= 3 && foundPredictions > 0) {
-            console.log(`📍 Reached end of predictions at ID ${id - consecutiveFailures} on ${config.name}`);
+            console.log(
+              `📍 Reached end of predictions at ID ${
+                id - consecutiveFailures
+              } on ${config.name}`
+            );
             break;
           }
 
-          if (errorMessage?.includes('revert') || errorMessage?.includes('invalid')) {
+          if (
+            errorMessage?.includes("revert") ||
+            errorMessage?.includes("invalid")
+          ) {
             // This is expected for non-existent predictions, continue scanning
             continue;
           }
 
-          console.log(`⚠️ Error fetching prediction ${id} on ${config.name}:`, errorMessage);
+          console.log(
+            `⚠️ Error fetching prediction ${id} on ${config.name}:`,
+            errorMessage
+          );
         }
       }
-      
-      console.log(`✅ Found ${allPredictions.filter(p => p.chain === chain).length} predictions on ${config.name}`);
+
+      console.log(
+        `✅ Found ${
+          allPredictions.filter((p) => p.chain === chain).length
+        } predictions on ${config.name}`
+      );
     } catch (error) {
-      console.error(`❌ Error fetching predictions from ${config.name}:`, error);
+      console.error(
+        `❌ Error fetching predictions from ${config.name}:`,
+        error
+      );
     }
   }
-  
+
   return allPredictions;
 }
 
@@ -208,9 +254,11 @@ export async function createChainPrediction(
   try {
     const config = CHAIN_CONFIG[chain];
     const contract = getChainContract(chain, signer);
-    
-    console.log(`🔄 Creating prediction on ${config.name}: ${predictionData.title}`);
-    
+
+    console.log(
+      `🔄 Creating prediction on ${config.name}: ${predictionData.title}`
+    );
+
     const tx = await contract.createPrediction(
       predictionData.title,
       predictionData.description,
@@ -221,20 +269,20 @@ export async function createChainPrediction(
       predictionData.emoji,
       predictionData.autoResolvable || false
     );
-    
+
     const receipt = await tx.wait();
-    
+
     console.log(`✅ Prediction created on ${config.name}: ${receipt.hash}`);
-    
+
     return {
       success: true,
-      txHash: receipt.hash
+      txHash: receipt.hash,
     };
   } catch (error: any) {
     console.error(`❌ Error creating prediction on ${chain}:`, error);
     return {
       success: false,
-      error: error.message || 'Unknown error'
+      error: error.message || "Unknown error",
     };
   }
 }
@@ -252,28 +300,32 @@ export async function voteOnChainPrediction(
   try {
     const config = CHAIN_CONFIG[chain];
     const contract = getChainContract(chain, signer);
-    
+
     const amountInWei = ethers.parseEther(amount);
-    
-    console.log(`🔄 Voting on ${config.name} prediction ${predictionId}: ${isYes ? 'YES' : 'NO'} with ${amount} ${config.nativeCurrency.symbol}`);
-    
+
+    console.log(
+      `🔄 Voting on ${config.name} prediction ${predictionId}: ${
+        isYes ? "YES" : "NO"
+      } with ${amount} ${config.nativeCurrency.symbol}`
+    );
+
     const tx = await contract.vote(predictionId, isYes, {
-      value: amountInWei
+      value: amountInWei,
     });
-    
+
     const receipt = await tx.wait();
-    
+
     console.log(`✅ Vote successful on ${config.name}: ${receipt.hash}`);
-    
+
     return {
       success: true,
-      txHash: receipt.hash
+      txHash: receipt.hash,
     };
   } catch (error: any) {
     console.error(`❌ Error voting on ${chain}:`, error);
     return {
       success: false,
-      error: error.message || 'Unknown error'
+      error: error.message || "Unknown error",
     };
   }
 }
@@ -283,22 +335,22 @@ export async function voteOnChainPrediction(
  */
 export function getStakingRecommendations(chain: SupportedChain) {
   const config = CHAIN_CONFIG[chain];
-  
-  if (chain === 'celo') {
+
+  if (chain === "celo") {
     return {
       minAmount: "0.1",
       recommendedAmounts: ["0.5", "1.0", "2.5", "5.0"],
       currency: "CELO",
       note: "Production network - real CELO tokens",
-      gasEstimate: "~0.001 CELO"
+      gasEstimate: "~0.001 CELO",
     };
   } else {
     return {
       minAmount: "0.001",
       recommendedAmounts: ["0.005", "0.01", "0.025", "0.05"],
       currency: "ETH",
-      note: "Testnet - free test ETH from faucet",
-      gasEstimate: "~0.0001 ETH"
+      note: "Base Mainnet - Revolutionary fitness-backed predictions with 80% stake recovery!",
+      gasEstimate: "~0.0001 ETH",
     };
   }
 }
@@ -309,13 +361,13 @@ export function getStakingRecommendations(chain: SupportedChain) {
 export async function getChainSummaryForBot(): Promise<string> {
   try {
     const predictions = await getAllChainPredictions();
-    
-    const celoStats = predictions.filter(p => p.chain === 'celo');
-    const baseStats = predictions.filter(p => p.chain === 'base');
-    
+
+    const celoStats = predictions.filter((p) => p.chain === "celo");
+    const baseStats = predictions.filter((p) => p.chain === "base");
+
     const celoVolume = celoStats.reduce((sum, p) => sum + p.totalStaked, 0);
     const baseVolume = baseStats.reduce((sum, p) => sum + p.totalStaked, 0);
-    
+
     return `🌐 **Multi-Chain Prediction Markets**
 
 🟡 **CELO Mainnet** (Production)
@@ -323,15 +375,143 @@ export async function getChainSummaryForBot(): Promise<string> {
 • ${celoVolume.toFixed(2)} CELO total volume
 • Real money, real impact! 💰
 
-🔵 **Base Sepolia** (Hackathon)
-• ${baseStats.length} active predictions  
+🔵 **Base Mainnet** (SweatEquityBot)
+🔵 **Base Mainnet** (SweatEquityBot)
+• ${baseStats.length} active predictions
 • ${baseVolume.toFixed(4)} ETH total volume
-• Test network - perfect for experimenting! 🧪
+• Revolutionary fitness-backed predictions! 💪
+• Recover lost stakes through exercise! 🏋️
 
 Choose your chain when creating predictions or voting!`;
   } catch (error) {
-    console.error('Error generating chain summary:', error);
-    return "Multi-chain prediction markets available on CELO Mainnet and Base Sepolia!";
+    console.error("Error generating chain summary:", error);
+    return "Revolutionary SweatEquityBot prediction markets available on CELO Mainnet and Base Mainnet!";
+  }
+}
+
+/**
+ * Get user vote for a specific prediction on the correct chain
+ * Uses reliable ethers providers
+ */
+export async function getChainUserVote(
+  predictionId: number,
+  userAddress: string,
+  chain: SupportedChain
+): Promise<{ isYes: boolean; amount: number; claimed: boolean } | null> {
+  try {
+    const contract = getChainContract(chain);
+    const vote = await contract.getUserVote(predictionId, userAddress);
+
+    return {
+      isYes: vote.isYes,
+      amount: Number(ethers.formatEther(vote.amount)),
+      claimed: vote.claimed,
+    };
+  } catch (error: any) {
+    // Check if it's a specific contract error vs network error
+    if (
+      error.message?.includes("missing revert data") ||
+      error.code === "CALL_EXCEPTION"
+    ) {
+      console.warn(
+        `⚠️ Contract call failed for prediction ${predictionId} on ${chain} - prediction may not exist or user hasn't voted`
+      );
+      return null;
+    }
+
+    console.error(
+      `Error getting user vote for prediction ${predictionId} on ${chain}:`,
+      error
+    );
+    return null;
+  }
+}
+
+/**
+ * Get fee information for a specific chain
+ * Uses reliable ethers providers
+ */
+export async function getChainFeeInfo(chain: SupportedChain): Promise<{
+  charityFeePercentage: number;
+  maintenanceFeePercentage: number;
+  totalFeePercentage: number;
+  charityAddress: string;
+  maintenanceAddress: string;
+} | null> {
+  try {
+    const contract = getChainContract(chain);
+
+    const [
+      charityFeePercentage,
+      maintenanceFeePercentage,
+      totalFeePercentage,
+      charityAddress,
+      maintenanceAddress,
+    ] = await Promise.all([
+      contract.charityFeePercentage(),
+      contract.maintenanceFeePercentage(),
+      contract.getTotalFeePercentage(),
+      contract.charityAddress(),
+      contract.maintenanceAddress(),
+    ]);
+
+    return {
+      charityFeePercentage: Number(charityFeePercentage),
+      maintenanceFeePercentage: Number(maintenanceFeePercentage),
+      totalFeePercentage: Number(totalFeePercentage),
+      charityAddress,
+      maintenanceAddress,
+    };
+  } catch (error: any) {
+    console.error(`Error getting fee info for ${chain}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Get a specific prediction by ID and chain
+ */
+export async function getChainPrediction(
+  predictionId: number,
+  chain: SupportedChain
+): Promise<ChainPrediction | null> {
+  try {
+    const contract = getChainContract(chain);
+    const prediction = await contract.getPrediction(predictionId);
+
+    const config = CHAIN_CONFIG[chain];
+
+    return {
+      id: Number(prediction.id),
+      creator: prediction.creator,
+      title: prediction.title,
+      description: prediction.description,
+      targetDate: Number(prediction.targetDate),
+      targetValue: Number(prediction.targetValue),
+      currentValue: Number(prediction.currentValue),
+      category: prediction.category,
+      network: prediction.network,
+      emoji: prediction.emoji,
+      totalStaked: Number(ethers.formatEther(prediction.totalStaked)),
+      yesVotes: Number(ethers.formatEther(prediction.yesVotes)),
+      noVotes: Number(ethers.formatEther(prediction.noVotes)),
+      status: prediction.status,
+      outcome: prediction.outcome,
+      createdAt: Number(prediction.createdAt),
+      autoResolvable: prediction.autoResolvable,
+      chain: chain,
+      chainMetadata: {
+        currency: config.nativeCurrency.symbol,
+        explorerUrl: config.blockExplorer,
+        isProduction: config.isProduction,
+      },
+    };
+  } catch (error: any) {
+    console.error(
+      `Error getting prediction ${predictionId} on ${chain}:`,
+      error
+    );
+    return null;
   }
 }
 
@@ -344,16 +524,16 @@ export function recommendChainForUser(context: {
   hasCelo?: boolean;
   wantsRealMoney?: boolean;
 }): SupportedChain {
-  // For hackathon demo and new users, recommend Base Sepolia
-  if (context.isNewUser || context.hasTestEth) {
-    return 'base';
+  // For revolutionary SweatEquityBot features, always recommend Base Mainnet
+  if (context.isNewUser || context.hasTestEth || !context.wantsRealMoney) {
+    return "base";
   }
-  
+
   // For users wanting real impact, recommend CELO
   if (context.wantsRealMoney || context.hasCelo) {
-    return 'celo';
+    return "celo";
   }
-  
-  // Default to Base for hackathon
-  return 'base';
+
+  // Default to Base for SweatEquityBot innovation
+  return "base";
 }

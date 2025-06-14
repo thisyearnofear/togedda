@@ -1,0 +1,25 @@
+{
+  "network": "base-mainnet",
+  "chainId": "8453",
+  "contractAddress": "0x89ED0a9739801634A61e791aB57ADc3298B685e9",
+  "deployerAddress": "0x8502d079f93AEcdaC7B0Fe71Fa877721995f1901",
+  "transactionHash": "0x3a744d1e3cfecfe787e1136dd35fabc3bfcd2021402cd77a150170dc5836e7b8",
+  "timestamp": "2025-06-14T05:41:36.863Z",
+  "parameters": {
+    "predictionMarketAddress": "0x0c38f4bd68d3f295F1C38eED3af96328Ce4CE2dB",
+    "fitnessContracts": {
+      "base": "0x1234567890123456789012345678901234567890",
+      "celo": "0x2345678901234567890123456789012345678901",
+      "polygon": "0x3456789012345678901234567890123456789012",
+      "monad": "0x4567890123456789012345678901234567890123"
+    }
+  },
+  "verification": {
+    "predictionMarket": "0x0c38f4bd68d3f295F1C38eED3af96328Ce4CE2dB",
+    "owner": "0x8502d079f93AEcdaC7B0Fe71Fa877721995f1901",
+    "sweatEquityWindow": "24 hours",
+    "charityFeePercent": "15%",
+    "maintenanceFeePercent": "5%",
+    "recoverablePercent": "80%"
+  }
+}

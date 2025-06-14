@@ -1,0 +1,46 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "IFitnessLeaderboard",
+  "sourceName": "contracts/SweatEquityBot.sol",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "getLeaderboard",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "user",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "pushups",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "squats",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "timestamp",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct IFitnessLeaderboard.Score[]",
+          "name": "",
+          "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

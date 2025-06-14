@@ -5,9 +5,10 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAccount } from 'wagmi';
-import { getAllChainPredictions, type ChainPrediction } from '@/lib/dual-chain-service';
-import { getAllPredictions, type Prediction } from '@/lib/prediction-market-v2';
+import { type ChainPrediction } from '@/lib/dual-chain-service';
+import { type Prediction } from '@/lib/prediction-market-v2';
 import { sendMessageToBot, getBotStatus } from '@/components/PredictionMarket/XMTPIntegration';
+import { useChainContracts } from './use-chain-contracts';
 
 // Query keys for consistent caching
 export const QUERY_KEYS = {
@@ -37,8 +38,11 @@ const CACHE_CONFIG = {
 
 /**
  * Hook for fetching all predictions with caching
+ * DEPRECATED: Use useChainPredictions instead
  */
 export function usePredictions() {
+  const { getAllPredictions } = useChainContracts();
+
   return useQuery({
     queryKey: QUERY_KEYS.PREDICTIONS,
     queryFn: getAllPredictions,
@@ -50,30 +54,22 @@ export function usePredictions() {
 
 /**
  * Hook for fetching dual-chain predictions with enhanced caching
+ * Uses wagmi providers for consistency
  */
 export function useChainPredictions() {
+  const { getAllPredictions } = useChainContracts();
+
   return useQuery({
     queryKey: QUERY_KEYS.CHAIN_PREDICTIONS,
     queryFn: async (): Promise<ChainPrediction[]> => {
       try {
         console.log('🔄 Fetching chain predictions...');
-        const predictions = await getAllChainPredictions();
+        const predictions = await getAllPredictions();
         console.log(`✅ Fetched ${predictions.length} chain predictions`);
         return predictions;
       } catch (error) {
         console.error('❌ Error fetching chain predictions:', error);
-        // Fallback to single chain if dual-chain fails
-        const fallbackPredictions = await getAllPredictions();
-        return fallbackPredictions.map(p => ({
-          ...p,
-          autoResolvable: p.autoResolvable ?? false,
-          chain: 'celo' as const,
-          chainMetadata: {
-            currency: 'CELO',
-            explorerUrl: 'https://celoscan.io',
-            isProduction: true,
-          },
-        }));
+        return [];
       }
     },
     ...CACHE_CONFIG.PREDICTIONS,
@@ -319,7 +315,8 @@ export function useCacheInvalidation() {
  */
 export function usePrefetchData() {
   const queryClient = useQueryClient();
-  
+  const { getAllPredictions } = useChainContracts();
+
   return {
     prefetchPredictions: () => {
       queryClient.prefetchQuery({
@@ -331,7 +328,7 @@ export function usePrefetchData() {
     prefetchChainPredictions: () => {
       queryClient.prefetchQuery({
         queryKey: QUERY_KEYS.CHAIN_PREDICTIONS,
-        queryFn: getAllChainPredictions,
+        queryFn: getAllPredictions,
         staleTime: CACHE_CONFIG.PREDICTIONS.staleTime,
       });
     },

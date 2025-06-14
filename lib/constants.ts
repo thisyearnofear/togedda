@@ -1,4 +1,11 @@
-// Contract addresses for different networks
+/**
+ * Legacy constants file - maintained for backward compatibility
+ * New code should use unified-prediction-market-abi.ts and dual-chain-service.ts
+ */
+
+import { unifiedPredictionMarketABI } from './unified-prediction-market-abi';
+
+// Contract addresses for different networks (legacy - use dual-chain-service.ts for new code)
 export const POLYGON_CONTRACT_ADDRESS = "0xc783d6E12560dc251F5067A62426A5f3b45b6888";
 export const CELO_CONTRACT_ADDRESS = "0xB0cbC7325EbC744CcB14211CA74C5a764928F273";
 export const MONAD_CONTRACT_ADDRESS = "0x653d41Fba630381aA44d8598a4b35Ce257924d65";
@@ -19,6 +26,7 @@ export const RPC_URLS = {
     "https://polygon-rpc.com"
   ],
   celo: [
+    "https://celo-mainnet.g.alchemy.com/v2/Tx9luktS3qyIwEKVtjnQrpq8t3MNEV-B",
     "https://forno.celo.org",
     "https://rpc.ankr.com/celo"
   ],
@@ -31,13 +39,13 @@ export const RPC_URLS = {
   ]
 };
 
-// Network colors for theming
+// Network colors for UI components
 export const NETWORK_COLORS = {
   polygon: "#800080", // Purple
   celo: "#fcb131",    // Yellow
   base: "#416ced",    // Blue
   monad: "#000000",   // Black
-};
+} as const;
 
 // Fitness goals
 export const MOUNT_OLYMPUS_GOAL = 291700; // 2917m × 100kg
@@ -129,253 +137,19 @@ export const fitnessLeaderboardABI = [
   }
 ];
 
-// Complete ABI for the prediction market contract
-export const predictionMarketABI = [
-  // View Functions
-  {
-    name: "getPrediction",
-    type: "function",
-    stateMutability: "view",
-    inputs: [
-      { name: "_predictionId", type: "uint256" }
-    ],
-    outputs: [
-      {
-        type: "tuple",
-        components: [
-          { name: "id", type: "uint256" },
-          { name: "creator", type: "address" },
-          { name: "title", type: "string" },
-          { name: "description", type: "string" },
-          { name: "targetDate", type: "uint256" },
-          { name: "targetValue", type: "uint256" },
-          { name: "currentValue", type: "uint256" },
-          { name: "category", type: "uint8" },
-          { name: "network", type: "string" },
-          { name: "emoji", type: "string" },
-          { name: "totalStaked", type: "uint256" },
-          { name: "yesVotes", type: "uint256" },
-          { name: "noVotes", type: "uint256" },
-          { name: "status", type: "uint8" },
-          { name: "outcome", type: "uint8" },
-          { name: "createdAt", type: "uint256" },
-          { name: "autoResolvable", type: "bool" }
-        ]
-      }
-    ]
-  },
-  {
-    name: "getUserVote",
-    type: "function",
-    stateMutability: "view",
-    inputs: [
-      { name: "_predictionId", type: "uint256" },
-      { name: "_user", type: "address" }
-    ],
-    outputs: [
-      {
-        type: "tuple",
-        components: [
-          { name: "isYes", type: "bool" },
-          { name: "amount", type: "uint256" },
-          { name: "claimed", type: "bool" }
-        ]
-      }
-    ]
-  },
-  {
-    name: "getTotalPredictions",
-    type: "function",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256" }]
-  },
-  {
-    name: "getParticipants",
-    type: "function",
-    stateMutability: "view",
-    inputs: [{ name: "_predictionId", type: "uint256" }],
-    outputs: [{ name: "", type: "address[]" }]
-  },
-  {
-    name: "getTotalFeePercentage",
-    type: "function",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256" }]
-  },
-  {
-    name: "charityFeePercentage",
-    type: "function",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256" }]
-  },
-  {
-    name: "maintenanceFeePercentage",
-    type: "function",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256" }]
-  },
-  {
-    name: "charityAddress",
-    type: "function",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "address" }]
-  },
-  {
-    name: "maintenanceAddress",
-    type: "function",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "address" }]
-  },
+// Legacy ABI export - now points to unified ABI
+export const predictionMarketABI = unifiedPredictionMarketABI;
 
-  // State-Changing Functions
-  {
-    name: "createPrediction",
-    type: "function",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "_title", type: "string" },
-      { name: "_description", type: "string" },
-      { name: "_targetDate", type: "uint256" },
-      { name: "_targetValue", type: "uint256" },
-      { name: "_category", type: "uint8" },
-      { name: "_network", type: "string" },
-      { name: "_emoji", type: "string" },
-      { name: "_autoResolvable", type: "bool" }
-    ],
-    outputs: [{ name: "", type: "uint256" }]
-  },
-  {
-    name: "vote",
-    type: "function",
-    stateMutability: "payable",
-    inputs: [
-      { name: "_predictionId", type: "uint256" },
-      { name: "_isYes", type: "bool" }
-    ],
-    outputs: []
-  },
-  {
-    name: "claimReward",
-    type: "function",
-    stateMutability: "nonpayable",
-    inputs: [{ name: "_predictionId", type: "uint256" }],
-    outputs: []
-  },
-  {
-    name: "claimRefund",
-    type: "function",
-    stateMutability: "nonpayable",
-    inputs: [{ name: "_predictionId", type: "uint256" }],
-    outputs: []
-  },
-  {
-    name: "autoResolvePrediction",
-    type: "function",
-    stateMutability: "nonpayable",
-    inputs: [{ name: "_predictionId", type: "uint256" }],
-    outputs: []
-  },
-
-  // Owner Functions
-  {
-    name: "resolvePrediction",
-    type: "function",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "_predictionId", type: "uint256" },
-      { name: "_outcome", type: "uint8" }
-    ],
-    outputs: []
-  },
-  {
-    name: "cancelPrediction",
-    type: "function",
-    stateMutability: "nonpayable",
-    inputs: [{ name: "_predictionId", type: "uint256" }],
-    outputs: []
-  },
-  {
-    name: "updatePredictionValue",
-    type: "function",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "_predictionId", type: "uint256" },
-      { name: "_currentValue", type: "uint256" }
-    ],
-    outputs: []
-  },
-  {
-    name: "updateFeePercentages",
-    type: "function",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "_newCharityFeePercentage", type: "uint256" },
-      { name: "_newMaintenanceFeePercentage", type: "uint256" }
-    ],
-    outputs: []
-  },
-  {
-    name: "updateCharityAddress",
-    type: "function",
-    stateMutability: "nonpayable",
-    inputs: [{ name: "_newCharityAddress", type: "address" }],
-    outputs: []
-  },
-  {
-    name: "updateMaintenanceAddress",
-    type: "function",
-    stateMutability: "nonpayable",
-    inputs: [{ name: "_newMaintenanceAddress", type: "address" }],
-    outputs: []
-  },
-  {
-    name: "transferOwnership",
-    type: "function",
-    stateMutability: "nonpayable",
-    inputs: [{ name: "_newOwner", type: "address" }],
-    outputs: []
-  }
-] as const;
-
-/**
- * Base Batches Buildathon Constants
- * Constants for the AI-Powered Prediction Market with XMTP integration
- */
-
-/**
- * Address of the deployed ImperfectFormPredictionMarketV2 contract on Base Sepolia
- */
+// Legacy prediction market addresses - use dual-chain-service.ts for new code
 export const PREDICTION_MARKET_ADDRESS = "0xeF7009384cF166eF52e0F3529AcB79Ff53A2a3CA";
-
-/**
- * Address of the deployed PredictionBot contract on Base Sepolia
- */
 export const PREDICTION_BOT_ADDRESS = "0x5552e0ca9fd8e71bc2D0941619248f91d30CDa0E";
-
-/**
- * Initial fee for proposing predictions via PredictionBot (in wei)
- */
 export const PREDICTION_PROPOSAL_FEE = "1000000000000000"; // 0.001 ETH
 
-/**
- * Base Sepolia network configuration
- */
+// Base Sepolia network configuration
 export const BASE_SEPOLIA_CHAIN_ID = 84532;
 export const BASE_SEPOLIA_RPC_URL = "https://sepolia.base.org";
 export const BASE_SEPOLIA_EXPLORER_URL = "https://sepolia.basescan.org";
 
-/**
- * Charity address associated with the prediction market
- */
+// Charity and maintenance addresses
 export const CHARITY_ADDRESS = "0x44770D93e1a426DDAf5923a738eaCe3D2FB65BC1";
-
-/**
- * Wallet address (if needed for specific configurations or testing)
- */
 export const WALLET_ADDRESS = "0x55A5705453Ee82c742274154136Fce8149597058";

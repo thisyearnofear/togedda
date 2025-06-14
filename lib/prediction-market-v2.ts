@@ -3,8 +3,11 @@
 import { ethers } from "ethers";
 import { predictionMarketABI } from "./constants";
 
-// Deployed prediction market contract address on CELO
-export const PREDICTION_MARKET_ADDRESS = process.env.NEXT_PUBLIC_PREDICTION_MARKET_V2_ADDRESS || '0x4d6b336F174f17daAf63D233E1E05cB105562304';
+// ⚠️ DEPRECATED: This file is CELO-only and should not be used for new features
+// Use dual-chain-service.ts for chain-aware functionality instead
+//
+// Deployed prediction market contract address on CELO MAINNET ONLY
+export const CELO_PREDICTION_MARKET_ADDRESS = process.env.NEXT_PUBLIC_PREDICTION_MARKET_V2_ADDRESS || '0x4d6b336F174f17daAf63D233E1E05cB105562304';
 
 // Charity address
 const CHARITY_ADDRESS = "0x0e5DaC01687592597d3e4307cdB7B3B616F2822E";
@@ -66,17 +69,17 @@ export interface FeeInfo {
   maintenanceAddress: string;
 }
 
-// Get provider for read operations
-const getProvider = () => {
-  // Always use a direct provider for read operations
-  return new ethers.JsonRpcProvider('https://forno.celo.org');
+// Get provider for read operations (CELO MAINNET ONLY)
+const getCeloProvider = () => {
+  // Always use CELO mainnet provider for read operations - using Alchemy for better CORS support
+  return new ethers.JsonRpcProvider('https://celo-mainnet.g.alchemy.com/v2/Tx9luktS3qyIwEKVtjnQrpq8t3MNEV-B');
 };
 
-// Get prediction market contract for read operations
-const getPredictionMarketContract = (requireSigner = false) => {
-  // For read-only operations, use the direct provider
-  const provider = getProvider();
-  return new ethers.Contract(PREDICTION_MARKET_ADDRESS, predictionMarketABI, provider);
+// Get CELO prediction market contract for read operations
+const getCeloPredictionMarketContract = (requireSigner = false) => {
+  // For read-only operations, use the CELO provider
+  const provider = getCeloProvider();
+  return new ethers.Contract(CELO_PREDICTION_MARKET_ADDRESS, predictionMarketABI, provider);
 };
 
 // Calculate odds for a prediction
@@ -93,10 +96,10 @@ export const calculateOdds = (yesVotes: number, noVotes: number) => {
   };
 };
 
-// Get fee information
-export const getFeeInfo = async (): Promise<FeeInfo> => {
+// Get fee information (CELO MAINNET ONLY)
+export const getCeloFeeInfo = async (): Promise<FeeInfo> => {
   try {
-    const contract = getPredictionMarketContract();
+    const contract = getCeloPredictionMarketContract();
 
     const [
       charityFeePercentage,
@@ -127,15 +130,15 @@ export const getFeeInfo = async (): Promise<FeeInfo> => {
       maintenanceFeePercentage: 5,
       totalFeePercentage: 20,
       charityAddress: CHARITY_ADDRESS,
-      maintenanceAddress: PREDICTION_MARKET_ADDRESS
+      maintenanceAddress: CELO_PREDICTION_MARKET_ADDRESS
     };
   }
 };
 
-// Get all predictions
-export const getAllPredictions = async (): Promise<Prediction[]> => {
+// Get all predictions (CELO MAINNET ONLY)
+export const getAllCeloPredictions = async (): Promise<Prediction[]> => {
   try {
-    const contract = getPredictionMarketContract();
+    const contract = getCeloPredictionMarketContract();
     const predictions: Prediction[] = [];
     
     // We know we have 4 predictions (IDs 1-4)
@@ -176,10 +179,10 @@ export const getAllPredictions = async (): Promise<Prediction[]> => {
   }
 };
 
-// Get prediction by ID
-export const getPrediction = async (id: number): Promise<Prediction | null> => {
+// Get prediction by ID (CELO MAINNET ONLY)
+export const getCeloPrediction = async (id: number): Promise<Prediction | null> => {
   try {
-    const contract = getPredictionMarketContract();
+    const contract = getCeloPredictionMarketContract();
     const prediction = await contract.getPrediction(id);
 
     return {
@@ -207,10 +210,10 @@ export const getPrediction = async (id: number): Promise<Prediction | null> => {
   }
 };
 
-// Get user vote
-export const getUserVote = async (predictionId: number, userAddress: string): Promise<Vote | null> => {
+// Get user vote (CELO MAINNET ONLY) - DEPRECATED: Use getChainUserVote from dual-chain-service.ts
+export const getCeloUserVote = async (predictionId: number, userAddress: string): Promise<Vote | null> => {
   try {
-    const contract = getPredictionMarketContract();
+    const contract = getCeloPredictionMarketContract();
     const vote = await contract.getUserVote(predictionId, userAddress);
 
     return {
@@ -222,4 +225,29 @@ export const getUserVote = async (predictionId: number, userAddress: string): Pr
     console.error(`Error getting user vote for prediction ${predictionId}:`, error);
     return null;
   }
+};
+
+// ⚠️ DEPRECATED EXPORTS - Use dual-chain-service.ts instead
+// These are kept for backward compatibility but will be removed in future versions
+
+export const PREDICTION_MARKET_ADDRESS = CELO_PREDICTION_MARKET_ADDRESS;
+
+export const getFeeInfo = (...args: Parameters<typeof getCeloFeeInfo>) => {
+  console.warn('⚠️ getFeeInfo is deprecated. Use dual-chain-service.ts for chain-aware functionality');
+  return getCeloFeeInfo(...args);
+};
+
+export const getAllPredictions = (...args: Parameters<typeof getAllCeloPredictions>) => {
+  console.warn('⚠️ getAllPredictions is deprecated. Use dual-chain-service.ts for chain-aware functionality');
+  return getAllCeloPredictions(...args);
+};
+
+export const getPrediction = (...args: Parameters<typeof getCeloPrediction>) => {
+  console.warn('⚠️ getPrediction is deprecated. Use dual-chain-service.ts for chain-aware functionality');
+  return getCeloPrediction(...args);
+};
+
+export const getUserVote = (...args: Parameters<typeof getCeloUserVote>) => {
+  console.warn('⚠️ getUserVote is deprecated. Use getChainUserVote from dual-chain-service.ts instead');
+  return getCeloUserVote(...args);
 };

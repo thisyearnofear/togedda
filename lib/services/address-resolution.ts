@@ -10,6 +10,38 @@
  */
 
 import { env } from "@/lib/env";
+import { createPublicClient, http, Address, encodePacked, keccak256, namehash } from 'viem';
+import { base } from 'viem/chains';
+
+// Basenames contract constants
+const BASENAME_L2_RESOLVER_ADDRESS = '0xC6d566A56A1aFf6508b41f6c90ff131615583BCD' as Address;
+const baseClient = createPublicClient({
+  chain: base,
+  transport: http(),
+});
+
+// L2 Resolver ABI (minimal for name resolution)
+const L2ResolverAbi = [
+  {
+    inputs: [{ name: 'node', type: 'bytes32' }],
+    name: 'name',
+    outputs: [{ name: '', type: 'string' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+] as const;
+
+/**
+ * Convert address to reverse node for Basenames lookup
+ */
+function convertReverseNodeToBytes(address: Address, chainId: number): `0x${string}` {
+  const addressFormatted = address.toLowerCase() as Address;
+  const addressNode = keccak256(addressFormatted.substring(2) as `0x${string}`);
+  const chainCoinType = chainId === 1 ? '1' : '8453'; // mainnet : base
+  const baseReverseNode = namehash(`${chainCoinType}.reverse`);
+  const addressReverseNode = keccak256(encodePacked(['bytes32', 'bytes32'], [baseReverseNode, addressNode]));
+  return addressReverseNode;
+}
 
 export interface ResolvedProfile {
   address: string;
@@ -47,18 +79,41 @@ export async function resolveAddress(address: string): Promise<ResolvedProfile> 
 
   console.log(`Resolving address: ${normalizedAddress}`);
 
-  // Try Web3.bio first (most comprehensive, includes Basenames)
+  // Try direct Basenames contract first (most authoritative for Base ecosystem)
+  try {
+    const basenamesResult = await resolveWithBasenamesContract(normalizedAddress);
+    if (basenamesResult) {
+      console.log(`✅ Basenames contract resolved ${normalizedAddress}:`, {
+        displayName: basenamesResult.displayName,
+        basename: basenamesResult.basename,
+        source: basenamesResult.source
+      });
+      cacheResult(cacheKey, basenamesResult);
+      return basenamesResult;
+    }
+  } catch (error) {
+    console.warn('Basenames contract resolution failed:', error);
+  }
+
+  // Try Web3.bio second (comprehensive, includes multiple platforms)
   try {
     const web3bioResult = await resolveWithWeb3Bio(normalizedAddress);
     if (web3bioResult) {
+      console.log(`✅ Web3.bio resolved ${normalizedAddress}:`, {
+        displayName: web3bioResult.displayName,
+        basename: web3bioResult.basename,
+        source: web3bioResult.source
+      });
       cacheResult(cacheKey, web3bioResult);
       return web3bioResult;
+    } else {
+      console.log(`❌ Web3.bio found no profile for ${normalizedAddress}`);
     }
   } catch (error) {
     console.warn('Web3.bio resolution failed:', error);
   }
 
-  // Try Basenames directly as fallback
+  // Try Basenames API as fallback
   try {
     const basenamesResult = await resolveWithBasenames(normalizedAddress);
     if (basenamesResult) {
@@ -66,7 +121,7 @@ export async function resolveAddress(address: string): Promise<ResolvedProfile> 
       return basenamesResult;
     }
   } catch (error) {
-    console.warn('Basenames resolution failed:', error);
+    console.warn('Basenames API resolution failed:', error);
   }
 
   // Try ENSData second (good for ENS names)
@@ -102,14 +157,46 @@ export async function resolveAddress(address: string): Promise<ResolvedProfile> 
 }
 
 /**
+ * Resolve using direct Basenames contract (most authoritative)
+ */
+async function resolveWithBasenamesContract(address: string): Promise<ResolvedProfile | null> {
+  try {
+    const addressReverseNode = convertReverseNodeToBytes(address as Address, base.id);
+
+    const basename = await baseClient.readContract({
+      abi: L2ResolverAbi,
+      address: BASENAME_L2_RESOLVER_ADDRESS,
+      functionName: 'name',
+      args: [addressReverseNode],
+    });
+
+    if (basename && basename.trim() !== '') {
+      return {
+        address,
+        displayName: basename,
+        username: basename,
+        basename: basename,
+        source: 'basenames'
+      };
+    }
+
+    return null;
+  } catch (error) {
+    console.warn('Basenames contract query failed:', error);
+    return null;
+  }
+}
+
+/**
  * Resolve using Basenames (Base ecosystem naming service)
+ * Updated to use alternative APIs since api.basenames.org is unreliable
  */
 async function resolveWithBasenames(address: string): Promise<ResolvedProfile | null> {
   try {
     // Check if it's a .base.eth name first
     if (address.endsWith('.base.eth')) {
-      // Resolve basename to address
-      const response = await fetch(`https://api.basenames.org/v1/name/${address}`, {
+      // Try web3.bio first for basename resolution
+      const web3bioResponse = await fetch(`https://api.web3.bio/ns/basenames/${address}`, {
         headers: {
           'Accept': 'application/json',
           'User-Agent': 'Imperfect-Form/1.0'
@@ -117,8 +204,8 @@ async function resolveWithBasenames(address: string): Promise<ResolvedProfile | 
         signal: AbortSignal.timeout(8000)
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      if (web3bioResponse.ok) {
+        const data = await web3bioResponse.json();
         if (data.address) {
           return {
             address: data.address.toLowerCase(),
@@ -131,7 +218,30 @@ async function resolveWithBasenames(address: string): Promise<ResolvedProfile | 
         }
       }
     } else {
-      // Reverse resolve address to basename
+      // Try web3.bio for reverse basename lookup first
+      const web3bioResponse = await fetch(`https://api.web3.bio/profile/basenames/${address}`, {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Imperfect-Form/1.0'
+        },
+        signal: AbortSignal.timeout(8000)
+      });
+
+      if (web3bioResponse.ok) {
+        const data = await web3bioResponse.json();
+        if (data.identity && !data.error) {
+          return {
+            address,
+            displayName: data.displayName || data.identity,
+            username: data.identity,
+            basename: data.identity,
+            avatar: data.avatar,
+            source: 'basenames'
+          };
+        }
+      }
+
+      // Fallback to direct Basenames API if web3.bio fails
       const response = await fetch(`https://api.basenames.org/v1/address/${address}`, {
         headers: {
           'Accept': 'application/json',

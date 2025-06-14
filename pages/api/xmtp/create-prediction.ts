@@ -5,7 +5,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { ethers } from 'ethers';
-import { PREDICTION_MARKET_ADDRESS, predictionMarketABI } from '@/lib/constants';
+import { createChainPrediction, SupportedChain, CHAIN_CONFIG } from '@/lib/dual-chain-service';
 
 interface CreatePredictionRequest {
   title: string;
@@ -17,6 +17,7 @@ interface CreatePredictionRequest {
   emoji: string;
   userAddress: string;
   autoResolvable?: boolean;
+  chain?: SupportedChain; // Add chain selection
 }
 
 interface CreatePredictionResponse {
@@ -25,6 +26,8 @@ interface CreatePredictionResponse {
   transactionHash?: string;
   message: string;
   error?: string;
+  chain?: string;
+  explorerUrl?: string;
 }
 
 export default async function handler(
@@ -48,7 +51,8 @@ export default async function handler(
       network,
       emoji,
       userAddress,
-      autoResolvable = false
+      autoResolvable = false,
+      chain = 'base' // Default to Base Sepolia for hackathon
     }: CreatePredictionRequest = req.body;
 
     // Validate required fields
@@ -67,11 +71,20 @@ export default async function handler(
       });
     }
 
-    // Set up provider and contract
-    const provider = new ethers.JsonRpcProvider('https://forno.celo.org');
-    
-    // For bot-created predictions, we need a bot wallet with CELO
-    const botPrivateKey = process.env.BOT_PRIVATE_KEY;
+    // Determine which chain to use based on network preference
+    const targetChain: SupportedChain = chain || (network?.toLowerCase().includes('celo') ? 'celo' : 'base');
+    const chainConfig = CHAIN_CONFIG[targetChain];
+
+    console.log(`🔄 Creating prediction on ${chainConfig.name}: ${title}`);
+
+    // Set up provider and signer for the target chain
+    const provider = new ethers.JsonRpcProvider(chainConfig.rpcUrl, {
+      name: chainConfig.name,
+      chainId: chainConfig.id
+    });
+
+    // For bot-created predictions, we need a bot wallet with native currency
+    const botPrivateKey = process.env.BOT_PRIVATE_KEY || process.env.PRIVATE_KEY;
     if (!botPrivateKey) {
       return res.status(500).json({
         success: false,
@@ -80,55 +93,52 @@ export default async function handler(
     }
 
     const botWallet = new ethers.Wallet(botPrivateKey, provider);
-    const contract = new ethers.Contract(PREDICTION_MARKET_ADDRESS, predictionMarketABI, botWallet);
 
-    // Create the prediction on-chain
-    console.log(`Creating prediction: ${title} for user ${userAddress}`);
-    
-    const tx = await contract.createPrediction(
-      title,
-      description,
-      targetDate,
-      targetValue || 0,
-      category || 3, // Default to CUSTOM category
-      network || 'celo',
-      emoji || '🔮',
-      autoResolvable
+    // Use the unified dual-chain service to create the prediction
+    const result = await createChainPrediction(
+      targetChain,
+      {
+        title,
+        description,
+        targetDate,
+        targetValue: targetValue || 0,
+        category: category || 3, // Default to CUSTOM category
+        network: network || targetChain,
+        emoji: emoji || '🔮',
+        autoResolvable
+      },
+      botWallet
     );
 
-    const receipt = await tx.wait();
-    
-    // Extract prediction ID from events
-    let predictionId = 0;
-    if (receipt.logs && receipt.logs.length > 0) {
-      try {
-        const parsedLog = contract.interface.parseLog(receipt.logs[0]);
-        if (parsedLog && parsedLog.name === 'PredictionCreated') {
-          predictionId = Number(parsedLog.args.predictionId);
-        }
-      } catch (parseError) {
-        console.log('Could not parse prediction ID from logs');
-      }
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        message: result.error || 'Failed to create prediction',
+        error: result.error
+      });
     }
 
-    console.log(`✅ Prediction created successfully: ID ${predictionId}, TX: ${receipt.hash}`);
+    console.log(`✅ Prediction created successfully on ${chainConfig.name}: ${result.txHash}`);
 
     return res.status(200).json({
       success: true,
-      predictionId,
-      transactionHash: receipt.hash,
-      message: `Prediction "${title}" created successfully! Transaction: ${receipt.hash}`
+      transactionHash: result.txHash,
+      message: `Prediction "${title}" created successfully on ${chainConfig.name}! Transaction: ${result.txHash}`,
+      chain: targetChain,
+      explorerUrl: `${chainConfig.blockExplorer}/tx/${result.txHash}`
     });
 
   } catch (error: any) {
     console.error('Error creating prediction:', error);
     
     let errorMessage = 'Failed to create prediction';
-    
+
     if (error.code === 'INSUFFICIENT_FUNDS') {
-      errorMessage = 'Insufficient CELO balance to create prediction';
+      errorMessage = 'Insufficient balance to create prediction. Please ensure you have enough tokens for gas fees.';
     } else if (error.code === 'NETWORK_ERROR') {
       errorMessage = 'Network error - please try again';
+    } else if (error.message?.includes('user rejected')) {
+      errorMessage = 'Transaction was rejected by user';
     } else if (error.message) {
       errorMessage = error.message;
     }
@@ -192,19 +202,20 @@ export function parsePredictionFromText(text: string): Partial<CreatePredictionR
     prediction.category = 3; // CUSTOM
   }
   
-  // Determine network
-  if (lowerText.includes('polygon')) {
-    prediction.network = 'polygon';
-    prediction.emoji = '🟣';
-  } else if (lowerText.includes('base')) {
+  // Determine network and chain (updated for unified contracts)
+  if (lowerText.includes('base') || lowerText.includes('sepolia')) {
     prediction.network = 'base';
     prediction.emoji = '🔵';
-  } else if (lowerText.includes('monad')) {
-    prediction.network = 'monad';
-    prediction.emoji = '⚫';
-  } else {
+    (prediction as any).chain = 'base';
+  } else if (lowerText.includes('celo') || lowerText.includes('mainnet')) {
     prediction.network = 'celo';
     prediction.emoji = '🟡';
+    (prediction as any).chain = 'celo';
+  } else {
+    // Default to Base Sepolia for hackathon
+    prediction.network = 'base';
+    prediction.emoji = '🔵';
+    (prediction as any).chain = 'base';
   }
   
   return prediction;

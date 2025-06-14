@@ -98,8 +98,9 @@ export const rpcConfig = {
     ],
   },
   [celo.id]: {
-    primary: "https://forno.celo.org",
+    primary: "https://celo-mainnet.g.alchemy.com/v2/Tx9luktS3qyIwEKVtjnQrpq8t3MNEV-B",
     fallbacks: [
+      "https://forno.celo.org",
       "https://rpc.ankr.com/celo",
       "https://celo-mainnet.public.blastapi.io",
     ],

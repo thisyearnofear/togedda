@@ -14,8 +14,8 @@ import {
   getUserLocationFromIP
 } from './external-data-service';
 import { parseNaturalDate } from './timezone-service';
-import { PREDICTION_MARKET_ADDRESS, predictionMarketABI } from '../constants';
-import { getPrediction, getAllPredictions } from '../prediction-market-v2';
+import { predictionMarketABI } from '../constants';
+import { getChainPrediction, getAllChainPredictions, CHAIN_CONFIG } from '../dual-chain-service';
 
 // Types for prediction resolution
 export interface ResolutionResult {
@@ -95,10 +95,14 @@ export async function checkPredictionEligibility(predictionId: number): Promise<
   prediction?: any;
 }> {
   try {
-    const prediction = await getPrediction(predictionId);
+    // Try to find prediction on both chains
+    let prediction = await getChainPrediction(predictionId, 'celo');
+    if (!prediction) {
+      prediction = await getChainPrediction(predictionId, 'base');
+    }
 
     if (!prediction) {
-      return { eligible: false, reason: 'Prediction not found' };
+      return { eligible: false, reason: 'Prediction not found on any chain' };
     }
 
     if (prediction.status !== 0) {
@@ -364,17 +368,31 @@ async function executeContractResolution(predictionId: number, outcome: 'YES' | 
   if (!botPrivateKey) {
     throw new Error('Bot private key not configured');
   }
-  
-  const provider = new ethers.JsonRpcProvider('https://forno.celo.org');
+
+  // Determine which chain the prediction is on
+  let prediction = await getChainPrediction(predictionId, 'celo');
+  let chain: 'celo' | 'base' = 'celo';
+
+  if (!prediction) {
+    prediction = await getChainPrediction(predictionId, 'base');
+    chain = 'base';
+  }
+
+  if (!prediction) {
+    throw new Error(`Prediction ${predictionId} not found on any chain`);
+  }
+
+  const chainConfig = CHAIN_CONFIG[chain];
+  const provider = new ethers.JsonRpcProvider(chainConfig.rpcUrl);
   const botWallet = new ethers.Wallet(botPrivateKey, provider);
-  const contract = new ethers.Contract(PREDICTION_MARKET_ADDRESS, predictionMarketABI, botWallet);
-  
+  const contract = new ethers.Contract(chainConfig.contractAddress, predictionMarketABI, botWallet);
+
   // Convert outcome to contract enum (1 = YES, 2 = NO)
   const contractOutcome = outcome === 'YES' ? 1 : 2;
-  
+
   const tx = await contract.resolvePrediction(predictionId, contractOutcome);
   await tx.wait();
-  
+
   return tx.hash;
 }
 
@@ -409,10 +427,10 @@ export async function getEligiblePredictions(): Promise<Array<{
   reason: string;
 }>> {
   try {
-    const predictions = await getAllPredictions();
+    const chainPredictions = await getAllChainPredictions();
     const eligibleList = [];
 
-    for (const prediction of predictions) {
+    for (const prediction of chainPredictions) {
       if (prediction.status === 0 && prediction.autoResolvable) { // ACTIVE and auto-resolvable
         const eligibility = await checkPredictionEligibility(prediction.id);
         eligibleList.push({

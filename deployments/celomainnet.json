@@ -1,0 +1,18 @@
+{
+  "network": "celoMainnet",
+  "chainId": "42220",
+  "contractAddress": "0xa226c82f1b6983aBb7287Cd4d83C2aEC802A183F",
+  "deployerAddress": "0x8502d079f93AEcdaC7B0Fe71Fa877721995f1901",
+  "transactionHash": "0x843cabc3d0bb6f2b482e407e34c181d341df79c71385b8aca863c1d2821f0340",
+  "timestamp": "2025-06-13T19:09:42.188Z",
+  "parameters": {
+    "charityAddress": "0x44770D93e1a426DDAf5923a738eaCe3D2FB65BC1",
+    "maintenanceAddress": "0x55A5705453Ee82c742274154136Fce8149597058"
+  },
+  "verification": {
+    "totalPredictions": "0",
+    "charityFeePercentage": "15",
+    "maintenanceFeePercentage": "5",
+    "totalFeePercentage": "20"
+  }
+}

@@ -7,7 +7,7 @@ const { ethers } = require("ethers");
 require("dotenv").config({ path: ".env.local" });
 
 // Contract configuration
-const CONTRACT_ADDRESS = "0x9B4Be1030eDC90205C10aEE54920192A13c12Cba";
+const CONTRACT_ADDRESS = "0x0c38f4bd68d3f295F1C38eED3af96328Ce4CE2dB"; // Current unified contract
 const RPC_URL = "https://sepolia.base.org";
 const CHAIN_ID = 84532;
 
@@ -100,6 +100,35 @@ const TEST_ABI = [
     stateMutability: "view",
     inputs: [],
     outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    name: "vote",
+    type: "function",
+    stateMutability: "payable",
+    inputs: [
+      { name: "_predictionId", type: "uint256" },
+      { name: "_isYes", type: "bool" },
+    ],
+    outputs: [],
+  },
+  {
+    name: "getUserVote",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "_predictionId", type: "uint256" },
+      { name: "_user", type: "address" },
+    ],
+    outputs: [
+      {
+        type: "tuple",
+        components: [
+          { name: "isYes", type: "bool" },
+          { name: "amount", type: "uint256" },
+          { name: "claimed", type: "bool" },
+        ],
+      },
+    ],
   },
 ];
 

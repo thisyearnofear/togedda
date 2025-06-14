@@ -43,6 +43,7 @@ import NetworkMismatchModal from "@/components/NetworkMismatchModal";
 import NetworkSwitchButton from "@/components/NetworkSwitchButton";
 import { getChainName } from "@/lib/config/chains";
 import TransactionSuccessModal from "./TransactionSuccessModal";
+// Removed AgentKit modal - users always use their wallet
 
 interface ChatMessage {
   id: string;
@@ -123,6 +124,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     hash?: string;
     title?: string;
   }>({ type: "prediction" });
+
+  // Removed AgentKit modal state - users always use their wallet
 
   // Dynamic thinking messages
   const thinkingMessages = [
@@ -472,6 +475,31 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           transactionParams.autoResolvable,
         ]);
 
+        // Validate all parameters before sending
+        console.log("🔍 Validating transaction parameters...");
+
+        if (!transactionParams.contractAddress) {
+          throw new Error("Contract address is missing");
+        }
+
+        if (!transactionParams.title || transactionParams.title.length === 0) {
+          throw new Error("Title is required");
+        }
+
+        if (
+          !transactionParams.targetDate ||
+          transactionParams.targetDate <= Math.floor(Date.now() / 1000)
+        ) {
+          throw new Error("Target date must be in the future");
+        }
+
+        if (
+          !transactionParams.targetValue ||
+          transactionParams.targetValue <= 0
+        ) {
+          throw new Error("Target value must be greater than 0");
+        }
+
         // Double-check we're on the right network before sending
         if (chain?.id !== transactionParams.chainId) {
           throw new Error(
@@ -479,21 +507,27 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           );
         }
 
-        await writeContract({
+        console.log("✅ All parameters validated, calling writeContract...");
+
+        const writeContractArgs = {
           address: transactionParams.contractAddress as `0x${string}`,
           abi: predictionMarketABI,
-          functionName: "createPrediction",
+          functionName: "createPrediction" as const,
           args: [
             transactionParams.title,
             transactionParams.description,
             BigInt(transactionParams.targetDate),
             BigInt(transactionParams.targetValue),
-            transactionParams.category,
+            Number(transactionParams.category),
             transactionParams.network,
             transactionParams.emoji,
-            transactionParams.autoResolvable,
-          ],
-        });
+            Boolean(transactionParams.autoResolvable),
+          ] as const,
+        };
+
+        console.log("📝 writeContract arguments:", writeContractArgs);
+
+        await writeContract(writeContractArgs);
 
         console.log(
           "✅ writeContract called successfully - wallet should prompt for signature"
@@ -501,11 +535,32 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       } catch (error) {
         console.error("❌ Error creating prediction:", error);
         console.error("❌ Write error details:", writeError);
-        setError(
-          `Transaction failed: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }`
+        console.error(
+          "❌ Error stack:",
+          error instanceof Error ? error.stack : "No stack"
         );
+
+        // Log more details about the error
+        if (error && typeof error === "object") {
+          console.error("❌ Error object keys:", Object.keys(error));
+          console.error("❌ Error details:", JSON.stringify(error, null, 2));
+        }
+
+        // Check if it's a user rejection
+        if (error instanceof Error && error.message.includes("User rejected")) {
+          setError("Transaction was cancelled by user");
+        } else if (
+          error instanceof Error &&
+          error.message.includes("insufficient funds")
+        ) {
+          setError("Insufficient funds for transaction");
+        } else {
+          setError(
+            `Transaction failed: ${
+              error instanceof Error ? error.message : "Unknown error"
+            }`
+          );
+        }
         setIsCreatingPrediction(false);
       }
     },
@@ -521,7 +576,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     ]
   );
 
-  // Handle prediction confirmation - trigger wallet transaction
+  // Handle prediction confirmation - show transaction method selection
   const handleConfirmPrediction = useCallback(() => {
     console.log("🎯 Button clicked! Pending prediction:", pendingPrediction);
 
@@ -537,10 +592,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       console.log("💰 Wallet connected:", !!address);
       console.log("🔗 Chain ID:", pendingPrediction.transactionParams.chainId);
 
-      // Trigger the wallet transaction
+      // Always use user's wallet for prediction creation
       handleCreatePrediction(pendingPrediction.transactionParams);
-
-      // Clear the pending prediction
       setPendingPrediction(null);
     } else {
       console.error("❌ No transaction params found in pending prediction");
@@ -553,6 +606,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       setPendingPrediction(null);
     }
   }, [pendingPrediction]);
+
+  // Removed AgentKit transaction method selection - users always use their wallet
 
   // Handle network switching from mismatch modal
   const handleNetworkSwitch = useCallback(async () => {
@@ -970,7 +1025,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           {/* Fitness Actions */}
           <button
             onClick={() =>
-              setNewMessage("Start a pushup challenge for our group")
+              setNewMessage("Start a pushup challenge with bamstrong.base.eth")
             }
             className="px-2 py-1 bg-green-800 hover:bg-green-700 text-green-100 rounded text-xs transition-colors flex items-center justify-center gap-1"
             title="Create a group fitness challenge"
@@ -1298,7 +1353,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     Creating...
                   </>
                 ) : (
-                  <>💰 Create Prediction</>
+                  <>
+                    <>💰 Create Prediction</>
+                  </>
                 )}
               </button>
               <button
@@ -1308,6 +1365,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               >
                 Edit
               </button>
+            </div>
+
+            {/* Smart Features Banner */}
+            <div className="mt-2 p-2 bg-blue-900 bg-opacity-30 border border-blue-500 rounded text-xs">
+              <div className="flex items-center gap-1 text-blue-300 font-medium mb-1">
+                <FaRobot size={12} />
+                Smart Features
+              </div>
+              <div className="text-blue-200">
+                🤖 AI-enhanced • 🔗 Multi-chain • 📍 Auto address resolution
+              </div>
             </div>
           </div>
         )}
@@ -1451,6 +1519,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         targetChainName={networkMismatchData?.targetChainName || ""}
         isLoading={isCreatingPrediction}
       />
+
+      {/* Removed AgentKit Transaction Modal - users always use their wallet */}
 
       {/* Transaction Success Modal */}
       <TransactionSuccessModal

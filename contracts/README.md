@@ -1,40 +1,38 @@
 # Imperfect Form Prediction Market Contracts
 
-This directory contains the smart contracts for the Imperfect Form prediction market functionality, designed specifically for the Farcaster mini app environment with multi-chain deployment support.
+This directory contains the smart contracts for the Imperfect Form prediction market system, featuring a unified architecture for maximum reliability and consistency across networks.
 
-## Contract Overview
+## Current Unified Contract Architecture
 
-### ImperfectFormPredictionMarketV2Fixed.sol ✅ **CURRENT ACTIVE CONTRACT**
+### UnifiedPredictionMarket.sol ✅ **ACTIVE CONTRACT**
 
-The main prediction market contract that handles:
+A single, robust contract deployed identically on both networks for maximum reliability and consistency.
 
-- Creating predictions
-- Voting on predictions with staked tokens
-- Resolving predictions
-- Claiming rewards for correct predictions
+**Contract Addresses:**
+
+#### CELO Mainnet (Production)
+
+- **Address**: `0xa226c82f1b6983aBb7287Cd4d83C2aEC802A183F`
+- **Network**: CELO Mainnet (Chain ID: 42220)
+- **Explorer**: [View on CeloScan](https://celoscan.io/address/0xa226c82f1b6983aBb7287Cd4d83C2aEC802A183F)
+- **Status**: ✅ Deployed and Active
+
+#### Base Sepolia (Testnet)
+
+- **Address**: `0x0c38f4bd68d3f295F1C38eED3af96328Ce4CE2dB`
+- **Network**: Base Sepolia (Chain ID: 84532)
+- **Explorer**: [View on BaseScan](https://sepolia.basescan.org/address/0x0c38f4bd68d3f295F1C38eED3af96328Ce4CE2dB)
+- **Status**: ✅ Deployed and Active
 
 **Key Features:**
 
-- Fixed event parameter encoding issues
-- Optimized for compilation with IR optimizer
-- Supports multi-chain deployment
-- 15% charity fee to Greenpill Kenya
-- 5% maintenance fee
-
-### ImperfectFormPredictionMarketV2_DEPRECATED.sol ⚠️ **REFERENCE ONLY**
-
-Previous version with event encoding issues. Kept for reference - use `ImperfectFormPredictionMarketV2Fixed.sol` instead.
-
-### ImperfectFormPredictionMarketFactoryV2.sol
-
-A factory contract that can deploy multiple prediction market instances if needed.
-
-### Reference Files
-
-- **interfaces/IImperfectFormPredictionMarketV2_REFERENCE.sol**: Interface definition for reference
-- **base/PredictionBot_REFERENCE.sol**: Alternative bot architecture contract (not currently used)
-
-**Note**: The current XMTP integration uses direct contract calls rather than a separate PredictionBot contract.
+- **Unified Architecture**: Single contract source for both networks
+- **Prediction Creation**: Users can create predictions with target dates and values
+- **Voting System**: Stake CELO/ETH on YES or NO outcomes
+- **Fee Structure**: 20% total fees (15% charity, 5% maintenance)
+- **Charity Integration**: Automatic donations to Greenpill Kenya
+- **Multi-chain Support**: Identical functionality across CELO and Base networks
+- **Improved Reliability**: Unified ABI eliminates integration inconsistencies
 
 ## Current XMTP Integration (Active)
 

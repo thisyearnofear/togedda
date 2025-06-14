@@ -5,9 +5,9 @@
  */
 
 import { ethers } from "ethers";
-import { getAllPredictions, getPrediction, type Prediction } from "./prediction-market-v2";
+import { type Prediction } from "./prediction-market-v2";
 import { fetchAllNetworksDataServer, type NetworkData } from "./blockchain-server";
-import { getAllChainPredictions, type ChainPrediction } from "./dual-chain-service";
+import { getAllChainPredictions, getChainPrediction, type ChainPrediction } from "./dual-chain-service";
 
 // Types for enhanced contract data
 export interface LiveMarketData {
@@ -72,8 +72,28 @@ export async function getLiveMarketData(forceRefresh = false): Promise<LiveMarke
   try {
     console.log("🔄 Fetching fresh contract data for AI bot...");
 
-    // Fetch predictions from contract
-    const predictions = await getAllPredictions();
+    // Fetch predictions from all chains
+    const chainPredictions = await getAllChainPredictions();
+    // Convert to legacy format for compatibility
+    const predictions: Prediction[] = chainPredictions.map(cp => ({
+      id: cp.id,
+      creator: cp.creator,
+      title: cp.title,
+      description: cp.description,
+      targetDate: cp.targetDate,
+      targetValue: cp.targetValue,
+      currentValue: cp.currentValue,
+      category: cp.category as any,
+      network: cp.network,
+      emoji: cp.emoji,
+      totalStaked: cp.totalStaked,
+      yesVotes: cp.yesVotes,
+      noVotes: cp.noVotes,
+      status: cp.status as any,
+      outcome: cp.outcome as any,
+      createdAt: cp.createdAt,
+      autoResolvable: cp.autoResolvable
+    }));
     
     // Fetch fitness data from all networks
     const networkData = await fetchAllNetworksDataServer(forceRefresh);

@@ -20,6 +20,7 @@ interface TransactionSuccessModalProps {
   currency?: string;
   chain?: "celo" | "base";
   predictionId?: number;
+  onRefresh?: () => void;
 }
 
 const TransactionSuccessModal: React.FC<TransactionSuccessModalProps> = ({
@@ -32,6 +33,7 @@ const TransactionSuccessModal: React.FC<TransactionSuccessModalProps> = ({
   currency = "ETH",
   chain = "base",
   predictionId,
+  onRefresh,
 }) => {
   const [showConfetti, setShowConfetti] = useState(false);
 
@@ -174,6 +176,18 @@ const TransactionSuccessModal: React.FC<TransactionSuccessModalProps> = ({
               <FaChartLine className="mr-1" />
               My Stats
             </button>
+
+            {onRefresh && (
+              <button
+                onClick={() => {
+                  onRefresh();
+                  onClose();
+                }}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs py-2 px-3 rounded flex items-center justify-center"
+              >
+                🔄 Refresh
+              </button>
+            )}
 
             {transactionHash && (
               <button

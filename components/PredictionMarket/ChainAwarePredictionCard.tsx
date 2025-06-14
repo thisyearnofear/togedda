@@ -22,15 +22,15 @@ import {
   PredictionStatus,
   PredictionOutcome,
   calculateOdds,
-  getUserVote,
-  getFeeInfo,
   type FeeInfo,
 } from "@/lib/prediction-market-v2";
+import { useChainContracts } from "@/hooks/use-chain-contracts";
 import { formatDistanceToNow } from "date-fns";
 import { env } from "@/lib/env";
 import Confetti from "@/components/Confetti";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
 import { predictionMarketABI } from "@/lib/constants";
+import TransactionSuccessModal from "./TransactionSuccessModal";
 import {
   CHAIN_CONFIG,
   type SupportedChain,
@@ -65,13 +65,25 @@ const ChainAwarePredictionCard: React.FC<ChainAwarePredictionCardProps> = ({
   const { context } = useMiniKit();
   const { user, isFarcasterUser } = useAppUser();
   const { isFarcasterEnvironment } = useAppEnvironment();
+  const { getUserVote, getFeeInfo } = useChainContracts();
   const [isVoting, setIsVoting] = useState(false);
   const [amount, setAmount] = useState("0.1");
+
+  // Debug amount changes
+  useEffect(() => {
+    console.log(`💰 Amount state changed to: ${amount}`);
+  }, [amount]);
   const [customAmount, setCustomAmount] = useState("");
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showSharePrompt, setShowSharePrompt] = useState(false);
   const [showWalletOptions, setShowWalletOptions] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successModalData, setSuccessModalData] = useState<{
+    type: "stake" | "claim" | "prediction";
+    hash: string;
+    amount?: string;
+  }>({ type: "stake", hash: "", amount: "" });
   const [userVote, setUserVote] = useState<{
     isYes: boolean;
     amount: number;
@@ -108,34 +120,49 @@ const ChainAwarePredictionCard: React.FC<ChainAwarePredictionCardProps> = ({
   const colors = chainColors[detectedChain];
 
   useEffect(() => {
-    // Set default amount based on chain recommendations
-    setAmount(stakingRecs.recommendedAmounts[0]);
-  }, [detectedChain, stakingRecs.recommendedAmounts]);
+    // Set default amount based on chain recommendations only if amount is not already set
+    if (!amount || amount === "0.1") {
+      setAmount(stakingRecs.recommendedAmounts[0]);
+    }
+  }, [detectedChain, stakingRecs.recommendedAmounts, amount]); // Include 'amount' to satisfy ESLint
 
   useEffect(() => {
     const loadUserVote = async () => {
       if (address) {
         try {
-          const vote = await getUserVote(prediction.id, address);
+          console.log(
+            `🔍 Loading user vote for prediction ${prediction.id} on ${detectedChain} chain`
+          );
+          const vote = await getUserVote(prediction.id, address, detectedChain);
+          console.log(
+            `✅ Successfully loaded user vote for prediction ${prediction.id}:`,
+            vote
+          );
           setUserVote(vote);
         } catch (error) {
-          console.error("Error loading user vote:", error);
+          console.error(
+            `❌ Error getting user vote for prediction ${prediction.id} on ${detectedChain} chain:`,
+            error
+          );
+          setUserVote(null); // Set to null on error to handle UI state
         }
       }
     };
 
     const loadFeeInfo = async () => {
       try {
-        const info = await getFeeInfo();
+        console.log(`💰 Loading fee info for ${detectedChain} chain`);
+        const info = await getFeeInfo(detectedChain);
         setFeeInfo(info);
       } catch (error) {
-        console.error("Error loading fee info:", error);
+        console.error(`Error loading fee info for ${detectedChain}:`, error);
+        setFeeInfo(null); // Set to null on error to handle UI state
       }
     };
 
     loadUserVote();
     loadFeeInfo();
-  }, [prediction.id, address]);
+  }, [prediction.id, address, detectedChain, getUserVote, getFeeInfo]);
 
   const odds = calculateOdds(prediction.yesVotes, prediction.noVotes);
   const isActive = prediction.status === PredictionStatus.ACTIVE;
@@ -144,19 +171,40 @@ const ChainAwarePredictionCard: React.FC<ChainAwarePredictionCardProps> = ({
   });
 
   const handleVote = async (isYes: boolean) => {
+    console.log(
+      `🎯 Voting with amount: ${amount} ${chainConfig.nativeCurrency.symbol}`
+    );
+
     if (!amount || parseFloat(amount) <= 0) {
       toast.error("Please enter a valid amount");
       return;
     }
 
+    // Validate minimum amount
+    const minAmount = parseFloat(stakingRecs.minAmount);
+    const currentAmount = parseFloat(amount);
+
+    if (currentAmount < minAmount) {
+      toast.error(
+        `Minimum stake is ${stakingRecs.minAmount} ${chainConfig.nativeCurrency.symbol}`
+      );
+      return;
+    }
+
     setIsVoting(true);
     try {
+      console.log(
+        `🚀 Calling onVote with: predictionId=${prediction.id}, isYes=${isYes}, amount=${amount}`
+      );
       await onVote(prediction.id, isYes, amount);
       setShowSharePrompt(true);
 
       // Reload user vote after successful vote
       if (address) {
-        const vote = await getUserVote(prediction.id, address);
+        console.log(
+          `🔄 Reloading user vote for prediction ${prediction.id} on ${detectedChain} chain after vote`
+        );
+        const vote = await getUserVote(prediction.id, address, detectedChain);
         setUserVote(vote);
       }
     } catch (error) {
@@ -301,6 +349,12 @@ Check it out: ${env.NEXT_PUBLIC_URL}`;
         {/* Simplified staking with custom input option */}
         {expanded && (
           <div className="mb-3 p-2 bg-gray-900 bg-opacity-30 rounded">
+            <div className="text-xs text-gray-400 mb-2">
+              Stake Amount:{" "}
+              <span className={`font-bold ${colors.text}`}>
+                {amount} {chainConfig.nativeCurrency.symbol}
+              </span>
+            </div>
             <div className="flex flex-wrap gap-1 mb-2">
               {stakingRecs.recommendedAmounts.slice(0, 3).map((amt) => (
                 <button
@@ -308,21 +362,28 @@ Check it out: ${env.NEXT_PUBLIC_URL}`;
                   onClick={() => {
                     setAmount(amt);
                     setShowCustomInput(false);
+                    setCustomAmount(""); // Clear custom input when selecting preset
                   }}
-                  className={`text-xs px-2 py-1 rounded ${
+                  className={`text-xs px-2 py-1 rounded transition-all ${
                     amount === amt && !showCustomInput
-                      ? `${colors.bg} bg-opacity-50 ${colors.text}`
+                      ? `${colors.bg} bg-opacity-50 ${colors.text} ring-1 ring-current`
                       : `bg-gray-800 text-gray-300 hover:bg-gray-700`
                   }`}
                 >
-                  {amt}
+                  {amt} {chainConfig.nativeCurrency.symbol}
                 </button>
               ))}
               <button
-                onClick={() => setShowCustomInput(!showCustomInput)}
-                className={`text-xs px-2 py-1 rounded ${
+                onClick={() => {
+                  setShowCustomInput(!showCustomInput);
+                  if (!showCustomInput) {
+                    // When opening custom input, clear any preset selection
+                    setCustomAmount(amount);
+                  }
+                }}
+                className={`text-xs px-2 py-1 rounded transition-all ${
                   showCustomInput
-                    ? `${colors.bg} bg-opacity-50 ${colors.text}`
+                    ? `${colors.bg} bg-opacity-50 ${colors.text} ring-1 ring-current`
                     : `bg-gray-800 text-gray-300 hover:bg-gray-700`
                 }`}
               >
@@ -331,29 +392,80 @@ Check it out: ${env.NEXT_PUBLIC_URL}`;
             </div>
 
             {showCustomInput && (
-              <div className="flex items-center space-x-2">
-                <input
-                  type="number"
-                  step="0.001"
-                  min="0"
-                  placeholder="0.1"
-                  value={customAmount}
-                  onChange={(e) => setCustomAmount(e.target.value)}
-                  className="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-white"
-                />
-                <span className="text-xs text-gray-400">
-                  {chainConfig.nativeCurrency.symbol}
-                </span>
-                <button
-                  onClick={() => {
-                    if (customAmount && parseFloat(customAmount) > 0) {
-                      setAmount(customAmount);
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="number"
+                    step="0.001"
+                    min={stakingRecs.minAmount}
+                    placeholder={`Enter amount (min: ${stakingRecs.minAmount})`}
+                    value={customAmount}
+                    onChange={(e) => setCustomAmount(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        if (
+                          customAmount &&
+                          parseFloat(customAmount) >=
+                            parseFloat(stakingRecs.minAmount)
+                        ) {
+                          setAmount(customAmount);
+                          setShowCustomInput(false);
+                          setCustomAmount("");
+                        }
+                      }
+                      if (e.key === "Escape") {
+                        setShowCustomInput(false);
+                        setCustomAmount("");
+                      }
+                    }}
+                    className="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-white focus:border-blue-500 focus:outline-none"
+                    autoFocus
+                  />
+                  <span className="text-xs text-gray-400">
+                    {chainConfig.nativeCurrency.symbol}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <button
+                    onClick={() => {
+                      const amount = parseFloat(customAmount);
+                      const minAmount = parseFloat(stakingRecs.minAmount);
+
+                      if (customAmount && amount >= minAmount) {
+                        console.log(
+                          `🎯 Setting custom amount: ${customAmount} ${chainConfig.nativeCurrency.symbol}`
+                        );
+                        setAmount(customAmount);
+                        setShowCustomInput(false);
+                        setCustomAmount("");
+                        toast.success(
+                          `Amount set to ${customAmount} ${chainConfig.nativeCurrency.symbol}`
+                        );
+                      } else {
+                        toast.error(
+                          `Please enter a valid amount (min: ${stakingRecs.minAmount} ${chainConfig.nativeCurrency.symbol})`
+                        );
+                      }
+                    }}
+                    disabled={
+                      !customAmount ||
+                      parseFloat(customAmount) <
+                        parseFloat(stakingRecs.minAmount)
                     }
-                  }}
-                  className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded"
-                >
-                  Set
-                </button>
+                    className="flex-1 text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Set Amount
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowCustomInput(false);
+                      setCustomAmount("");
+                    }}
+                    className="text-xs bg-gray-600 hover:bg-gray-700 text-white px-2 py-1 rounded"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             )}
           </div>

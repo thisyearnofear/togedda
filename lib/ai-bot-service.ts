@@ -12,8 +12,10 @@ import { Client, type XmtpEnv } from '@xmtp/node-sdk';
 // Load environment variables
 config({ path: '.env.local' });
 import { ethers } from 'ethers';
-import { PREDICTION_BOT_ADDRESS } from './constants';
 import axios from 'axios';
+// AgentKit and Basenames integration
+import { getAgentKitInstance, generateAgentKitPredictionProposal } from './agentkit-integration';
+import { resolveUsernameForPrediction, formatResolutionForDisplay } from './basenames-integration';
 import {
   validateXMTPEnvironment,
   initializeXMTPClient
@@ -375,6 +377,28 @@ export async function generatePredictionProposal(userMessage: string, apiKey: st
   console.log(`✅ No hardcoded handlers triggered, proceeding to AI processing`);
 
   try {
+    // For prediction intents, try AgentKit first
+    if (hasPredictionIntent) {
+      console.log(`🤖 Using AgentKit for prediction intent`);
+      try {
+        // Extract user address from conversation context if available
+        const userAddress = conversationId?.includes('wallet_')
+          ? conversationId.split('wallet_')[1]?.split('_')[0]
+          : undefined;
+
+        const agentKitResponse = await generateAgentKitPredictionProposal(userMessage, userAddress);
+
+        if (conversationId) {
+          addToConversationHistory(conversationId, 'assistant', agentKitResponse);
+        }
+
+        return agentKitResponse;
+      } catch (agentKitError) {
+        console.error('AgentKit processing failed, falling back to standard AI:', agentKitError);
+        // Fall through to standard AI processing
+      }
+    }
+
     // Get current market context for AI (but not for prediction intents)
     let marketContext = '';
     if (!hasPredictionIntent) {
@@ -419,17 +443,25 @@ Prediction Resolution Status:
         content: `You are an AI assistant for the Imperfect Form dual-chain prediction market platform.
         Your PRIMARY task is to recognize when users want to create predictions and help them do so.
 
+        ENHANCED CAPABILITIES:
+        🤖 **AgentKit Integration**: Powered by Coinbase AgentKit for advanced blockchain operations
+        🔵 **Basenames Support**: Resolve .base.eth names and ENS domains automatically
+        ⚡ **Gasless Transactions**: Use CDP for gasless operations on Base Sepolia
+        🌐 **Multi-Chain**: Support both CELO Mainnet and Base Sepolia networks
+
         INTENT RECOGNITION - Look for these patterns:
         - "I predict..." / "I think..." / "I bet..."
         - "[Person] will do [action] by [date]"
         - Any statement about future outcomes with measurable targets
         - Questions about creating predictions
+        - Username resolution (e.g., "vitalik.base.eth will...")
 
         Platform Details:
         - Deployed on CELO Mainnet (production) and Base Sepolia (hackathon testnet)
         - CELO: Real CELO tokens, 20% platform fee (15% to Greenpill Kenya charity, 5% maintenance)
         - Base: Test ETH, perfect for experimenting and hackathon demos
         - Focus on fitness, health, and blockchain-related predictions
+        - Integrated with Farcaster for social features and XMTP for secure messaging
 
         WHEN USER EXPRESSES A PREDICTION INTENT:
         1. IGNORE market information and focus ONLY on creating the prediction proposal
@@ -640,33 +672,73 @@ async function parseAndCreatePredictionWithDefaults(aiProposal: string): Promise
 }
 
 /**
- * Propose a prediction to the PredictionBot smart contract
+ * Create a prediction using the unified dual-chain service
  * @param predictionText The text of the prediction to propose
  * @param proposerAddress The address of the user proposing the prediction
  * @returns Transaction result or confirmation
  */
 export async function proposePredictionToContract(predictionText: string, proposerAddress: string): Promise<any> {
   try {
-    console.log(`Proposing prediction to contract: ${predictionText} by ${proposerAddress}`);
-    const provider = new ethers.JsonRpcProvider(process.env.BASE_SEPOLIA_RPC_URL || 'https://sepolia.base.org');
-    const wallet = new ethers.Wallet(process.env.BOT_PRIVATE_KEY || 'placeholder-key', provider);
-    const contract = new ethers.Contract(PREDICTION_BOT_ADDRESS, [
-      'function proposePrediction(string memory predictionText, address proposer) external returns (uint256 predictionId)'
-    ], wallet);
+    console.log(`Creating prediction via dual-chain service: ${predictionText} by ${proposerAddress}`);
 
-    const tx = await contract.proposePrediction(predictionText, proposerAddress);
-    const receipt = await tx.wait();
-    console.log(`Prediction proposed successfully: ${receipt.transactionHash}`);
+    // Parse prediction data from text
+    const { parsePredictionFromText } = await import('../pages/api/xmtp/create-prediction');
+    const predictionData = parsePredictionFromText(predictionText);
+
+    // Import dual-chain service
+    const { createChainPrediction, recommendChainForUser, CHAIN_CONFIG } = await import('./dual-chain-service');
+
+    // Recommend chain for user (default to Base for hackathon)
+    const recommendedChain = recommendChainForUser({ isNewUser: true });
+    const chainConfig = CHAIN_CONFIG[recommendedChain];
+
+    // Set up provider and signer for the recommended chain
+    const provider = new ethers.JsonRpcProvider(chainConfig.rpcUrl, {
+      name: chainConfig.name,
+      chainId: chainConfig.id
+    });
+
+    const botPrivateKey = process.env.BOT_PRIVATE_KEY || process.env.PRIVATE_KEY;
+    if (!botPrivateKey) {
+      throw new Error('Bot private key not configured');
+    }
+
+    const botWallet = new ethers.Wallet(botPrivateKey, provider);
+
+    // Create prediction using dual-chain service
+    const result = await createChainPrediction(
+      recommendedChain,
+      {
+        title: predictionData.title || 'AI-Generated Prediction',
+        description: predictionData.description || predictionText,
+        targetDate: predictionData.targetDate || Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60), // 30 days from now
+        targetValue: predictionData.targetValue || 0,
+        category: predictionData.category || 3, // CUSTOM
+        network: predictionData.network || recommendedChain,
+        emoji: predictionData.emoji || '🔮',
+        autoResolvable: false
+      },
+      botWallet
+    );
+
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to create prediction');
+    }
+
+    console.log(`✅ Prediction created successfully on ${chainConfig.name}: ${result.txHash}`);
+
     return {
       status: 'success',
-      message: `Prediction "${predictionText}" proposed successfully with transaction hash: ${receipt.transactionHash}`,
-      transactionHash: receipt.transactionHash
+      message: `Prediction created successfully on ${chainConfig.name}! Transaction: ${result.txHash}`,
+      transactionHash: result.txHash,
+      chain: recommendedChain,
+      explorerUrl: `${chainConfig.blockExplorer}/tx/${result.txHash}`
     };
   } catch (error: any) {
-    console.error('Error proposing prediction to contract:', error);
+    console.error('Error creating prediction via dual-chain service:', error);
     return {
       status: 'error',
-      message: `Failed to propose prediction: ${error.message || 'Unknown error'}`
+      message: `Failed to create prediction: ${error.message || 'Unknown error'}`
     };
   }
 }

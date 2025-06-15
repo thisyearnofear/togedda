@@ -39,7 +39,7 @@
     "@divvi/referral-sdk": "^1.0.0",
     "@farcaster/auth-client": "^0.3.0",
     "@farcaster/frame-node": "^0.0.21",
-    "@farcaster/frame-sdk": "^0.0.61",
+    "@farcaster/frame-sdk": "^0.0.55",
     "@farcaster/frame-wagmi-connector": "^0.0.50",
     "@frames.js/debugger": "^0.5.0",
     "@langchain/core": "^0.3.29",

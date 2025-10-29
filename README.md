@@ -2,13 +2,15 @@
 
 ## 🏆 **Revolutionary Concept**
 
-**Togedda** is a platform for collective fitness goals that combines community challenges, prediction markets, and social interaction through blockchain technology. Users can participate in large-scale fitness challenges, make predictions about their performance, and interact with others through secure messaging.
+**Togedda** is evolving from a fitness-focused platform into a comprehensive **collective goals platform** that spans sports, creative pursuits, music, learning, and personal development. By integrating the Memory API, we create a unified identity graph that connects user achievements across all platforms and domains, enabling social reputation systems for real-world accomplishments.
 
 ### **Core Features**
-- **Collective Goals**: Community-wide fitness challenges with shared targets
-- **Prediction Markets**: Create and participate in fitness-related predictions
-- **Cross-Chain Fitness Tracking**: Record workouts across multiple blockchain networks
-- **XMTP Messaging**: Secure communication with AI-powered fitness assistant
+- **Collective Goals**: Community-wide challenges across fitness, sports, creative pursuits, and learning
+- **Prediction Markets**: Create and participate in achievement-based predictions with stake recovery
+- **Unified Identity Graph**: Cross-platform reputation using Memory API (wallet + Farcaster + Twitter + more)
+- **Cross-Chain Achievement Tracking**: Record accomplishments across multiple blockchain networks
+- **XMTP AI Assistant**: Natural language goal creation and social interaction
+- **Social Reputation System**: Follow-graph leaderboards and personality profile analysis
 
 ---
 
@@ -19,6 +21,7 @@ For detailed information about the project, please refer to the following docume
 - [Project Overview](./docs/PROJECT_OVERVIEW.md) - Complete overview of Togedda's features and concept
 - [Technical Details](./docs/TECHNICAL_DETAILS.md) - In-depth technical documentation and implementation details
 - [Deployment Report](./docs/DEPLOYMENT_REPORT.md) - Deployment success report and system specifications
+- [Roadmap](./docs/ROADMAP.md) - Vision for evolving into universal collective goals platform with Memory API integration
 
 ---
 
@@ -94,7 +97,10 @@ Your Togedda system is now **live and ready to use**:
 **Live Contract**: `0x89ED0a9739801634A61e791aB57ADc3298B685e9`  
 **BaseScan**: https://basescan.org/address/0x89ED0a9739801634A61e791aB57ADc3298B685e9#code  
 
-**The future of fitness-backed predictions is HERE! 💪**
+**The future of achievement-based social reputation is HERE! 🏆**
+
+**🚀 Next Phase**: Memory API integration for unified cross-platform identity and data monetization.</search>
+</search_and_replace>
 
 ---
 

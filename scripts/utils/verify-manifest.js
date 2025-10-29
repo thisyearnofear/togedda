@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Get the domain from command line arguments or use default
-const domain = process.argv[2] || 'imperfectminiapp.vercel.app';
+const domain = process.argv[2] || 'togedda.vercel.app';
 
 console.log(`Verifying Farcaster manifest for domain: ${domain}`);
 

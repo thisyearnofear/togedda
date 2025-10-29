@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     const manifest = JSON.parse(manifestData);
     
     // Get the domain from the request
-    const domain = req.headers.get('host') || 'imperfectminiapp.vercel.app';
+    const domain = req.headers.get('host') || 'togedda.vercel.app';
     const protocol = req.headers.get('x-forwarded-proto') || 'https';
     const baseUrl = `${protocol}://${domain}`;
     

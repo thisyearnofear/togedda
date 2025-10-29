@@ -1,14 +1,14 @@
-# 🔧 Technical Guide - SweatEquityBot
+# 🔧 Technical Documentation - Togedda
 
 ## Core Architecture
 
-### Smart Contract
+### Smart Contracts
 - **Language**: Solidity 0.8.20
 - **Security**: OpenZeppelin v5 (ReentrancyGuard, Ownable, ERC721)
 - **Network**: Base Mainnet (8453)
 - **Address**: `0x89ED0a9739801634A61e791aB57ADc3298B685e9`
 
-### Key Functions
+### Key Contracts
 ```solidity
 contract SweatEquityBot is ERC721, Ownable, ReentrancyGuard {
     uint256 public constant RECOVERABLE_PERCENT = 80;
@@ -42,6 +42,7 @@ export class SweatEquityBotService {
 ### Tech Stack
 - **Frontend**: Next.js 15, React 19, TypeScript
 - **Blockchain**: Wagmi v2, Viem, ethers.js
+- **Messaging**: XMTP V3 Node SDK
 - **AI**: AgentKit integration for autonomous verification
 - **Styling**: TailwindCSS with custom fitness theme
 
@@ -56,6 +57,50 @@ export class SweatEquityBotService {
 ### Exercise Types
 - **Type 0**: Pushups
 - **Type 1**: Squats
+
+## XMTP Integration
+
+### Messaging Features
+- **AI Assistant**: Natural language prediction creation
+- **Group Chats**: Community fitness challenges
+- **Secure Communication**: End-to-end encrypted messaging
+- **Real-time Notifications**: Progress updates and achievements
+
+### Key Components
+```typescript
+// lib/ai-bot-service.ts
+export async function initializeBotXMTPClient(
+  privateKey: string,
+  encryptionKey: string,
+  env: XmtpEnv = 'dev'
+): Promise<Client>;
+
+// hooks/use-xmtp-conversations.ts
+export function useXMTPConversations() {
+  // Manage user conversations
+}
+
+// hooks/use-real-time-messages.ts
+export function useRealTimeMessages() {
+  // Handle real-time message updates
+}
+```
+
+## Collective Goals System
+
+### Data Aggregation
+```typescript
+// lib/blockchain.ts
+export async function fetchAllNetworksData(forceRefresh = false): Promise<NetworkData>;
+
+export function calculateCollectiveGoals(allNetworksData: NetworkData): CollectiveGoals;
+```
+
+### Challenge Tracking
+- **Mount Olympus**: Community push-up challenge (291,700 target)
+- **Kenya Run**: Community squat challenge (1,030,000 target)
+- **Real-time Progress**: Live updating progress bars
+- **Network Contributions**: Per-chain participation tracking
 
 ## Testing
 

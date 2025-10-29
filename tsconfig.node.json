@@ -25,6 +25,6 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["lib/**/*", "scripts/**/*"],
+  "include": ["lib/**/*", "scripts/**/*", "scripts/**/*.ts"],
   "exclude": ["node_modules", "dist", ".next", "components", "pages", "public"]
 }

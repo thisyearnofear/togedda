@@ -19,6 +19,8 @@
 # misc
 .DS_Store
 *.pem
+.qodo
+.qoder
 
 # debug
 npm-debug.log*

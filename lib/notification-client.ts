@@ -1,14 +1,31 @@
 import { getUserNotificationDetails } from "@/lib/notifications";
-import {
-  FrameNotificationDetails,
-  type SendNotificationRequest,
-  sendNotificationResponseSchema,
-} from "@farcaster/frame-sdk";
 import { env } from "./env";
+
+// Types for Mini App notifications (adapted from frame SDK types)
+interface NotificationDetails {
+  token: string;
+  url: string;
+}
+
+interface SendNotificationRequest {
+  notificationId: string;
+  title: string;
+  body: string;
+  targetUrl: string;
+  tokens: string[];
+}
+
+interface SendNotificationResponse {
+  result: {
+    successfulTokens: string[];
+    rateLimitedTokens: string[];
+    invalidTokens: string[];
+  };
+}
 
 const appUrl = env.NEXT_PUBLIC_URL || "";
 
-type SendFrameNotificationResult =
+type SendMiniAppNotificationResult =
   | {
       state: "error";
       error: unknown;
@@ -26,8 +43,8 @@ export async function sendFrameNotification({
   fid: number;
   title: string;
   body: string;
-  notificationDetails?: FrameNotificationDetails | null;
-}): Promise<SendFrameNotificationResult> {
+  notificationDetails?: NotificationDetails | null;
+}): Promise<SendMiniAppNotificationResult> {
   if (!notificationDetails) {
     notificationDetails = await getUserNotificationDetails(fid);
   }
@@ -52,16 +69,17 @@ export async function sendFrameNotification({
   const responseJson = await response.json();
 
   if (response.status === 200) {
-    const responseBody = sendNotificationResponseSchema.safeParse(responseJson);
-    if (responseBody.success === false) {
-      return { state: "error", error: responseBody.error.errors };
-    }
+    try {
+      const responseBody = responseJson as SendNotificationResponse;
 
-    if (responseBody.data.result.rateLimitedTokens.length) {
-      return { state: "rate_limit" };
-    }
+      if (responseBody.result?.rateLimitedTokens?.length > 0) {
+        return { state: "rate_limit" };
+      }
 
-    return { state: "success" };
+      return { state: "success" };
+    } catch (error) {
+      return { state: "error", error: error };
+    }
   }
 
   return { state: "error", error: responseJson };

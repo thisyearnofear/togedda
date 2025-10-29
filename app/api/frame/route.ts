@@ -2,7 +2,7 @@ import { env } from "@/lib/env";
 import { NextRequest, NextResponse } from "next/server";
 
 // Mark this route as dynamic to avoid static optimization errors
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,15 +17,15 @@ export async function POST(req: NextRequest) {
         title: "Stay Hard",
         action: {
           type: "post_redirect",
-          url: appUrl
-        }
-      }
+          url: appUrl,
+        },
+      },
     });
   } catch (error) {
     console.error("Error in frame API:", error);
     return NextResponse.json(
       { error: (error as Error).message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

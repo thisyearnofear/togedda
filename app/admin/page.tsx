@@ -1,35 +1,19 @@
 import { Metadata } from "next";
-import { env } from "@/lib/env";
-
-const appUrl = env.NEXT_PUBLIC_URL;
+import { createMiniAppMetadata, MINIAPP_EMBEDS } from "@/lib/miniapp/metadata";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const frame = {
-    version: "next",
-    imageUrl: `${appUrl}/og.png`,
-    button: {
-      title: "Admin Panel",
-      action: {
-        type: "launch_frame",
-        name: "Imperfect Form",
-        url: `${appUrl}/admin`,
-        splashImageUrl: `${appUrl}/splash.png`,
-        splashBackgroundColor: "#000000",
-      },
-    },
-  };
-
   return {
-    title: "Imperfect Form Admin",
-    description: "Admin panel for Imperfect Form",
+    title: "Admin Panel - Imperfect Form",
+    description: "Administrative controls for Imperfect Form",
     openGraph: {
-      title: "Imperfect Form Admin",
-      description: "Admin panel for Imperfect Form",
-      images: [{ url: `${appUrl}/og.png` }],
+      title: "Admin Panel - Imperfect Form",
+      description: "Administrative controls for fitness tracking",
     },
-    other: {
-      "fc:frame": JSON.stringify(frame),
-    },
+    other: createMiniAppMetadata({
+      title: "Admin Panel",
+      name: "Imperfect Form - Admin",
+      url: `${process.env.NEXT_PUBLIC_URL}/admin`,
+    }),
   };
 }
 

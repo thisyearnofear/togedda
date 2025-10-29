@@ -1,45 +1,33 @@
 import App from "@/components/Home";
 import { env } from "@/lib/env";
 import { Metadata } from "next";
+import { createMiniAppMetadata } from "@/lib/miniapp/metadata";
 
 const appUrl = env.NEXT_PUBLIC_URL;
 
 export async function generateMetadata({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }): Promise<Metadata> {
   const { id } = await params;
 
   const imageUrl = new URL(`${appUrl}/api/og/example/${id}`);
 
-  const frame = {
-    version: "next",
-    imageUrl: imageUrl.toString(),
-    button: {
-      title: "Stay Hard",
-      action: {
-        type: "launch_frame",
-        name: "Imperfect Form",
-        url: appUrl,
-        splashImageUrl: `${appUrl}/splash.png`,
-        splashBackgroundColor: "#000000",
-      },
-    },
-  };
-
   return {
-    title: "Mini App Starter",
+    title: `Imperfect Form - Example ${id}`,
+    description: `Dynamic example page ${id}`,
     openGraph: {
-      title: "Mini App Starter",
-      description: "Mini App Next Template",
+      title: `Imperfect Form - Example ${id}`,
+      description: `Dynamic example page ${id}`,
       images: [{ url: imageUrl.toString() }],
     },
-    other: {
-      "fc:frame": JSON.stringify(frame),
-    },
+    other: createMiniAppMetadata({
+      title: "Stay Hard",
+      name: "Imperfect Form",
+      url: appUrl,
+      imageUrl: imageUrl.toString(),
+    }),
   };
 }
 

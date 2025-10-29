@@ -7,7 +7,24 @@ import { createPublicClient, http } from "viem";
 import { optimism } from "viem/chains";
 
 // Mark this route as dynamic to avoid static optimization errors
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
+
+// Mini App webhook event types
+interface MiniAppWebhookEvent {
+  type:
+    | "miniapp_added"
+    | "miniapp_removed"
+    | "notifications_enabled"
+    | "notifications_disabled";
+  data: {
+    fid: number;
+    notificationDetails?: {
+      token: string;
+      url: string;
+    };
+    [key: string]: any;
+  };
+}
 
 const KEY_REGISTRY_ADDRESS = "0x00000000Fc1237824fb747aBDE0FF18990E59b7e";
 
@@ -73,16 +90,20 @@ export async function POST(request: Request) {
   if (!valid) {
     return Response.json(
       { success: false, error: "Invalid FID ownership" },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
-  switch (event.event) {
+  // Handle both legacy frame events and new miniapp events
+  const eventType = event.event || event.type;
+
+  switch (eventType) {
     case "frame_added":
+    case "miniapp_added":
       console.log(
-        "frame_added",
+        `${eventType}`,
         "event.notificationDetails",
-        event.notificationDetails
+        event.notificationDetails,
       );
       if (event.notificationDetails) {
         await setUserNotificationDetails(fid, event.notificationDetails);
@@ -92,12 +113,13 @@ export async function POST(request: Request) {
           body: `Track your fitness goals across blockchain networks!`,
         });
       } else {
-        await deleteUserNotificationDetails(fid);
+        console.log("no notification details found");
       }
 
       break;
-    case "frame_removed": {
-      console.log("frame_removed");
+    case "frame_removed":
+    case "miniapp_removed": {
+      console.log(`${eventType}`);
       await deleteUserNotificationDetails(fid);
       break;
     }
@@ -115,9 +137,11 @@ export async function POST(request: Request) {
     case "notifications_disabled": {
       console.log("notifications_disabled");
       await deleteUserNotificationDetails(fid);
-
       break;
     }
+    default:
+      console.log("unhandled event", eventType, event);
+      break;
   }
 
   return Response.json({ success: true });

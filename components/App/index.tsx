@@ -2,6 +2,7 @@
 
 import { Suspense, useState, useEffect } from "react";
 import DebugFallback from "@/components/DebugFallback";
+import MiniAppWrapper from "@/components/MiniAppWrapper";
 
 // Simple loading component
 function LoadingScreen() {
@@ -58,8 +59,10 @@ function HomeWithErrorBoundary() {
 
 export default function App() {
   return (
-    <Suspense fallback={<LoadingScreen />}>
-      <HomeWithErrorBoundary />
-    </Suspense>
+    <MiniAppWrapper>
+      <Suspense fallback={<LoadingScreen />}>
+        <HomeWithErrorBoundary />
+      </Suspense>
+    </MiniAppWrapper>
   );
 }

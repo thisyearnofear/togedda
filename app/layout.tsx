@@ -109,9 +109,9 @@ export const metadata: Metadata = {
 
   // PWA and other metadata
   other: {
-    // Farcaster Frame Embed
-    "fc:frame":
-      '{"version":"next","imageUrl":"https://togedda.vercel.app/og.png","button":{"title":"Stay Hard","action":{"type":"launch_frame","name":"Imperfect Form","url":"https://togedda.vercel.app","splashImageUrl":"https://togedda.vercel.app/splash.png","splashBackgroundColor":"#000000"}}}',
+    // Farcaster Mini App Embed
+    "fc:miniapp":
+      '{"version":"1","imageUrl":"https://togedda.vercel.app/og.png","button":{"title":"Stay Hard","action":{"type":"launch_frame","name":"Imperfect Form","url":"https://togedda.vercel.app","splashImageUrl":"https://togedda.vercel.app/splash.png","splashBackgroundColor":"#000000"}}}',
 
     // PWA related
     "mobile-web-app-capable": "yes",
@@ -182,18 +182,18 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <meta httpEquiv="X-Content-Type-Options" content="nosniff" />
         <meta httpEquiv="X-XSS-Protection" content="1; mode=block" />
 
-        {/* Farcaster Frame Embed - Single meta tag with JSON */}
+        {/* Farcaster Mini App Embed - Single meta tag with JSON */}
         <meta
-          name="fc:frame"
-          content='{"version":"next","imageUrl":"https://togedda.vercel.app/og.png","button":{"title":"Stay Hard","action":{"type":"launch_frame","name":"Imperfect Form","url":"https://togedda.vercel.app","splashImageUrl":"https://togedda.vercel.app/splash.png","splashBackgroundColor":"#000000"}}}'
+          name="fc:miniapp"
+          content='{"version":"1","imageUrl":"https://togedda.vercel.app/og.png","button":{"title":"Stay Hard","action":{"type":"launch_frame","name":"Imperfect Form","url":"https://togedda.vercel.app","splashImageUrl":"https://togedda.vercel.app/splash.png","splashBackgroundColor":"#000000"}}}'
         />
       </head>
 
       <body
         className={`
-          ${pressStart2P.className} 
-          bg-black text-white 
-          antialiased 
+          ${pressStart2P.className}
+          bg-black text-white
+          antialiased
           overflow-x-hidden
           min-h-screen
         `}

@@ -5,8 +5,8 @@ import { z } from "zod";
 export const env = createEnv({
   server: {
     // Required server variables
-    NEYNAR_API_KEY: z.string().min(1),
-    JWT_SECRET: z.string().min(1),
+    NEYNAR_API_KEY: z.string().min(1).optional(),
+    JWT_SECRET: z.string().min(1).optional(),
     
     // Optional server variables
     REDIS_URL: z.string().optional(),
@@ -37,13 +37,13 @@ export const env = createEnv({
   },
   client: {
     // Required client variables
-    NEXT_PUBLIC_URL: z.string().url(),
-    NEXT_PUBLIC_MINIKIT_PROJECT_ID: z.string().min(1),
-    
+    NEXT_PUBLIC_URL: z.string().url().default("http://localhost:3000"),
+    NEXT_PUBLIC_MINIKIT_PROJECT_ID: z.string().min(1).default("togedda"),
+
     // Farcaster manifest variables (required for account association)
-    NEXT_PUBLIC_FARCASTER_HEADER: z.string().min(1),
-    NEXT_PUBLIC_FARCASTER_PAYLOAD: z.string().min(1),
-    NEXT_PUBLIC_FARCASTER_SIGNATURE: z.string().min(1),
+    NEXT_PUBLIC_FARCASTER_HEADER: z.string().min(1).default("default_header"),
+    NEXT_PUBLIC_FARCASTER_PAYLOAD: z.string().min(1).default("default_payload"),
+    NEXT_PUBLIC_FARCASTER_SIGNATURE: z.string().min(1).default("default_signature"),
     
     // WalletConnect configuration (optional for web app wallet connections)
     NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: z.string().optional(),

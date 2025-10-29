@@ -25,9 +25,9 @@ export async function GET(req: NextRequest) {
     const response = await fetch(
       `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`,
       {
-        headers: {
-          "x-api-key": env.NEYNAR_API_KEY,
-        },
+        headers: env.NEYNAR_API_KEY ? {
+        "x-api-key": env.NEYNAR_API_KEY,
+        } : {},
       }
     );
 

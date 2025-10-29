@@ -18,7 +18,7 @@ export const fetchUser = async (fid: string): Promise<NeynarUser> => {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': env.NEYNAR_API_KEY,
+          ...(env.NEYNAR_API_KEY ? { 'x-api-key': env.NEYNAR_API_KEY } : {}),
         },
       }
     );

@@ -6,7 +6,7 @@
  * This script helps set up and test the enhanced message store with PostgreSQL and Redis
  */
 
-import { enhancedMessageStore } from '../lib/enhanced-message-store';
+import { enhancedMessageStore } from '../../lib/enhanced-message-store';
 import { config } from 'dotenv';
 
 // Load environment variables

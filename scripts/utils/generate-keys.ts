@@ -6,7 +6,7 @@
  */
 
 import { config } from 'dotenv';
-import { generateXMTPKeys } from '../lib/xmtp-helpers';
+import { generateXMTPKeys } from '../../lib/xmtp-helpers';
 
 // Load environment variables
 config({ path: '.env.local' });

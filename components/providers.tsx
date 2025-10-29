@@ -11,7 +11,7 @@ import "@neynar/react/dist/style.css";
 import dynamic from "next/dynamic";
 import { ReactNode, useState, useEffect } from "react";
 import { createConfig, http, WagmiProvider } from "wagmi";
-import { farcasterFrame } from "@farcaster/frame-wagmi-connector";
+import { farcasterMiniApp } from "@farcaster/miniapp-wagmi-connector";
 import {
   injected,
   walletConnect,
@@ -65,7 +65,7 @@ const handleWalletConflicts = () => {
 const createConnectors = () => {
   const connectors = [
     // Farcaster Frame connector for mini app context
-    farcasterFrame(),
+    farcasterMiniApp(),
 
     // Web wallet connectors for standalone web app usage
     metaMask({

@@ -79,7 +79,7 @@ export async function processMessageDirect(
     // Handle live markets query
     if (lowerMessage.includes('live') && (lowerMessage.includes('market') || lowerMessage.includes('prediction'))) {
       try {
-        const { getMarketSummaryForBot } = await import('./contract-data-service');
+        const { getMarketSummaryForBot } = await import('./services/contract-data-service');
         response = await getMarketSummaryForBot();
         source = 'enhanced_live_markets_direct';
         
@@ -98,7 +98,7 @@ export async function processMessageDirect(
     // Handle network stats query
     else if (lowerMessage.includes('network stat') || lowerMessage.includes('fitness stat') || lowerMessage.includes('how many')) {
       try {
-        const { getNetworkStatsForBot } = await import('./contract-data-service');
+        const { getNetworkStatsForBot } = await import('./services/contract-data-service');
         response = await getNetworkStatsForBot();
         source = 'network_stats_direct';
         

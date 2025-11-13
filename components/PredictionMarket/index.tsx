@@ -34,7 +34,7 @@ import {
 import { WarpcastWallet } from "@/components/WarpcastWallet";
 import ChatInterface from "./ChatInterface";
 import TransactionSuccessModal from "./TransactionSuccessModal";
-import { type SupportedChain, CHAIN_CONFIG } from "@/lib/dual-chain-service";
+import { type SupportedChain, CHAIN_CONFIG } from "@/lib/services/dual-chain-service";
 import { predictionMarketABI } from "@/lib/constants";
 
 const PredictionMarket: React.FC = () => {

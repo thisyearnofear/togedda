@@ -5,7 +5,7 @@
  */
 
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getAllChainPredictions } from '@/lib/dual-chain-service';
+import { getAllChainPredictions } from '@/lib/services/dual-chain-service';
 
 interface PredictionStatsResponse {
   success: boolean;

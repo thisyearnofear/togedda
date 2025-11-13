@@ -135,7 +135,7 @@ export default function Leaderboard({
     try {
       if (!userPosition) return;
 
-      const { sdk } = await import("@farcaster/frame-sdk");
+      const { sdk } = await import("@farcaster/miniapp-sdk");
       const appUrl = process.env.NEXT_PUBLIC_URL || "https://imperfectform.fun";
 
       // Create a more engaging message

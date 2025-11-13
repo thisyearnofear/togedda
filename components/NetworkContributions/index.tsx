@@ -4,6 +4,7 @@ import { NetworkData, getNetworkContributions } from "@/lib/blockchain";
 import { NETWORK_COLORS } from "@/lib/constants";
 import { formatNumber, getNetworkName } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import { useApiQuery } from "@/hooks/use-api-query";
 
 interface SportsData {
   pushups?: number;
@@ -41,8 +42,13 @@ export default function NetworkContributions({
     pushups: Record<string, { count: number; percentage: number }>;
     squats: Record<string, { count: number; percentage: number }>;
   } | null>(null);
-  const [sportsData, setSportsData] = useState<CrossPlatformData | null>(null);
-  const [sportsLoading, setSportsLoading] = useState(true);
+
+  const { data: apiResponse, isLoading: sportsLoading } = useApiQuery<{ success: boolean; data: CrossPlatformData }>({
+    url: '/api/sports-central',
+    queryKey: ['sports-central'],
+  });
+
+  const sportsData = apiResponse?.success ? apiResponse.data : null;
 
   useEffect(() => {
     if (!isLoading && data) {
@@ -50,26 +56,6 @@ export default function NetworkContributions({
       setContributions(networkContributions);
     }
   }, [data, isLoading]);
-
-  // Fetch Sports Central data (cross-platform sports platforms)
-  useEffect(() => {
-    const fetchSportsData = async () => {
-      try {
-        setSportsLoading(true);
-        const response = await fetch('/api/sports-central');
-        const result = await response.json();
-        if (result.success) {
-          setSportsData(result.data);
-        }
-      } catch (err) {
-        console.error('Error fetching sports data:', err);
-      } finally {
-        setSportsLoading(false);
-      }
-    };
-
-    fetchSportsData();
-  }, []);
 
   if (isLoading || !contributions) {
     return (

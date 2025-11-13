@@ -116,7 +116,7 @@ const nextConfig = {
 
   // Experimental features for better performance
   experimental: {
-    optimizePackageImports: ["@farcaster/frame-sdk", "@coinbase/onchainkit"],
+    optimizePackageImports: ["@farcaster/miniapp-sdk", "@coinbase/onchainkit"],
     webVitalsAttribution: ["CLS", "LCP"],
   },
 

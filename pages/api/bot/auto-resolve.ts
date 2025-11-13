@@ -20,7 +20,7 @@ export default async function handler(
       "../../../lib/agentkit-integration"
     );
     const { getAllChainPredictions } = await import(
-      "../../../lib/dual-chain-service"
+      "../../../lib/services/dual-chain-service"
     );
 
     // Get all predictions that might need resolution

@@ -3,7 +3,7 @@
  * Handles costs for creating and participating in predictions
  */
 
-import { CHAIN_CONFIG, type SupportedChain } from './dual-chain-service';
+import { CHAIN_CONFIG, type SupportedChain } from './services/dual-chain-service';
 
 export interface PredictionCosts {
   creation: {

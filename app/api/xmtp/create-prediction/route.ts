@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ethers } from 'ethers';
-import { createChainPrediction, SupportedChain, CHAIN_CONFIG } from '@/lib/dual-chain-service';
+import { createChainPrediction, SupportedChain, CHAIN_CONFIG } from '@/lib/services/dual-chain-service';
 import { CreatePredictionRequest } from '@/lib/xmtp-prediction-helpers';
 
 /**

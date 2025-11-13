@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { CHAIN_CONFIG, type SupportedChain, getStakingRecommendations } from "@/lib/dual-chain-service";
+import { CHAIN_CONFIG, type SupportedChain, getStakingRecommendations } from "@/lib/services/dual-chain-service";
 import { useSwitchChain, useChainId } from "wagmi";
 import { toast } from "react-hot-toast";
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchAllNetworksDataServer, NetworkData } from "@/lib/blockchain-server";
+import { fetchAllNetworksDataServer, NetworkData } from "@/lib/services/blockchain-server";
 import { MOUNT_OLYMPUS_GOAL, KENYA_RUN_GOAL } from "@/lib/constants";
 
 // Mark this route as dynamic to avoid static optimization errors

@@ -15,7 +15,7 @@ import {
 } from './external-data-service';
 import { parseNaturalDate } from './timezone-service';
 import { predictionMarketABI } from '../constants';
-import { getChainPrediction, getAllChainPredictions, CHAIN_CONFIG } from '../dual-chain-service';
+import { getChainPrediction, getAllChainPredictions, CHAIN_CONFIG } from './dual-chain-service';
 
 // Types for prediction resolution
 export interface ResolutionResult {

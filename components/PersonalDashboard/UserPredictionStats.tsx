@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useAccount } from "wagmi";
 import { useUserVotes } from "@/hooks/use-prediction-queries";
 import { useAppUser, useAppEnvironment } from "@/contexts/unified-app-context";
-import { CHAIN_CONFIG, type SupportedChain } from "@/lib/dual-chain-service";
+import { CHAIN_CONFIG, type SupportedChain } from "@/lib/services/dual-chain-service";
 import { formatDistanceToNow } from "date-fns";
 import {
   FaArrowUp,

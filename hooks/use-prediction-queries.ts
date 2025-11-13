@@ -5,7 +5,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAccount } from 'wagmi';
-import { type ChainPrediction } from '@/lib/dual-chain-service';
+import { type ChainPrediction } from '@/lib/services/dual-chain-service';
 import { type Prediction } from '@/lib/prediction-market-v2';
 import { sendMessageToBot, getBotStatus } from '@/components/PredictionMarket/XMTPIntegration';
 import { useChainContracts } from './use-chain-contracts';

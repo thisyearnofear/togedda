@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getBotStatus } from "@/lib/bot-service-client";
+import { getBotStatus } from "@/lib/services/bot-service-client";
 
 /**
  * API endpoint to get XMTP bot status

@@ -5,7 +5,7 @@
  * IMPORTANT: The XMTP Node SDK (@xmtp/node-sdk) is server-side only and cannot be used in Next.js frontend.
  * This file provides frontend utilities and API endpoints for communicating with the backend bot service.
  *
- * The actual XMTP bot logic is in lib/ai-bot-service.ts (server-side only).
+ * The actual XMTP bot logic is in lib/services/ai-bot-service.ts (server-side only).
  */
 
 // Frontend utilities for XMTP bot communication
@@ -47,11 +47,21 @@ export async function sendMessageToBot(message: string, userAddress: string, con
   }
 }
 
+import { isDevelopment } from '@/lib/env';
+
 /**
  * Get bot status and information
  * @returns Promise with bot status
  */
 export async function getBotStatus(): Promise<{ online: boolean; address: string; environment: string }> {
+  if (isDevelopment) {
+    console.log("Skipping bot status check in development mode.");
+    return {
+      online: false,
+      address: 'Unknown',
+      environment: 'development'
+    };
+  }
   try {
     const response = await fetch('/api/xmtp/bot-status');
 
@@ -128,7 +138,7 @@ export async function getConversationHistory(userAddress: string): Promise<Array
  * Note: This frontend integration communicates with the XMTP bot via API endpoints.
  *
  * The actual XMTP V3 Node SDK integration is in:
- * - lib/ai-bot-service.ts (server-side bot logic)
+ * - lib/services/ai-bot-service.ts (server-side bot logic)
  * - pages/api/xmtp/* (API endpoints for frontend communication)
  *
  * Frontend responsibilities:

@@ -68,7 +68,7 @@ export class SweatEquityBotService {
 
 ### Key Components
 ```typescript
-// lib/ai-bot-service.ts
+// lib/services/ai-bot-service.ts
 export async function initializeBotXMTPClient(
   privateKey: string,
   encryptionKey: string,

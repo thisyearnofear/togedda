@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { ethers } from 'ethers';
-import { CHAIN_CONFIG } from '@/lib/dual-chain-service';
+import { CHAIN_CONFIG } from '@/lib/services/dual-chain-service';
 import { unifiedPredictionMarketABI } from '@/lib/unified-prediction-market-abi';
 
 /**

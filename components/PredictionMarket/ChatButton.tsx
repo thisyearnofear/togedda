@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { FaRobot, FaCircle } from "react-icons/fa";
+import { useApiQuery } from "@/hooks/use-api-query";
 
 interface ChatButtonProps {
   onOpenChat: () => void;
@@ -15,29 +16,14 @@ interface BotStatus {
 }
 
 const ChatButton: React.FC<ChatButtonProps> = ({ onOpenChat, className = "" }) => {
-  const [botStatus, setBotStatus] = useState<BotStatus | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: botStatus, isLoading, error } = useApiQuery<BotStatus>({
+    url: '/api/xmtp/bot-status',
+    queryKey: ['bot-status'],
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+  });
 
-  useEffect(() => {
-    // Lazy load bot status check - only when component mounts
-    const checkBotStatus = async () => {
-      try {
-        // Dynamic import to avoid loading XMTP code until needed
-        const { getBotStatus } = await import('./XMTPIntegration');
-        const status = await getBotStatus();
-        setBotStatus(status);
-      } catch (error) {
-        console.error('Failed to check bot status:', error);
-        setBotStatus({ online: false, address: 'Unknown', environment: 'Unknown' });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    // Only check status when user is likely to interact
-    const timer = setTimeout(checkBotStatus, 1000);
-    return () => clearTimeout(timer);
-  }, []);
+  const status = botStatus || { online: false, address: 'Unknown', environment: 'Unknown' };
 
   const handleClick = () => {
     // Track engagement

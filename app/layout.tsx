@@ -1,5 +1,5 @@
 import { CriticalErrorBoundary } from "@/components/ErrorBoundary";
-import Providers from "@/components/providers";
+import ClientProviders from "@/components/ClientProviders";
 import WebAppInstallPrompt from "@/components/WebAppInstallPrompt";
 import OfflineIndicator from "@/components/OfflineIndicator";
 import EnvCheck from "@/components/EnvCheck";
@@ -199,7 +199,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         `}
       >
         <CriticalErrorBoundary>
-          <Providers>
+          <ClientProviders>
             {/* Skip to main content for accessibility */}
             <a
               href="#main-content"
@@ -229,7 +229,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 </div>
               </div>
             )}
-          </Providers>
+          </ClientProviders>
         </CriticalErrorBoundary>
 
         {/* Wallet conflict handling script */}

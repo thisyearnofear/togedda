@@ -732,7 +732,7 @@ Ready to create your prediction?`;
         console.log("⚡ Using gasless transaction via CDP...");
 
         // Get contract address for Base Sepolia
-        const { CHAIN_CONFIG } = await import("./dual-chain-service");
+        const { CHAIN_CONFIG } = await import("./services/dual-chain-service");
         const contractAddress = CHAIN_CONFIG.base.contractAddress;
 
         // Prepare function arguments with proper type conversions
@@ -790,7 +790,7 @@ Ready to create your prediction?`;
         console.log("💰 Using regular transaction...");
 
         // Import dual-chain service for regular transactions
-        const { createChainPrediction } = await import("./dual-chain-service");
+        const { createChainPrediction } = await import("./services/dual-chain-service");
         const { ethers } = await import("ethers");
 
         // Create provider and signer

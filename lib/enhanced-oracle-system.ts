@@ -4,7 +4,7 @@
  */
 
 import { ethers } from 'ethers';
-import { CHAIN_CONFIG, type SupportedChain } from '@/lib/dual-chain-service';
+import { CHAIN_CONFIG, type SupportedChain } from '@/lib/services/dual-chain-service';
 import { unifiedPredictionMarketABI } from '@/lib/unified-prediction-market-abi';
 
 // Interface for verification result

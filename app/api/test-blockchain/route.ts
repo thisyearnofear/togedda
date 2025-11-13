@@ -3,7 +3,7 @@ import {
   fetchAllNetworksDataServer, 
   getAddressFitnessDataServer,
   getMultiAddressFitnessDataServer 
-} from "@/lib/blockchain-server";
+} from "@/lib/services/blockchain-server";
 
 // Mark this route as dynamic to avoid static optimization errors
 export const dynamic = 'force-dynamic';

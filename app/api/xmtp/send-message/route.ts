@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sendMessageToBot } from "@/lib/bot-service-client";
+import { sendMessageToBot } from "@/lib/services/bot-service-client";
 
 /**
  * API endpoint to send a message to the XMTP bot

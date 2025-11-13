@@ -390,7 +390,7 @@ export default function PersonalDashboard({
 
     try {
       // Import the SDK dynamically to avoid SSR issues
-      const { sdk } = await import("@farcaster/frame-sdk");
+      const { sdk } = await import("@farcaster/miniapp-sdk");
       const appUrl = process.env.NEXT_PUBLIC_URL || "https://imperfectform.fun";
 
       // Create a cast with the stats information using derived fitness values

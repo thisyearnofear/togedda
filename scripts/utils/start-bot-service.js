@@ -54,7 +54,7 @@ const botProcess = spawn('npx', [
   'ts-node',
   '--project', 'tsconfig.node.json',
   '--transpile-only', // Skip type checking for faster startup
-  'lib/ai-bot-service.ts'
+  'lib/services/ai-bot-service.ts'
 ], {
   stdio: 'inherit',
   env: {

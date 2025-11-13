@@ -9,7 +9,7 @@ import {
   getChainFeeInfo,
   getAllChainPredictions,
   type SupportedChain
-} from '@/lib/dual-chain-service';
+} from '@/lib/services/dual-chain-service';
 
 /**
  * Hook for chain-aware contract operations

@@ -4,7 +4,7 @@
  */
 
 import { getChainName, getChainSwitchInfo, getExplorerUrl } from "@/lib/config/chains";
-import { CHAIN_CONFIG } from "@/lib/dual-chain-service";
+import { CHAIN_CONFIG } from "@/lib/services/dual-chain-service";
 
 /**
  * Check if a chain ID is supported by our prediction markets

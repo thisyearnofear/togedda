@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAccount } from 'wagmi';
 import { FaArrowUp, FaArrowDown, FaShare, FaFireAlt, FaGlobe } from 'react-icons/fa';
 import { formatDistanceToNow } from 'date-fns';
-import { ChainPrediction, CHAIN_CONFIG, getStakingRecommendations } from '@/lib/dual-chain-service';
+import { ChainPrediction, CHAIN_CONFIG, getStakingRecommendations } from '@/lib/services/dual-chain-service';
 import { useChainContracts } from '@/hooks/use-chain-contracts';
 import { calculateOdds } from '@/lib/prediction-market-v2';
 

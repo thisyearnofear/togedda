@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { useCrossPlatformPredictions } from '@/hooks/use-prediction-queries';
 import CrossPlatformPredictionCard from '@/components/PredictionMarket/CrossPlatformPredictionCard';
-import { ChainPrediction } from '@/lib/dual-chain-service';
+import { ChainPrediction } from '@/lib/services/dual-chain-service';
 
 // Define types for sports data
 interface SportsData {

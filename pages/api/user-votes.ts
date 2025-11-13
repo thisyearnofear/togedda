@@ -4,7 +4,7 @@
  */
 
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getAllChainPredictions } from '@/lib/dual-chain-service';
+import { getAllChainPredictions } from '@/lib/services/dual-chain-service';
 
 interface UserVote {
   predictionId: number;
@@ -72,7 +72,7 @@ export default async function handler(
     for (const prediction of predictions) {
       try {
         // Import the dual-chain service to get the correct contract
-        const { getChainContract } = await import('@/lib/dual-chain-service');
+        const { getChainContract } = await import('@/lib/services/dual-chain-service');
         const contract = getChainContract(prediction.chain);
 
         // Get user's vote for this prediction

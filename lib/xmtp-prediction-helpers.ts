@@ -3,7 +3,7 @@
  * Utilities for parsing and formatting prediction data from XMTP messages
  */
 
-import { SupportedChain } from './dual-chain-service';
+import { SupportedChain } from './services/dual-chain-service';
 
 export interface CreatePredictionRequest {
   title: string;

@@ -35,7 +35,7 @@ import {
   CHAIN_CONFIG,
   type SupportedChain,
   getStakingRecommendations,
-} from "@/lib/dual-chain-service";
+} from "@/lib/services/dual-chain-service";
 
 interface ChainAwarePredictionCardProps {
   prediction: Prediction;
@@ -238,7 +238,7 @@ const ChainAwarePredictionCard: React.FC<ChainAwarePredictionCardProps> = ({
   const handleShare = async () => {
     try {
       // Import the SDK dynamically to avoid SSR issues
-      const { sdk } = await import("@farcaster/frame-sdk");
+      const { sdk } = await import("@farcaster/miniapp-sdk");
 
       const shareText = `I just ${
         userVote?.isYes ? "backed YES" : "backed NO"

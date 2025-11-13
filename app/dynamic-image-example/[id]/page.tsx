@@ -15,10 +15,10 @@ export async function generateMetadata({
   const imageUrl = new URL(`${appUrl}/api/og/example/${id}`);
 
   return {
-    title: `Imperfect Form - Example ${id}`,
+    title: `Togedda - Example ${id}`,
     description: `Dynamic example page ${id}`,
     openGraph: {
-      title: `Imperfect Form - Example ${id}`,
+      title: `Togedda - Example ${id}`,
       description: `Dynamic example page ${id}`,
       images: [{ url: imageUrl.toString() }],
     },

@@ -14,7 +14,7 @@ function MiniAppLoadingScreen() {
       <div className="text-center">
         <div className="text-2xl mb-4 animate-pulse">🏃‍♂️</div>
         <div className="text-lg">Initializing Mini App...</div>
-        <div className="text-sm text-gray-400 mt-2">Loading Imperfect Form</div>
+        <div className="text-sm text-gray-400 mt-2">Loading Togedda</div>
       </div>
     </div>
   );

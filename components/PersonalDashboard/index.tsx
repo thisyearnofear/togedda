@@ -405,7 +405,7 @@ export default function PersonalDashboard({
         }
       }
 
-      const castText = `My fitness stats on Imperfect Form:\n\n${fitnessPushups} Push-ups\n${fitnessSquats} Squats\n${totalExercises} Total${streakInfo}\n\nStay Hard! 💪`;
+      const castText = `My fitness stats on Togedda (via Imperfect Form):\n\n${fitnessPushups} Push-ups\n${fitnessSquats} Squats\n${totalExercises} Total${streakInfo}\n\nStay Hard! 💪`;
 
       // Share to Farcaster using composeCast
       await sdk.actions.composeCast({

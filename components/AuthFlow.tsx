@@ -192,20 +192,18 @@ export default function AuthFlow({
   );
 
   const handleNeynarAuthSuccess = useCallback(
-    async (user: any) => {
+    (user: any) => {
       try {
-        setIsAuthenticating(true);
         console.log(
           "[AuthFlow] Neynar auth success:",
           user ? { fid: user.fid, username: user.username } : null
         );
 
-        // Simply store user data locally - no server-side session needed
+        // Store user data locally for persistence
         setNeynarUser(user);
         setSelectedMethod("farcaster");
         setAuthError(null);
 
-        // Store in localStorage for persistence
         if (typeof window !== "undefined") {
           localStorage.setItem("neynar_user", JSON.stringify(user));
           localStorage.setItem("neynar_auth_timestamp", Date.now().toString());
@@ -222,8 +220,6 @@ export default function AuthFlow({
         if (onAuthError) {
           onAuthError(errorMessage);
         }
-      } finally {
-        setIsAuthenticating(false);
       }
     },
     [onAuthSuccess, onAuthError]
@@ -318,21 +314,9 @@ export default function AuthFlow({
 
           {/* Web App Authentication Options */}
           <WebAppOnly>
-            <div className="space-y-4 max-w-sm mx-auto">
-              {/* Authentication method explanation */}
-              <div className="text-center text-sm text-gray-400">
-                <p>
-                  Connect with Farcaster for social features or wallet for
-                  trading:
-                </p>
-              </div>
-
+            <div className="space-y-3 max-w-sm mx-auto">
               {/* Farcaster Authentication */}
-              <div className="space-y-2">
-                <div className="text-xs text-gray-500 text-center">
-                  🟣 <strong>Recommended:</strong> Full social features &
-                  streaks
-                </div>
+              <div>
                 <NeynarSIWN
                   onAuthSuccess={handleNeynarAuthSuccess}
                   onAuthError={handleNeynarAuthError}
@@ -347,17 +331,13 @@ export default function AuthFlow({
                 </div>
                 <div className="relative flex justify-center text-xs">
                   <span className="bg-black px-2 text-gray-400">
-                    or connect wallet
+                    or
                   </span>
                 </div>
               </div>
 
               {/* Wallet Connection Options */}
               <div className="space-y-2">
-                <div className="text-xs text-gray-500 text-center">
-                  👛 <strong>For trading:</strong> Required for prediction
-                  markets
-                </div>
                 {connectors
                   .filter((connector) => connector.id !== "farcasterFrame") // Exclude frame connector in web app
                   .map((connector) => (
@@ -375,15 +355,6 @@ export default function AuthFlow({
                       disabled={isLoading}
                     />
                   ))}
-              </div>
-
-              {/* Help text */}
-              <div className="text-xs text-gray-500 text-center space-y-1">
-                <p>
-                  💡 <strong>Tip:</strong> You can connect both for the full
-                  experience
-                </p>
-                <p>Farcaster for social features + Wallet for trading</p>
               </div>
             </div>
           </WebAppOnly>

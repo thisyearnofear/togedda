@@ -9,14 +9,14 @@ interface WarpcastWalletProps {
   children: React.ReactNode;
 }
 
-const WarpcastWallet = ({ children }: { children: React.ReactNode }) => {
+const WarpcastWallet = ({ children }: WarpcastWalletProps) => {
   const { isConnected, address } = useAccount();
   const { connect, connectors } = useConnect();
   const { mode, isFarcasterEnvironment, canUseMiniKitFeatures } =
     useAppEnvironment();
-  const [isWarpcastAvailable, setIsWarpcastAvailable] = useState<
-    boolean | null
-  >(null);
+  const [isWarpcastAvailable, setIsWarpcastAvailable] = useState<boolean | null>(
+    null
+  );
   const [showWalletOptions, setShowWalletOptions] = useState(false);
 
   // Check if we're in the Warpcast environment
@@ -78,24 +78,28 @@ const WarpcastWallet = ({ children }: { children: React.ReactNode }) => {
   // For web app users, show wallet connection options instead of blocking
   if (isWarpcastAvailable === false && mode === "webapp") {
     return (
-      <div className="space-y-4 flex flex-col justify-center items-center">
+      <div className="space-y-4">
         {!isConnected && (
-          <div className="p-4 bg-blue-900 bg-opacity-20 border border-blue-800 rounded-lg mb-4 w-full max-w-md">
-            <div className="flex flex-col items-center text-center">
-              <FaWallet className="text-blue-400 mb-3 flex-shrink-0 text-xl" />
+          <div className="p-4 bg-blue-900 bg-opacity-20 border border-blue-800 rounded-lg mb-4">
+            <div className="flex items-start">
+              <FaWallet className="text-blue-400 mr-3 mt-1 flex-shrink-0" />
               <div className="flex-1">
+                <h3 className="text-lg font-bold text-blue-300 mb-2">
+                  Connect Wallet to Use Predictions
+                </h3>
                 <p className="text-sm text-blue-200 mb-3">
-                  Stake on predictions and participate in the market.
+                  Connect your wallet to stake on predictions and participate in
+                  the market.
                 </p>
 
                 {!showWalletOptions ? (
-                   <button
-                     onClick={() => setShowWalletOptions(true)}
-                     className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center space-x-2 w-full"
-                   >
-                     <FaWallet />
-                     <span>Connect Wallet</span>
-                   </button>
+                  <button
+                    onClick={() => setShowWalletOptions(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2"
+                  >
+                    <FaWallet />
+                    <span>Connect Wallet</span>
+                  </button>
                 ) : (
                   <div className="space-y-2">
                     <p className="text-xs text-blue-300 mb-2">

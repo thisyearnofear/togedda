@@ -14,6 +14,7 @@ import { useChainContracts } from './use-chain-contracts';
 export const QUERY_KEYS = {
   PREDICTIONS: ['predictions'] as const,
   CHAIN_PREDICTIONS: ['chain-predictions'] as const,
+  CROSS_PLATFORM_PREDICTIONS: ['cross-platform-predictions'] as const,
   BOT_STATUS: ['bot-status'] as const,
   USER_VOTES: (address: string) => ['user-votes', address] as const,
   CONVERSATION_HISTORY: (conversationId: string) => ['conversation-history', conversationId] as const,
@@ -53,19 +54,47 @@ export function usePredictions() {
 }
 
 /**
+ * Hook for fetching cross-platform predictions
+ * Uses API to aggregate data from multiple sports platforms
+ */
+export function useCrossPlatformPredictions() {
+  return useQuery({
+    queryKey: QUERY_KEYS.CROSS_PLATFORM_PREDICTIONS,
+    queryFn: async () => {
+      const response = await fetch('/api/sports-predictions');
+      if (!response.ok) {
+        throw new Error('Failed to fetch cross-platform predictions');
+      }
+      const data = await response.json();
+      return data.data || [];
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    refetchInterval: 60000, // 60 seconds
+    retry: 2,
+    retryDelay: 2000,
+  });
+}
+
+/**
  * Hook for fetching dual-chain predictions with enhanced caching
  * Uses wagmi providers for consistency
  */
-export function useChainPredictions() {
+export function useChainPredictions(network?: string) {
   const { getAllPredictions } = useChainContracts();
 
   return useQuery({
-    queryKey: QUERY_KEYS.CHAIN_PREDICTIONS,
+    queryKey: network ? [...QUERY_KEYS.CHAIN_PREDICTIONS, network] : QUERY_KEYS.CHAIN_PREDICTIONS,
     queryFn: async (): Promise<ChainPrediction[]> => {
       try {
         console.log('🔄 Fetching chain predictions...');
         const predictions = await getAllPredictions();
         console.log(`✅ Fetched ${predictions.length} chain predictions`);
+        
+        // Filter by network if specified
+        if (network) {
+          return predictions.filter(p => p.network.toLowerCase().includes(network.toLowerCase()));
+        }
+        
         return predictions;
       } catch (error) {
         console.error('❌ Error fetching chain predictions:', error);
@@ -298,6 +327,9 @@ export function useCacheInvalidation() {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PREDICTIONS });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CHAIN_PREDICTIONS });
     },
+    invalidateCrossPlatformPredictions: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CROSS_PLATFORM_PREDICTIONS });
+    },
     invalidateUserData: (address: string) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_VOTES(address) });
     },
@@ -330,6 +362,18 @@ export function usePrefetchData() {
         queryKey: QUERY_KEYS.CHAIN_PREDICTIONS,
         queryFn: getAllPredictions,
         staleTime: CACHE_CONFIG.PREDICTIONS.staleTime,
+      });
+    },
+    prefetchCrossPlatformPredictions: () => {
+      queryClient.prefetchQuery({
+        queryKey: QUERY_KEYS.CROSS_PLATFORM_PREDICTIONS,
+        queryFn: async () => {
+          const response = await fetch('/api/sports-predictions');
+          if (!response.ok) throw new Error('Failed to prefetch cross-platform predictions');
+          const data = await response.json();
+          return data.data || [];
+        },
+        staleTime: 2 * 60 * 1000, // 2 minutes
       });
     },
   };

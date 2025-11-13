@@ -14,24 +14,23 @@ export default function NeynarSIWN({
   onAuthError,
   className = "",
 }: NeynarSIWNProps) {
-  const { user } = useNeynarContext();
+  const { user, isLoading } = useNeynarContext();
 
   // Handle auth success when user changes
   React.useEffect(() => {
     if (user && onAuthSuccess) {
-      console.log("[NeynarSIWN] Neynar auth successful:", user);
+      console.log("[NeynarSIWN] Neynar auth successful:", {
+        fid: user.fid,
+        username: user.username,
+        display_name: user.display_name,
+      });
       onAuthSuccess(user);
     }
   }, [user, onAuthSuccess]);
 
   return (
     <div className={className}>
-      <NeynarAuthButton />
-      {user && (
-        <div className="mt-2 text-xs text-green-400 text-center">
-          ✅ Signed in as @{user.username}
-        </div>
-      )}
+      <NeynarAuthButton variant="primary" />
     </div>
   );
 }

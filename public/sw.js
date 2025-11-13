@@ -238,7 +238,7 @@ self.addEventListener("push", (event) => {
     const data = event.data.json();
 
     event.waitUntil(
-      self.registration.showNotification(data.title || "Imperfect Form", {
+      self.registration.showNotification(data.title || "Togedda", {
         body: data.body || "You have a new notification",
         icon: "/icon-192x192.png",
         badge: "/icon-192x192.png",

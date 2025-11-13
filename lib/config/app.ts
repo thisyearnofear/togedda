@@ -4,7 +4,7 @@ import { supportedChains, chainMetadata } from "./chains";
 // Application configuration
 export const appConfig = {
   // Basic app info
-  name: "Imperfect Form",
+  name: "Togedda",
   description: "Track fitness goals across multiple blockchain networks with a retro-gamified style",
   version: "0.2.0",
   
@@ -132,8 +132,8 @@ export const appConfig = {
   
   // Social configuration
   social: {
-    shareText: "Check out my fitness progress on Imperfect Form! 💪",
-    hashtags: ["ImperfectForm", "FitnessOnChain", "Web3Fitness"],
+    shareText: "Check out my fitness progress on Togedda powered by Imperfect Form! 💪",
+    hashtags: ["Togedda", "ImperfectForm", "FitnessOnChain", "Web3Fitness"],
   },
   
   // Debug configuration

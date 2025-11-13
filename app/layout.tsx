@@ -111,7 +111,7 @@ export const metadata: Metadata = {
   other: {
     // Farcaster Mini App Embed
     "fc:miniapp":
-      '{"version":"1","imageUrl":"https://togedda.vercel.app/og.png","button":{"title":"Stay Hard","action":{"type":"launch_frame","name":"Imperfect Form","url":"https://togedda.vercel.app","splashImageUrl":"https://togedda.vercel.app/splash.png","splashBackgroundColor":"#000000"}}}',
+      '{"version":"1","imageUrl":"https://togedda.vercel.app/og.png","button":{"title":"Stay Hard","action":{"type":"launch_frame","name":"Togedda","url":"https://togedda.vercel.app","splashImageUrl":"https://togedda.vercel.app/splash.png","splashBackgroundColor":"#000000"}}}',
 
     // PWA related
     "mobile-web-app-capable": "yes",
@@ -185,7 +185,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         {/* Farcaster Mini App Embed - Single meta tag with JSON */}
         <meta
           name="fc:miniapp"
-          content='{"version":"1","imageUrl":"https://togedda.vercel.app/og.png","button":{"title":"Stay Hard","action":{"type":"launch_frame","name":"Imperfect Form","url":"https://togedda.vercel.app","splashImageUrl":"https://togedda.vercel.app/splash.png","splashBackgroundColor":"#000000"}}}'
+          content='{"version":"1","imageUrl":"https://togedda.vercel.app/og.png","button":{"title":"Stay Hard","action":{"type":"launch_frame","name":"Togedda","url":"https://togedda.vercel.app","splashImageUrl":"https://togedda.vercel.app/splash.png","splashBackgroundColor":"#000000"}}}'
         />
       </head>
 

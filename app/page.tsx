@@ -4,9 +4,9 @@ import { Metadata } from "next";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "Imperfect Form",
+    title: "Togedda",
     openGraph: {
-      title: "Imperfect Form",
+      title: "Togedda",
       description: "Track fitness goals across multiple blockchain networks",
     },
     other: createMiniAppMetadata(),

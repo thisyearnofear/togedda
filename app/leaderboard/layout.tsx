@@ -3,10 +3,10 @@ import { createMiniAppMetadata, MINIAPP_EMBEDS } from "@/lib/miniapp/metadata";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "Leaderboard - Imperfect Form",
+    title: "Leaderboard - Togedda",
     description: "View the fitness leaderboard and track your progress",
     openGraph: {
-      title: "Leaderboard - Imperfect Form",
+      title: "Leaderboard - Togedda",
       description: "View the fitness leaderboard and track your progress",
     },
     other: createMiniAppMetadata({

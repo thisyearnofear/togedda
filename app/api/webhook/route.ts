@@ -109,7 +109,7 @@ export async function POST(request: Request) {
         await setUserNotificationDetails(fid, event.notificationDetails);
         await sendFrameNotification({
           fid,
-          title: `Welcome to Imperfect Form`,
+          title: `Welcome to Togedda`,
           body: `Track your fitness goals across blockchain networks!`,
         });
       } else {
@@ -128,7 +128,7 @@ export async function POST(request: Request) {
       await setUserNotificationDetails(fid, event.notificationDetails);
       await sendFrameNotification({
         fid,
-        title: `Notifications Enabled for Imperfect Form`,
+        title: `Notifications Enabled for Togedda`,
         body: `You'll receive updates about your fitness goals and prediction market activity!`,
       });
 

@@ -111,6 +111,9 @@ const nextConfig = {
     return config;
   },
 
+  // Turbopack configuration (empty to silence warning)
+  turbopack: {},
+
   // Experimental features for better performance
   experimental: {
     optimizePackageImports: ["@farcaster/frame-sdk", "@coinbase/onchainkit"],

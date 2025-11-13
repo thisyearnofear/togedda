@@ -108,7 +108,7 @@ export default function WebAppInstallPrompt() {
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-bold text-white mb-1">
-              Install Imperfect Form
+              Install Togedda
             </h3>
             <p className="text-xs text-gray-300 mb-3">
               Add to your home screen for quick access and offline support

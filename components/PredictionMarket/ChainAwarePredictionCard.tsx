@@ -115,6 +115,13 @@ const ChainAwarePredictionCard: React.FC<ChainAwarePredictionCardProps> = ({
       accent: "text-blue-300",
       button: "bg-blue-600 hover:bg-blue-700",
     },
+    bsc: {
+      border: "border-orange-400",
+      bg: "bg-orange-900",
+      text: "text-orange-400",
+      accent: "text-orange-300",
+      button: "bg-orange-600 hover:bg-orange-700",
+    },
   };
 
   const colors = chainColors[detectedChain];

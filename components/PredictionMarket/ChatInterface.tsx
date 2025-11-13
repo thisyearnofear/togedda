@@ -125,6 +125,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     title?: string;
   }>({ type: "prediction" });
 
+  // Quick action confirmation state
+  const [pendingAction, setPendingAction] = useState<{
+    message: string;
+    icon: string;
+    description: string;
+  } | null>(null);
+
   // Removed AgentKit modal state - users always use their wallet
 
   // Dynamic thinking messages
@@ -257,7 +264,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             id: "ai_welcome",
             sender: "PredictionBot",
             content:
-              '🤖 **AI Fitness Agent Ready!** Powered by XMTP & Base\n\n💬 **Just talk naturally! Try saying:**\n• "I predict I\'ll do 500 pushups by March 15th"\n• "What prediction markets are live?"\n• "Start a pushup challenge for our group"\n• "Give me some motivation to stay hard"\n• "Show me the fitness leaderboard"\n\n🔥 **CARRY THE BOATS!** 🚣🌊\n✨ Use the Quick Actions above or just chat naturally!',
+              '🤖 AI Fitness Agent Ready!\n💬 Try: "I predict 500 pushups by March 15th" or use Quick Actions 🔥',
             timestamp: Date.now() - 300000,
             messageType: "bot" as const,
           },
@@ -274,9 +281,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   // Monitor XMTP connection status
   useEffect(() => {
-    if (!canInitializeXMTP) {
-      setError(connectionMessage);
-    } else if (xmtpError) {
+    if (xmtpError) {
       // Provide user-friendly error messages for XMTP issues
       let friendlyError = xmtpError;
       if (xmtpError.includes("Signature")) {
@@ -293,7 +298,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     } else {
       setError(null);
     }
-  }, [canInitializeXMTP, connectionMessage, xmtpError]);
+  }, [xmtpError]);
 
   // Enhanced message sending with better UX
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -873,85 +878,87 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   return (
     <div className={containerClass}>
-      <div className="flex justify-between items-center p-3 border-b border-purple-800 bg-purple-900 bg-opacity-20">
-        <div className="flex items-center gap-3">
-          <h3 className="text-md font-bold text-purple-400">
-            {embedded
-              ? "AI Assistant & Community Chat"
-              : "Prediction Chat (Beta)"}
-          </h3>
+      <div className="flex flex-col items-center justify-center p-3 border-b border-purple-800 bg-purple-900 bg-opacity-20">
+         <div className="flex items-center gap-3">
+           <h3 className="text-md font-bold text-purple-400">
+             {embedded
+               ? "Chat"
+               : "Prediction Chat (Beta)"}
+           </h3>
 
-          {/* Agent Status Indicator - NEW */}
-          <div className="flex items-center gap-1 text-xs">
-            <FaCircle className="text-green-400 animate-pulse" size={8} />
-            <span className="text-green-300">Agent Active</span>
-          </div>
+           {/* Agent Status Indicator - Only show when chat is available */}
+           {canInitializeXMTP && (
+             <div className="flex items-center gap-1 text-xs">
+               <FaCircle className="text-green-400 animate-pulse" size={8} />
+               <span className="text-green-300">Agent Active</span>
+             </div>
+           )}
 
-          {/* Authentication Status */}
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-gray-500">|</span>
-            <div className="flex items-center gap-1">
-              {primaryIdentity.type === "dual" && (
-                <>
-                  <span className="text-purple-400" title="Farcaster">
-                    🟣
-                  </span>
-                  <span className="text-green-400" title="Wallet">
-                    💰
-                  </span>
-                </>
-              )}
-              {primaryIdentity.type === "farcaster" && (
-                <span className="text-purple-400" title="Farcaster Only">
-                  🟣
-                </span>
-              )}
-              {primaryIdentity.type === "wallet" && (
-                <span className="text-green-400" title="Wallet Only">
-                  💰
-                </span>
-              )}
-              {primaryIdentity.type === "none" && (
-                <span className="text-red-400" title="Not Connected">
-                  ❌
-                </span>
-              )}
-              <span className="text-gray-300 truncate max-w-20">
-                {userDisplayInfo.displayName}
-              </span>
-            </div>
-          </div>
+           {/* Authentication Status */}
+           <div className="flex items-center gap-2 text-xs">
+             <span className="text-gray-500">|</span>
+             <div className="flex items-center gap-1">
+               {primaryIdentity.type === "dual" && (
+                 <>
+                   <span className="text-purple-400" title="Farcaster">
+                     🟣
+                   </span>
+                   <span className="text-green-400" title="Wallet">
+                     💰
+                   </span>
+                 </>
+               )}
+               {primaryIdentity.type === "farcaster" && (
+                 <span className="text-purple-400" title="Farcaster Only">
+                   🟣
+                 </span>
+               )}
+               {primaryIdentity.type === "wallet" && (
+                 <span className="text-green-400" title="Wallet Only">
+                   💰
+                 </span>
+               )}
+               {primaryIdentity.type === "none" && (
+                 <span className="text-red-400" title="Not Connected">
+                   ❌
+                 </span>
+               )}
+               <span className="text-gray-300 truncate max-w-20 text-xs">
+                 {userDisplayInfo.displayName === "Anonymous" ? "Anon" : userDisplayInfo.displayName}
+               </span>
+             </div>
+           </div>
 
-          {/* Enhanced connection status */}
-          <div className="flex items-center gap-2 text-xs">
-            <div className="flex items-center gap-1">
-              <FaCircle
-                className={`${
-                  canInitializeXMTP ? "text-green-400" : "text-red-400"
-                }`}
-                size={8}
-              />
-              <span className="text-gray-300">
-                {canInitializeXMTP ? "Ready" : "Not Ready"}
-              </span>
-            </div>
+           {/* Enhanced connection status */}
+           <div className="flex items-center gap-2 text-xs">
+             <div className="flex items-center gap-1">
+               <FaCircle
+                 className={`${
+                   canInitializeXMTP ? "text-green-400" : "text-red-400"
+                 }`}
+                 size={8}
+               />
+               <span className="text-gray-300">
+                 {canInitializeXMTP ? "Ready" : "Not Ready"}
+               </span>
+             </div>
 
-            {/* Unread message indicator */}
-            {hasUnreadMessages && (
-              <div className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                {totalUnreadCount}
-              </div>
-            )}
+             {/* Unread message indicator */}
+             {hasUnreadMessages && (
+               <div className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                 {totalUnreadCount}
+               </div>
+             )}
 
-            {/* Real-time indicator */}
-            {isStreamActive && (
-              <div className="flex items-center gap-1 text-green-400">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                <span>Live</span>
-              </div>
-            )}
-          </div>
-        </div>
+             {/* Real-time indicator */}
+             {isStreamActive && (
+               <div className="flex items-center gap-1 text-green-400">
+                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                 <span>Live</span>
+               </div>
+             )}
+           </div>
+         </div>
 
         <div className="flex items-center gap-2">
           {/* Refresh button */}
@@ -997,93 +1004,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         </button>
       </div>
 
-      {/* Enhanced Quick Actions - Clearer and More Intuitive */}
-      <div className="p-2 bg-black bg-opacity-10 border-b border-purple-800">
-        <div className="text-xs text-gray-400 mb-2 font-bold">
-          ⚡ Quick Actions:
-        </div>
-        <div className="grid grid-cols-2 gap-1">
-          {/* Prediction Actions */}
-          <button
-            onClick={() =>
-              setNewMessage("I predict I'll do 500 pushups by March 15th")
-            }
-            className="px-2 py-1 bg-purple-800 hover:bg-purple-700 text-purple-100 rounded text-xs transition-colors flex items-center justify-center gap-1"
-            title="Create a fitness prediction with stakes"
-          >
-            🔮 <span className="hidden sm:inline">Create</span> Prediction
-          </button>
-
-          <button
-            onClick={() => setNewMessage("What prediction markets are live?")}
-            className="px-2 py-1 bg-blue-800 hover:bg-blue-700 text-blue-100 rounded text-xs transition-colors flex items-center justify-center gap-1"
-            title="View all active prediction markets"
-          >
-            📊 <span className="hidden sm:inline">View</span> Markets
-          </button>
-
-          {/* Fitness Actions */}
-          <button
-            onClick={() =>
-              setNewMessage("Start a pushup challenge with bamstrong.base.eth")
-            }
-            className="px-2 py-1 bg-green-800 hover:bg-green-700 text-green-100 rounded text-xs transition-colors flex items-center justify-center gap-1"
-            title="Create a group fitness challenge"
-          >
-            🏋️ <span className="hidden sm:inline">Start</span> Challenge
-          </button>
-
-          <button
-            onClick={() =>
-              setNewMessage("Give me some motivation to stay hard")
-            }
-            className="px-2 py-1 bg-red-800 hover:bg-red-700 text-red-100 rounded text-xs transition-colors flex items-center justify-center gap-1"
-            title="Get motivational message"
-          >
-            🔥 <span className="hidden sm:inline">Get</span> Motivated
-          </button>
-        </div>
-
-        {/* Advanced Actions - Collapsible */}
-        <details className="mt-2">
-          <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-300 transition-colors">
-            ⚙️ More Actions...
-          </summary>
-          <div className="grid grid-cols-2 gap-1 mt-1">
-            <button
-              onClick={() => setNewMessage("Show me the fitness leaderboard")}
-              className="px-2 py-1 bg-yellow-800 hover:bg-yellow-700 text-yellow-100 rounded text-xs transition-colors flex items-center justify-center gap-1"
-              title="View group fitness rankings"
-            >
-              🏆 Leaderboard
-            </button>
-
-            <button
-              onClick={() =>
-                setNewMessage("Help me understand how prediction markets work")
-              }
-              className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-100 rounded text-xs transition-colors flex items-center justify-center gap-1"
-              title="Learn about prediction markets"
-            >
-              ❓ Help
-            </button>
-          </div>
-        </details>
-      </div>
-
       {/* Authentication Error Display */}
-      {!canInitializeXMTP && (
-        <div className="p-3 bg-red-900 bg-opacity-20 border-b border-red-800">
-          <div className="flex items-center gap-2 text-red-300 text-sm">
-            <span className="text-red-400">⚠️</span>
-            <div>
-              <div className="font-medium">Chat Not Available</div>
-              <div className="text-xs text-red-400">{connectionMessage}</div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* XMTP Initialization Info - Only for Community Chat */}
       {xmtpInitializing &&
         canInitializeXMTP &&
@@ -1479,31 +1400,172 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               </span>
             ) : error ? (
               <span className="text-red-400">{error}</span>
-            ) : (
-              <span>
-                {connectionStatus.status === "connected" && "🟢 XMTP active"}
-                {connectionStatus.status === "api" && "🔵 API connected"}
-                {connectionStatus.status === "connecting" && "🟡 Connecting..."}
-                {connectionStatus.status === "offline" && "🔴 Offline"}
-                {connectionStatus.status === "error" && "❌ Connection error"}
-              </span>
-            )}
+            ) : null}
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Message count */}
-            {displayMessages.length > 1 && (
-              <span>{displayMessages.length - 1} messages</span>
-            )}
-
-            {/* Bot status */}
-            <span>
-              Bot: {botStatus?.online ? "🟢" : "🔴"}{" "}
-              {botStatus?.environment || "Unknown"}
-            </span>
-          </div>
+          {/* Message count */}
+          {displayMessages.length > 1 && (
+            <span>{displayMessages.length - 1} messages</span>
+          )}
         </div>
       </form>
+
+      {/* Quick Actions - Icon Only */}
+      <div className="p-2 border-t border-purple-800 flex items-center gap-2 justify-center flex-wrap">
+        {/* Prediction Actions */}
+        <button
+          onClick={() =>
+            setPendingAction({
+              message: "I predict I'll do 500 pushups by March 15th",
+              icon: "🔮",
+              description: "Create a fitness prediction",
+            })
+          }
+          className={`text-xl px-2 py-1 rounded transition-all ${
+            canInitializeXMTP
+              ? "hover:bg-purple-800 hover:scale-110 cursor-pointer"
+              : "opacity-30 hover:opacity-50"
+          }`}
+          title="Create a fitness prediction"
+        >
+          🔮
+        </button>
+
+        <button
+          onClick={() =>
+            setPendingAction({
+              message: "What prediction markets are live?",
+              icon: "📊",
+              description: "View prediction markets",
+            })
+          }
+          className={`text-xl px-2 py-1 rounded transition-all ${
+            canInitializeXMTP
+              ? "hover:bg-blue-800 hover:scale-110 cursor-pointer"
+              : "opacity-30 hover:opacity-50"
+          }`}
+          title="View prediction markets"
+        >
+          📊
+        </button>
+
+        <button
+          onClick={() =>
+            setPendingAction({
+              message: "Start a pushup challenge with bamstrong.base.eth",
+              icon: "🏋️",
+              description: "Start a fitness challenge",
+            })
+          }
+          className={`text-xl px-2 py-1 rounded transition-all ${
+            canInitializeXMTP
+              ? "hover:bg-green-800 hover:scale-110 cursor-pointer"
+              : "opacity-30 hover:opacity-50"
+          }`}
+          title="Start a fitness challenge"
+        >
+          🏋️
+        </button>
+
+        <button
+          onClick={() =>
+            setPendingAction({
+              message: "Give me some motivation to stay hard",
+              icon: "🔥",
+              description: "Get motivation",
+            })
+          }
+          className={`text-xl px-2 py-1 rounded transition-all ${
+            canInitializeXMTP
+              ? "hover:bg-red-800 hover:scale-110 cursor-pointer"
+              : "opacity-30 hover:opacity-50"
+          }`}
+          title="Get motivation"
+        >
+          🔥
+        </button>
+
+        <button
+          onClick={() =>
+            setPendingAction({
+              message: "Show me the fitness leaderboard",
+              icon: "🏆",
+              description: "View fitness leaderboard",
+            })
+          }
+          className={`text-xl px-2 py-1 rounded transition-all ${
+            canInitializeXMTP
+              ? "hover:bg-yellow-800 hover:scale-110 cursor-pointer"
+              : "opacity-30 hover:opacity-50"
+          }`}
+          title="View fitness leaderboard"
+        >
+          🏆
+        </button>
+
+        <button
+          onClick={() =>
+            setPendingAction({
+              message: "Help me understand how prediction markets work",
+              icon: "❓",
+              description: "Get help",
+            })
+          }
+          className={`text-xl px-2 py-1 rounded transition-all ${
+            canInitializeXMTP
+              ? "hover:bg-gray-800 hover:scale-110 cursor-pointer"
+              : "opacity-30 hover:opacity-50"
+          }`}
+          title="Get help"
+        >
+          ❓
+        </button>
+      </div>
+
+      {/* Quick Action Confirmation Modal */}
+      {pendingAction && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-black border-2 border-purple-600 rounded-lg p-6 max-w-sm w-full shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-3xl">{pendingAction.icon}</span>
+              <h3 className="text-lg font-bold text-purple-400">
+                {pendingAction.description}
+              </h3>
+            </div>
+
+            <div className="bg-gray-900 rounded-lg p-3 mb-4 border border-gray-700">
+              <p className="text-sm text-gray-300">{pendingAction.message}</p>
+            </div>
+
+            {!canInitializeXMTP ? (
+              <button
+                onClick={() => setPendingAction(null)}
+                className="w-full px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition-colors"
+              >
+                Close
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setNewMessage(pendingAction.message);
+                    setPendingAction(null);
+                  }}
+                  className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  Confirm
+                </button>
+                <button
+                  onClick={() => setPendingAction(null)}
+                  className="flex-1 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Network Mismatch Modal */}
       <NetworkMismatchModal

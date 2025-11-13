@@ -19,7 +19,6 @@ import {
   useCacheInvalidation,
   usePrefetchData,
 } from "@/hooks/use-prediction-queries";
-// Remove the incorrect simple ABI - we'll use the full predictionMarketABI
 import { parseEther } from "viem";
 import { ethers } from "ethers";
 import ChainAwarePredictionCard from "./ChainAwarePredictionCard";
@@ -32,7 +31,7 @@ import {
   FaSync,
   FaHistory,
 } from "react-icons/fa";
-import WarpcastWallet from "@/components/WarpcastWallet";
+import { WarpcastWallet } from "@/components/WarpcastWallet";
 import ChatInterface from "./ChatInterface";
 import TransactionSuccessModal from "./TransactionSuccessModal";
 import { type SupportedChain, CHAIN_CONFIG } from "@/lib/dual-chain-service";
@@ -65,12 +64,10 @@ const PredictionMarket: React.FC = () => {
   );
 
   // Mobile-first UI state
-  const [viewMode, setViewMode] = useState<"compact" | "detailed">("compact");
   const [selectedChain, setSelectedChain] = useState<"all" | "celo" | "base">(
     "all"
   );
   const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
-  const [showChainDetails, setShowChainDetails] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successModalData, setSuccessModalData] = useState<{
     type: "stake" | "claim" | "prediction";
@@ -628,165 +625,89 @@ const PredictionMarket: React.FC = () => {
   return (
     <WarpcastWallet>
       <div className="game-container my-8">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="retro-heading text-xl">🔮 Prediction Markets</h2>
-          <div className="flex items-center space-x-3">
-            {lastRefresh && (
-              <div className="text-xs text-gray-400">
-                {lastRefresh.toLocaleTimeString()}
-              </div>
-            )}
-            <button
-              onClick={handleRefresh}
-              disabled={isLoading || isRefreshing}
-              className={`text-sm px-3 py-1 rounded flex items-center space-x-1 transition-all duration-200 ${
-                isRefreshing
-                  ? "bg-green-600 text-white"
-                  : "bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white"
-              }`}
-              title={
-                isRefreshing
-                  ? "Refreshing..."
-                  : "Refresh predictions from both chains"
-              }
-            >
-              <FaSync
-                className={`${isLoading || isRefreshing ? "animate-spin" : ""}`}
-              />
-              <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
-            </button>
-          </div>
+        {/* Header - Centered */}
+        <div className="text-center mb-8">
+          <h2 className="retro-heading text-2xl mb-2">🔮 Prediction Markets</h2>
+          <p className="text-xs text-gray-400">
+            {lastRefresh
+              ? `Updated ${lastRefresh.toLocaleTimeString()}`
+              : "Live markets across multiple chains"}
+          </p>
         </div>
 
-        {/* Tab Navigation */}
+        {/* Tab Navigation - Simplified */}
         <div className="flex mb-6 bg-black bg-opacity-50 rounded-lg p-1">
           <button
             onClick={() => setActiveTab("markets")}
-            className={`flex-1 py-3 px-4 rounded-lg font-bold text-sm transition-all ${
+            className={`flex-1 py-2 px-3 rounded-lg font-bold text-sm transition-all ${
               activeTab === "markets"
                 ? "bg-blue-600 text-white shadow-lg"
                 : "text-gray-400 hover:text-white hover:bg-gray-800"
             }`}
           >
-            <FaChartLine className="inline mr-2" />
-            Live Markets
+            <FaChartLine className="inline mr-1" />
+            <span className="hidden sm:inline">Live</span>
           </button>
           <button
             onClick={() => setActiveTab("past")}
-            className={`flex-1 py-3 px-4 rounded-lg font-bold text-sm transition-all ${
+            className={`flex-1 py-2 px-3 rounded-lg font-bold text-sm transition-all ${
               activeTab === "past"
                 ? "bg-gray-600 text-white shadow-lg"
                 : "text-gray-400 hover:text-white hover:bg-gray-800"
             }`}
           >
-            <FaHistory className="inline mr-2" />
-            Past
+            <FaHistory className="inline mr-1" />
+            <span className="hidden sm:inline">Past</span>
           </button>
           <button
             onClick={() => setActiveTab("chat")}
-            className={`flex-1 py-3 px-4 rounded-lg font-bold text-sm transition-all ${
+            className={`flex-1 py-2 px-3 rounded-lg font-bold text-sm transition-all ${
               activeTab === "chat"
                 ? "bg-purple-600 text-white shadow-lg"
                 : "text-gray-400 hover:text-white hover:bg-gray-800"
             }`}
           >
-            <FaComments className="inline mr-2" />
-            AI Chat
+            <FaComments className="inline mr-1" />
+            <span className="hidden sm:inline">Chat</span>
           </button>
         </div>
 
         {/* Markets Tab Content */}
         {activeTab === "markets" && (
           <>
-            {/* Simplified Chain Filter & Controls */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => setSelectedChain("all")}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                    selectedChain === "all"
-                      ? "bg-purple-600 text-white"
-                      : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                  }`}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => setSelectedChain("celo")}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                    selectedChain === "celo"
-                      ? "bg-yellow-600 text-white"
-                      : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                  }`}
-                >
-                  🟡 CELO
-                </button>
-                <button
-                  onClick={() => setSelectedChain("base")}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                    selectedChain === "base"
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                  }`}
-                >
-                  🔵 Base
-                </button>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() =>
-                    setViewMode(viewMode === "compact" ? "detailed" : "compact")
-                  }
-                  className="px-3 py-1 rounded text-xs bg-gray-800 text-gray-300 hover:bg-gray-700 transition-colors"
-                >
-                  {viewMode === "compact" ? "📋 Detailed" : "📱 Compact"}
-                </button>
-                <button
-                  onClick={() => setShowChainDetails(!showChainDetails)}
-                  className="px-3 py-1 rounded text-xs bg-gray-800 text-gray-300 hover:bg-gray-700 transition-colors"
-                >
-                  ℹ️ Info
-                </button>
-              </div>
+            {/* Chain Filter - Centered */}
+            <div className="flex justify-center items-center space-x-2 mb-6">
+              <button
+                onClick={() => setSelectedChain("all")}
+                className={`px-4 py-1.5 rounded text-xs font-medium transition-colors ${
+                  selectedChain === "all"
+                    ? "bg-purple-600 text-white"
+                    : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                }`}
+              >
+                All Chains
+              </button>
+              <button
+                onClick={() => setSelectedChain("celo")}
+                className={`px-4 py-1.5 rounded text-xs font-medium transition-colors ${
+                  selectedChain === "celo"
+                    ? "bg-yellow-600 text-white"
+                    : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                }`}
+              >
+                🟡 CELO
+              </button>
+              <button
+                onClick={() => setSelectedChain("base")}
+                className={`px-4 py-1.5 rounded text-xs font-medium transition-colors ${
+                  selectedChain === "base"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                }`}
+              >
+                🔵 Base
+              </button>
             </div>
-
-            {/* Collapsible Chain Details */}
-            {showChainDetails && (
-              <div className="mb-4 p-3 bg-gray-900 bg-opacity-50 rounded-lg border border-gray-700">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-yellow-400">🟡</span>
-                    <span className="text-yellow-400 font-medium">
-                      CELO Mainnet
-                    </span>
-                    <span className="text-gray-400">
-                      Real stakes, charity impact
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-blue-400">🔵</span>
-                    <span className="text-blue-400 font-medium">
-                      Base Sepolia
-                    </span>
-                    <span className="text-gray-400">
-                      Free testnet, experimentation
-                    </span>
-                  </div>
-                </div>
-                <div className="mt-2 text-xs text-center text-gray-400">
-                  15% of CELO stakes →{" "}
-                  <a
-                    href="https://warpcast.com/greenpillnetwork"
-                    target="_blank"
-                    className="text-green-400 hover:underline"
-                  >
-                    @greenpillnetwork
-                  </a>{" "}
-                  Kenya
-                </div>
-              </div>
-            )}
 
             {isLoading ? (
               <div className="flex justify-center items-center py-12">
@@ -838,7 +759,7 @@ const PredictionMarket: React.FC = () => {
                         prediction={prediction}
                         onVote={handleVote}
                         simplified={true}
-                        compact={viewMode === "compact"}
+                        compact={true}
                         expanded={expandedCards.has(prediction.id)}
                         onToggleExpand={() =>
                           toggleCardExpansion(prediction.id)
@@ -930,6 +851,7 @@ const PredictionMarket: React.FC = () => {
           </>
         )}
 
+        {/* Cross-Platform Predictions Tab Content */}
         {/* Past Predictions Tab Content */}
         {activeTab === "past" && (
           <>

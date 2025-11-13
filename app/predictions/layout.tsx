@@ -11,7 +11,7 @@ export async function generateMetadata(): Promise<Metadata> {
       title: "Prediction Market",
       action: {
         type: "launch_frame",
-        name: "Imperfect Form",
+        name: "Togedda",
         url: `${appUrl}/predictions`,
         splashImageUrl: `${appUrl}/splash.png`,
         splashBackgroundColor: "#000000",
@@ -20,11 +20,11 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 
   return {
-    title: "Imperfect Form - Prediction Market",
-    description: "Prediction market for Imperfect Form fitness goals",
+    title: "Togedda - Prediction Market",
+    description: "Prediction market for Togedda fitness goals",
     openGraph: {
-      title: "Imperfect Form - Prediction Market",
-      description: "Prediction market for Imperfect Form fitness goals",
+      title: "Togedda - Prediction Market",
+      description: "Prediction market for Togedda fitness goals",
       images: [{ url: `${appUrl}/og.png` }],
     },
     other: {

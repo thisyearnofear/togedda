@@ -10,7 +10,7 @@ function LoadingScreen() {
     <div className="min-h-screen bg-black text-white flex items-center justify-center">
       <div className="text-center">
         <div className="text-2xl mb-4 animate-spin">⟳</div>
-        <div className="text-lg">Loading Imperfect Form...</div>
+        <div className="text-lg">Loading Togedda...</div>
         <div className="text-sm text-gray-400 mt-2">
           Initializing components...
         </div>

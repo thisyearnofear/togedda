@@ -146,7 +146,7 @@ export default function Leaderboard({
           ? ["🥇 First", "🥈 Second", "🥉 Third"][userPosition - 1]
           : `#${userPosition}`;
 
-      const castText = `I'm ranked ${position} on the ${networkText} Leaderboard on Imperfect Form! 💪\n\n#ImperfectForm #StayHard`;
+      const castText = `I'm ranked ${position} on the ${networkText} Leaderboard on Togedda (via Imperfect Form)! 💪\n\n#Togedda #ImperfectForm #StayHard`;
 
       // Share to Farcaster
       await sdk.actions.composeCast({

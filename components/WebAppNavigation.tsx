@@ -83,18 +83,22 @@ export default function WebAppNavigation({
       <div className="mb-6">
         {/* Enhanced web app header */}
         <div className="flex items-center justify-between mb-4 p-3 bg-gray-900 rounded-lg">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-sm font-bold">IF</span>
+          <div></div>
+          <div className="flex flex-col items-center space-y-1">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-sm font-bold">IF</span>
+              </div>
+              <h2 className="text-sm font-bold">Togedda</h2>
+              <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-sm font-bold">IC</span>
+              </div>
             </div>
-            <div>
-              <h2 className="text-sm font-bold">Imperfect Form</h2>
-              <p className="text-xs text-gray-400">Web App</p>
-            </div>
+            <p className="text-xs text-gray-400">Sports Predictions</p>
           </div>
 
           {/* Install button for web app */}
-          {showInstallButton && (
+          {showInstallButton ? (
             <button
               onClick={handleInstallClick}
               className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition-colors flex items-center space-x-1"
@@ -102,6 +106,8 @@ export default function WebAppNavigation({
               <span>📱</span>
               <span>Install</span>
             </button>
+          ) : (
+            <div></div>
           )}
         </div>
 

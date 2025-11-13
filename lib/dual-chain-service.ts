@@ -44,6 +44,21 @@ export const CHAIN_CONFIG = {
     emoji: "🔵",
     isProduction: true,
   },
+  bsc: {
+    id: 56, // BNB Chain mainnet
+    name: "BNB Chain",
+    rpcUrl: "https://bsc-dataseed.binance.org/",
+    contractAddress: "0x0000000000000000000000000000000000000000", // TODO: Deploy BNB Chain contract
+    nativeCurrency: {
+      name: "BNB",
+      symbol: "BNB",
+      decimals: 18,
+    },
+    blockExplorer: "https://bscscan.com",
+    color: "#F0B90B",
+    emoji: "🟡",
+    isProduction: true,
+  },
 } as const;
 
 export type SupportedChain = keyof typeof CHAIN_CONFIG;
@@ -344,6 +359,14 @@ export function getStakingRecommendations(chain: SupportedChain) {
       note: "Production network - real CELO tokens",
       gasEstimate: "~0.001 CELO",
     };
+  } else if (chain === "bsc") {
+    return {
+      minAmount: "0.001",
+      recommendedAmounts: ["0.005", "0.01", "0.025", "0.05"],
+      currency: "BNB",
+      note: "BNB Chain - High-performance predictions with low gas fees!",
+      gasEstimate: "~0.00005 BNB",
+    };
   } else {
     return {
       minAmount: "0.001",
@@ -364,9 +387,11 @@ export async function getChainSummaryForBot(): Promise<string> {
 
     const celoStats = predictions.filter((p) => p.chain === "celo");
     const baseStats = predictions.filter((p) => p.chain === "base");
+    const bscStats = predictions.filter((p) => p.chain === "bsc");
 
     const celoVolume = celoStats.reduce((sum, p) => sum + p.totalStaked, 0);
     const baseVolume = baseStats.reduce((sum, p) => sum + p.totalStaked, 0);
+    const bscVolume = bscStats.reduce((sum, p) => sum + p.totalStaked, 0);
 
     return `🌐 **Multi-Chain Prediction Markets**
 
@@ -376,16 +401,25 @@ export async function getChainSummaryForBot(): Promise<string> {
 • Real money, real impact! 💰
 
 🔵 **Base Mainnet** (SweatEquityBot)
-🔵 **Base Mainnet** (SweatEquityBot)
 • ${baseStats.length} active predictions
 • ${baseVolume.toFixed(4)} ETH total volume
 • Revolutionary fitness-backed predictions! 💪
 • Recover lost stakes through exercise! 🏋️
 
+🟡 **BNB Chain** (High Performance)
+• ${bscStats.length} active predictions
+• ${bscVolume.toFixed(4)} BNB total volume
+• Low gas fees, fast transactions! ⚡
+
+🏆 **Multi-Sports Predictions Available**
+• Link ImperfectForm, ImperfectCoach, ImperfectAbs data
+• Create predictions spanning multiple sports apps
+• Verify exercise completion across platforms
+
 Choose your chain when creating predictions or voting!`;
   } catch (error) {
     console.error("Error generating chain summary:", error);
-    return "Revolutionary SweatEquityBot prediction markets available on CELO Mainnet and Base Mainnet!";
+    return "Revolutionary multi-sports prediction markets available on CELO Mainnet, Base Mainnet, and BNB Chain!";
   }
 }
 
@@ -522,9 +556,16 @@ export function recommendChainForUser(context: {
   isNewUser?: boolean;
   hasTestEth?: boolean;
   hasCelo?: boolean;
+  hasBnb?: boolean;
   wantsRealMoney?: boolean;
+  prefersLowFees?: boolean;
 }): SupportedChain {
-  // For revolutionary SweatEquityBot features, always recommend Base Mainnet
+  // For hackathon focus on BNB Chain with low fees
+  if (context.prefersLowFees || context.hasBnb) {
+    return "bsc";
+  }
+  
+  // For revolutionary SweatEquityBot features, recommend Base Mainnet
   if (context.isNewUser || context.hasTestEth || !context.wantsRealMoney) {
     return "base";
   }
@@ -534,6 +575,6 @@ export function recommendChainForUser(context: {
     return "celo";
   }
 
-  // Default to Base for SweatEquityBot innovation
-  return "base";
+  // Default to BNB for hackathon focus
+  return "bsc";
 }

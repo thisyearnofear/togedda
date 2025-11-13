@@ -48,17 +48,23 @@ const handleWalletConflicts = () => {
   // only attempt to override if providers[] exists
   const eth = (window as any).ethereum;
   if (eth && Array.isArray(eth.providers)) {
-    // guard against a read-only getter
-    try {
-      (window as any).ethereum = eth.providers[0];
-      console.debug("[providers] window.ethereum overridden to first provider");
-    } catch (_err) {
+    const descriptor = Object.getOwnPropertyDescriptor(window, "ethereum");
+    const canAssign = descriptor && (descriptor.writable || typeof descriptor.set === "function");
+    if (canAssign) {
+      try {
+        (window as any).ethereum = eth.providers[0];
+        console.debug("[providers] window.ethereum overridden to first provider");
+      } catch (_err) {
+        console.warn(
+          "[providers] window.ethereum assignment failed — skipping override"
+        );
+      }
+    } else {
       console.warn(
         "[providers] window.ethereum is not writable — skipping override"
       );
     }
   }
-  // (Optional) You can add any additional error suppression logic here if needed.
 };
 
 // Create connectors array with Farcaster Frame and web wallet connectors

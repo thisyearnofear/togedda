@@ -1,9 +1,9 @@
+/* Import retro-arcade styles */
+@import "./retro-arcade.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Import retro-arcade styles */
-@import "./retro-arcade.css";
 
 :root {
     --foreground-rgb: 255, 255, 255;

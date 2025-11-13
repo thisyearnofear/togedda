@@ -187,7 +187,7 @@ export default function TargetsAndStreaks({
       if (achievement.network === "base") emoji = "🔵";
       if (achievement.network === "monad") emoji = "⚫";
 
-      const castText = `${emoji} Achievement Unlocked: ${achievement.title}!\n\n${achievement.description}\n\n#ImperfectForm #StayHard`;
+      const castText = `${emoji} Achievement Unlocked: ${achievement.title}!\n\n${achievement.description}\n\n#Togedda #ImperfectForm #StayHard`;
 
       // Share to Farcaster
       await sdk.actions.composeCast({

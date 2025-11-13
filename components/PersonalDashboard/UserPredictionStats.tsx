@@ -73,6 +73,12 @@ const UserPredictionStats: React.FC<UserPredictionStatsProps> = ({
       text: "text-blue-400",
       accent: "text-blue-300",
     },
+    bsc: {
+      bg: "bg-orange-900",
+      border: "border-orange-400",
+      text: "text-orange-400",
+      accent: "text-orange-300",
+    },
   };
 
   if (isLoading) {

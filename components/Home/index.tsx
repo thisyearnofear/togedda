@@ -71,18 +71,10 @@ export default function Home() {
     setSelectedTabInternal(tab);
   }, []);
 
-  // Tab change tracking (for debugging if needed)
-  // useEffect(() => {
-  //   console.log(`[DEBUG] Tab changed to: ${selectedTab}`);
-  // }, [selectedTab]);
   const [dataLoaded, setDataLoaded] = useState(false);
-  const [showContent, setShowContent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [localAuthError, setLocalAuthError] = useState<string | null>(null);
   const authError = null; // No longer needed with simplified auth
-  const [hasInteracted, setHasInteracted] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(true);
   const [showAuthFlow, setShowAuthFlow] = useState(false);
   const [networkData, setNetworkData] = useState<NetworkData>({});
   const [goals, setGoals] = useState<CollectiveGoals | null>(null);
@@ -94,8 +86,14 @@ export default function Home() {
   // Lazy load blockchain data only when user interacts or is authenticated
   const loadBlockchainData = useCallback(
     async (forceRefresh = false) => {
-      if (!forceRefresh && (dataLoaded || isLoading)) return;
+      console.log("loadBlockchainData called", { forceRefresh, dataLoaded, isLoading });
+      if (!forceRefresh && (dataLoaded || isLoading)) {
+        console.log("Early return from loadBlockchainData");
+        return;
+      }
 
+      const callId = Math.random().toString(36).substring(7);
+      console.log(`🔴 LOAD BLOCKCHAIN DATA START [${callId}]`, { forceRefresh, dataLoaded, isLoading });
       console.log("Starting to load blockchain data...", { forceRefresh });
       setIsLoading(true);
       try {
@@ -116,9 +114,10 @@ export default function Home() {
         console.error("Error fetching blockchain data:", error);
       } finally {
         setIsLoading(false);
+        console.log(`🟢 LOAD BLOCKCHAIN DATA END [${callId}]`);
       }
     },
-    [dataLoaded, isLoading]
+    [] // Remove dependencies that cause infinite loops
   );
 
   // Refresh function for collective goals - uses server-side API for freshest data
@@ -154,65 +153,29 @@ export default function Home() {
   // Load blockchain data immediately for collective goals (public data)
   // Use force refresh on initial load to ensure fresh data
   useEffect(() => {
+    const effectId = Math.random().toString(36).substring(7);
+    console.log(`🔵 USEEFFECT TRIGGERED [${effectId}]`, { dataLoaded, isLoading });
     if (!dataLoaded && !isLoading) {
+      console.log(`🔵 CALLING loadBlockchainData from useEffect [${effectId}]`);
       loadBlockchainData(true); // Force refresh on initial load
+    } else {
+      console.log(`🔵 SKIPPING loadBlockchainData [${effectId}]`, { dataLoaded, isLoading });
     }
-  }, [dataLoaded, isLoading, loadBlockchainData]);
-
-  // Show content when user is authenticated or has interacted
-  useEffect(() => {
-    if (isAuthenticated || hasInteracted) {
-      setShowContent(true);
-    }
-  }, [isAuthenticated, hasInteracted]);
-
-  // Refresh functionality removed
+  }, [dataLoaded, isLoading]); // Remove loadBlockchainData dependency to prevent infinite loop
 
   // Handle network selection
   const handleNetworkSelect = (network: string) => {
     setSelectedNetwork(network);
   };
 
-  // Handle disconnect
+  // Handle disconnect and close auth flow
   const handleDisconnect = () => {
     if (isConnected) {
       disconnect();
     }
-    // Reset states
+    setShowAuthFlow(false);
     setSelectedTab("goals");
-    setShowContent(false);
-    setShowOnboarding(true);
-    setHasInteracted(false);
   };
-
-  // Refresh functionality removed since components don't use it
-
-  // Handle authentication state changes
-  useEffect(() => {
-    setLocalAuthError(authError);
-  }, [authError]);
-
-  // Hide onboarding after user interaction or successful auth
-  useEffect(() => {
-    if (isAuthenticated || hasInteracted) {
-      setShowOnboarding(false);
-      setShowContent(true);
-    }
-  }, [isAuthenticated, hasInteracted]);
-
-  // Ensure content shows when wallet is connected (immediate effect)
-  useEffect(() => {
-    if (isConnected && !showContent) {
-      console.log("Wallet connected, showing content immediately");
-      setShowContent(true);
-      setHasInteracted(true);
-      setShowOnboarding(false);
-      // Don't force tab changes - let users choose their own tabs
-    }
-  }, [isConnected, showContent]);
-
-  // Remove automatic tab switching - users can freely choose any tab
-  // The default tab is set to "goals" in useState, which is appropriate for all users
 
   return (
     <div className="retro-arcade min-h-screen p-4">
@@ -226,7 +189,6 @@ export default function Home() {
             <div>Auth: {isAuthenticated ? "✓" : "✗"}</div>
             <div>Farcaster: {isFarcasterUser ? "✓" : "✗"}</div>
             <div>Wallet Only: {isWalletOnlyUser ? "✓" : "✗"}</div>
-            <div>Show Content: {showContent ? "✓" : "✗"}</div>
             <div>Data Loaded: {dataLoaded ? "✓" : "✗"}</div>
             <div>Tab: {selectedTab}</div>
           </div>
@@ -235,26 +197,11 @@ export default function Home() {
         {/* Header with Arcade-Style Logo */}
         <header className="text-center mb-4 md:mb-6">
           <div className="game-container py-3 px-4 md:py-4 md:px-6 mb-4 bg-black relative">
-            {/* Web App Only: Login Button for unauthenticated users who are browsing */}
-            <WebAppOnly>
-              {!showOnboarding && !isAuthenticated && !isLoading && (
-                <div className="absolute top-3 right-3 md:top-4 md:right-4">
-                  <button
-                    onClick={() => setShowAuthFlow(true)}
-                    className="px-2 py-1 md:px-3 md:py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded-lg transition-colors flex items-center space-x-1"
-                  >
-                    <span>🔗</span>
-                    <span className="hidden md:inline">Sign In</span>
-                  </button>
-                </div>
-              )}
-            </WebAppOnly>
-
             <h1
               className="text-xl md:text-2xl mb-2 pulse-animation"
               style={{ textShadow: "2px 2px 0px #000" }}
             >
-              IMPERFECT FORM
+              TOGEDDA
             </h1>
 
             <div className="flex justify-center space-x-1 md:space-x-2 mt-2">
@@ -265,84 +212,22 @@ export default function Home() {
             </div>
           </div>
 
-          {/* User Profile / Authentication */}
+          {/* User Profile / Authentication - Always visible */}
           <div className="mb-4 md:mb-6">
-            {showOnboarding && !isAuthenticated && (
-              <div className="space-y-4">
-                {/* Main Hero Section */}
-                <div className="game-container py-4 px-4 text-center bg-gradient-to-b from-gray-900 to-black border-2 border-white">
-                  <div className="mb-4">
-                    <h2 className="text-lg mb-3">
-                      🎮 Cross-chain fitness tracking
-                    </h2>
-                  </div>
-
-                  <div className="grid grid-cols-4 gap-2 mb-4 text-xs">
-                    <div className="bg-gray-800 p-2 rounded">
-                      <div className="text-lg mb-1">💪</div>
-                    </div>
-                    <div className="bg-gray-800 p-2 rounded">
-                      <div className="text-lg mb-1">🏆</div>
-                    </div>
-                    <div className="bg-gray-800 p-2 rounded">
-                      <div className="text-lg mb-1">🌐</div>
-                    </div>
-                    <div className="bg-gray-800 p-2 rounded">
-                      <div className="text-lg mb-1">🎯</div>
-                    </div>
-                  </div>
-
-                  {/* Context-aware CTA */}
-                  <MiniAppOnly>
-                    <button
-                      onClick={() => {
-                        setHasInteracted(true);
-                        setShowAuthFlow(true);
-                      }}
-                      disabled={isAuthenticating}
-                      className="retro-button px-6 py-3 w-full text-base"
-                    >
-                      🟣 Farcaster Sign In
-                    </button>
-                  </MiniAppOnly>
-
-                  <WebAppOnly>
-                    <div className="space-y-3">
-                      <button
-                        onClick={() => {
-                          setHasInteracted(true);
-                          setShowAuthFlow(true);
-                        }}
-                        disabled={isAuthenticating}
-                        className="retro-button px-6 py-3 w-full text-base"
-                      >
-                        🔗 Sign In
-                      </button>
-                      <div className="text-xs text-gray-400 text-center">
-                        Choose Farcaster or Wallet in next step
-                      </div>
-                      <button
-                        onClick={() => {
-                          setHasInteracted(true);
-                          setShowOnboarding(false);
-                        }}
-                        className="text-sm text-gray-400 hover:text-white"
-                      >
-                        Browse without connecting →
-                      </button>
-                    </div>
-                  </WebAppOnly>
+            {!isAuthenticated && (
+              <WebAppOnly>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setShowAuthFlow(true)}
+                    className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-colors"
+                  >
+                    Sign In
+                  </button>
+                  <p className="text-xs text-gray-400 text-center">
+                    Farcaster unlocks: streaks, social features, sharing
+                  </p>
                 </div>
-
-                {/* Simplified Farcaster Upsell for Web Users */}
-                <WebAppOnly>
-                  <div className="game-container py-2 px-4 text-center bg-blue-900/20 border border-blue-600">
-                    <p className="text-xs text-blue-200">
-                      Farcaster unlocks: streaks, social features, sharing
-                    </p>
-                  </div>
-                </WebAppOnly>
-              </div>
+              </WebAppOnly>
             )}
 
             {isAuthenticated && currentUser ? (
@@ -357,27 +242,39 @@ export default function Home() {
             ) : null}
 
             {/* Auth Error Display */}
-            {authError && (
+            {localAuthError && (
               <div className="game-container py-2 px-3 bg-red-900/20 border border-red-600 text-red-300 text-sm">
-                {authError}
+                {localAuthError}
               </div>
             )}
 
-            {/* Auth Flow Modal */}
+            {/* Auth Flow Modal - Overlay with backdrop */}
             {showAuthFlow && (
-              <WebAppErrorBoundary>
-                <AuthFlow
-                  onAuthSuccess={() => setShowAuthFlow(false)}
-                  onAuthError={(error) => setLocalAuthError(error)}
-                />
-              </WebAppErrorBoundary>
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <div className="bg-black border-2 border-white rounded-lg p-6 max-w-sm w-full">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-bold">Sign In</h2>
+                    <button
+                      onClick={() => setShowAuthFlow(false)}
+                      className="text-gray-400 hover:text-white text-2xl"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <WebAppErrorBoundary>
+                    <AuthFlow
+                      onAuthSuccess={() => setShowAuthFlow(false)}
+                      onAuthError={(error) => setLocalAuthError(error)}
+                    />
+                  </WebAppErrorBoundary>
+                </div>
+              </div>
             )}
           </div>
         </header>
 
-        {/* Main Content */}
-        {(showContent || (!showOnboarding && !isAuthenticated)) && (
-          <main className="space-y-4 md:space-y-6">
+        {/* Main Content - Always visible */}
+        <main className="space-y-4 md:space-y-6">
             {/* Navigation Tabs */}
             <WebAppNavigation
               selectedTab={selectedTab}
@@ -424,7 +321,7 @@ export default function Home() {
 
             {/* Tab Content */}
             <div className="min-h-[400px]">
-              {selectedTab === "stats" && showContent && (
+              {selectedTab === "stats" && (
                 <PersonalDashboard
                   networkData={networkData}
                   isLoading={isLoading}
@@ -457,7 +354,7 @@ export default function Home() {
                 </>
               )}
 
-              {selectedTab === "networks" && showContent && (
+              {selectedTab === "networks" && (
                 <div className="space-y-4">
                   <NetworkSelector
                     networks={Object.keys(networkData)}
@@ -471,7 +368,7 @@ export default function Home() {
                 </div>
               )}
 
-              {selectedTab === "leaderboard" && showContent && (
+              {selectedTab === "leaderboard" && (
                 <Leaderboard
                   data={networkData}
                   selectedNetwork={selectedNetwork}
@@ -479,24 +376,11 @@ export default function Home() {
                 />
               )}
 
-              {selectedTab === "predictions" && showContent && (
+              {selectedTab === "predictions" && (
                 <PredictionMarket />
               )}
             </div>
-          </main>
-        )}
-
-        {/* Loading State */}
-        {!showContent && !showOnboarding && (
-          <div className="text-center py-12">
-            <div className="game-container py-6 px-4">
-              <div className="text-lg mb-4">🎮 Loading...</div>
-              <div className="text-sm text-gray-400">
-                Preparing your fitness dashboard
-              </div>
-            </div>
-          </div>
-        )}
+        </main>
       </div>
     </div>
   );

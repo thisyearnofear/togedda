@@ -3,10 +3,10 @@ import { createMiniAppMetadata, MINIAPP_EMBEDS } from "@/lib/miniapp/metadata";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "Admin Panel - Imperfect Form",
-    description: "Administrative controls for Imperfect Form",
+    title: "Admin Panel - Togedda",
+    description: "Administrative controls for Togedda",
     openGraph: {
-      title: "Admin Panel - Imperfect Form",
+      title: "Admin Panel - Togedda",
       description: "Administrative controls for fitness tracking",
     },
     other: createMiniAppMetadata({

@@ -1,8 +1,8 @@
 {
   "accountAssociation": {
-    "header": "eyJmaWQiOjUyNTQsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHg4QjAzQTJDMzY1YzI2MUFlQmU2ODQyMjREQkI2Qzk1OTJhQkNkRkIyIn0",
+    "header": "eyJmaWQiOjUyNTQsInR5cGUiOiJhdXRoIiwia2V5IjoiMHhkODY1Q2Q3Y2NjOTFGODM2OTJhQjMzMDk4MWMzRTNlOWQ3QTA1MjZBIn0",
     "payload": "eyJkb21haW4iOiJ0b2dlZGRhLnZlcmNlbC5hcHAifQ",
-    "signature": "MHhlMTFjNzU2OTY3ZGZhNDUzZGY4NGRlYmZhOGUwMTI4ODc1Yjk2M2M5ZTYwZTFjMDNmMzlmNzUwYTdhODUzNmY3MzE5ZmJmNjZlYWRkMTAzNjlkZDg5YjhiZTU5ZTU2YTNmYzc4OTY5Y2RlYWJkYTFjMDkyMDU5OTk4MjhlNTY1NTFi"
+    "signature": "HjfQ3K+tINvl2tMpf9izh0Dttt+oTG+cOo9n9zqMx2YMzxuIPvxQGcT81XadpfgyFPFBpWDt5LxYKlyAziMGHxs="
   },
   "miniApp": {
     "version": "1",
@@ -10,18 +10,9 @@
     "iconUrl": "https://togedda.vercel.app/logo.png",
     "homeUrl": "https://togedda.vercel.app",
     "splashImageUrl": "https://togedda.vercel.app/splash.png",
-    "splashBackgroundColor": "#000000",
     "webhookUrl": "https://togedda.vercel.app/api/webhook",
-    "subtitle": "Cross-chain fitness tracking",
-    "description": "Togedda helps you track push-ups and squats across multiple blockchain networks with a retro-gamified style.",
-    "primaryCategory": "health-fitness",
-    "tags": ["fitness", "blockchain", "gamification", "prediction-market"],
     "heroImageUrl": "https://togedda.vercel.app/hero.png",
-    "tagline": "Fitness goals on-chain",
-    "ogTitle": "Togedda",
-    "ogDescription": "Track fitness goals across blockchain networks with a retro-gamified style",
     "ogImageUrl": "https://togedda.vercel.app/og.png",
-    "screenshotUrls": ["https://togedda.vercel.app/hero.png"],
-    "noindex": false
+    "screenshotUrls": ["https://togedda.vercel.app/hero.png"]
   }
 }

@@ -8,8 +8,8 @@
  */
 
 import { ethers } from "ethers";
-import { unifiedPredictionMarketABI } from "./unified-prediction-market-abi";
-import { getChainName, getChainSwitchInfo } from "./config/chains";
+import { unifiedPredictionMarketABI } from "../unified-prediction-market-abi";
+import { getChainName, getChainSwitchInfo } from "../config/chains";
 
 // Chain configurations
 export const CHAIN_CONFIG = {

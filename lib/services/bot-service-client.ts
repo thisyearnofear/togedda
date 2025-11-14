@@ -3,7 +3,7 @@
  * Handles communication with the Northflank-deployed XMTP bot service
  */
 
-import { env } from './env';
+import { env } from '../env';
 
 // Default to local development, but use Hetzner VPS in production
 const BOT_SERVICE_URL = env.XMTP_BOT_SERVICE_URL ||

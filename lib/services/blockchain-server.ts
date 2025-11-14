@@ -11,7 +11,7 @@ import {
   BASE_CONTRACT_ADDRESS,
   fitnessLeaderboardABI,
   RPC_URLS,
-} from "./constants";
+} from "../constants";
 
 // Contract addresses
 export const CONTRACT_ADDRESSES = {

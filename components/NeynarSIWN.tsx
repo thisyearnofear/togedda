@@ -30,7 +30,7 @@ export default function NeynarSIWN({
 
   return (
     <div className={className}>
-      <NeynarAuthButton variant="primary" />
+      <NeynarAuthButton variant="farcaster" />
     </div>
   );
 }

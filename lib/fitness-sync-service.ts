@@ -1,4 +1,4 @@
-import { fetchAllNetworksDataServer, getMultiAddressFitnessDataServer, NetworkData, Score } from './blockchain-server';
+import { fetchAllNetworksDataServer, getMultiAddressFitnessDataServer, NetworkData, Score } from './services/blockchain-server';
 import { getUserStreak, UserStreak } from './streaks-service-pg';
 import pool from './db';
 

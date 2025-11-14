@@ -14,7 +14,7 @@ export default function NeynarSIWN({
   onAuthError,
   className = "",
 }: NeynarSIWNProps) {
-  const { user, isLoading } = useNeynarContext();
+  const { user } = useNeynarContext();
 
   // Handle auth success when user changes
   React.useEffect(() => {

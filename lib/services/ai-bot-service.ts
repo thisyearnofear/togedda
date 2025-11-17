@@ -15,13 +15,13 @@ import { ethers } from 'ethers';
 import { startHealthServer } from './health-server';
 import axios from 'axios';
 // AgentKit and Basenames integration
-import { getAgentKitInstance, generateAgentKitPredictionProposal } from './agentkit-integration';
-import { resolveUsernameForPrediction, formatResolutionForDisplay } from './basenames-integration';
+import { getAgentKitInstance, generateAgentKitPredictionProposal } from '../agentkit-integration';
+import { resolveUsernameForPrediction, formatResolutionForDisplay } from '../basenames-integration';
 import {
   validateXMTPEnvironment,
   initializeXMTPClient
-} from './xmtp-helpers';
-import { CHAT_CONFIG, BOT_CONFIG } from './xmtp-constants';
+} from '../xmtp-helpers';
+import { CHAT_CONFIG, BOT_CONFIG } from '../xmtp-constants';
 import { getMarketSummaryForBot, getNetworkStatsForBot, getLiveMarketData } from './contract-data-service';
 import { getChainSummaryForBot, recommendChainForUser, CHAIN_CONFIG } from './dual-chain-service';
 import {
@@ -29,8 +29,8 @@ import {
   getCryptoPriceData,
   getWeatherData,
   getUserLocationFromIP
-} from './services/external-data-service';
-import { getLocationFromIP, getUserContext } from './services/location-context-service';
+} from './external-data-service';
+import { getLocationFromIP, getUserContext } from './location-context-service';
 
 // AI model API configuration
 const AI_MODEL_API = process.env.AI_MODEL_API || 'https://api.openai.com/v1/chat/completions';
@@ -177,7 +177,7 @@ export async function processQueuedMessages(openaiApiKey: string): Promise<void>
     completeMessage,
     failMessage,
     cleanupOldMessages
-  } = await import('./xmtp-message-queue');
+  } = await import('../xmtp-message-queue');
 
   // Process messages at configured intervals
   setInterval(async () => {
@@ -407,7 +407,7 @@ export async function generatePredictionProposal(userMessage: string, apiKey: st
         const liveData = await getLiveMarketData();
 
         // Get resolution monitoring status
-        const { getResolutionStatus } = await import('./services/prediction-resolution-service');
+        const { getResolutionStatus } = await import('./prediction-resolution-service');
         const resolutionStatus = getResolutionStatus();
 
         // Get current crypto prices for context
@@ -683,7 +683,7 @@ export async function proposePredictionToContract(predictionText: string, propos
     console.log(`Creating prediction via dual-chain service: ${predictionText} by ${proposerAddress}`);
 
     // Parse prediction data from text
-    const { parsePredictionFromText } = await import('./xmtp-prediction-helpers');
+    const { parsePredictionFromText } = await import('../xmtp-prediction-helpers');
     const predictionData = parsePredictionFromText(predictionText);
 
     // Import dual-chain service
@@ -763,7 +763,7 @@ export async function startAIBotService(): Promise<void> {
 
     // Initialize prediction resolution system (on-demand)
     try {
-      const { initializePredictionResolution } = await import('./services/prediction-resolution-service');
+      const { initializePredictionResolution } = await import('./prediction-resolution-service');
       await initializePredictionResolution();
       console.log(`🎯 Prediction resolution system ready (on-demand mode)`);
     } catch (error) {

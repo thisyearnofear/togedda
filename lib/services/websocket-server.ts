@@ -5,7 +5,7 @@
 
 import { Server as SocketIOServer } from 'socket.io';
 import { Server as HTTPServer } from 'http';
-import { messageStore, type StoredMessage } from './xmtp-message-store';
+import { messageStore, type StoredMessage } from '../xmtp-message-store';
 
 interface SocketData {
   userId?: string;

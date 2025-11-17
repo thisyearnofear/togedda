@@ -31,6 +31,9 @@ import Confetti from "@/components/Confetti";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
 import { predictionMarketABI } from "@/lib/constants";
 import TransactionSuccessModal from "./TransactionSuccessModal";
+import VerificationStatus from "./VerificationStatus";
+import ProofPanel from "./ProofPanel";
+import RecoveryWidget from "./RecoveryWidget";
 import {
   CHAIN_CONFIG,
   type SupportedChain,
@@ -90,11 +93,17 @@ const ChainAwarePredictionCard: React.FC<ChainAwarePredictionCardProps> = ({
     claimed: boolean;
   } | null>(null);
   const [feeInfo, setFeeInfo] = useState<FeeInfo | null>(null);
+  const [showProof, setShowProof] = useState(false);
 
   // Determine chain from prediction network or use provided chain
   const detectedChain: SupportedChain =
     chain ||
-    (prediction.network.toLowerCase().includes("celo") ? "celo" : "base");
+    (prediction.network.toLowerCase().includes("celo")
+      ? "celo"
+      : prediction.network.toLowerCase().includes("bnb") ||
+        prediction.network.toLowerCase().includes("bsc")
+      ? "bsc"
+      : "base");
 
   const chainConfig = CHAIN_CONFIG[detectedChain];
   const stakingRecs = getStakingRecommendations(detectedChain);
@@ -475,6 +484,21 @@ Check it out: ${env.NEXT_PUBLIC_URL}`;
                 </div>
               </div>
             )}
+            <div className="mt-3 space-y-2">
+              <VerificationStatus
+                predictionId={prediction.id}
+                chain={detectedChain}
+                exerciseType={"pushups"}
+                requiredAmount={100}
+              />
+              <button
+                onClick={() => setShowProof(true)}
+                className="w-full text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 px-2 py-1 rounded"
+              >
+                View Proof
+              </button>
+              <RecoveryWidget prediction={prediction} />
+            </div>
           </div>
         )}
 
@@ -521,6 +545,14 @@ Check it out: ${env.NEXT_PUBLIC_URL}`;
           >
             <FaShare className="mr-1" size={10} /> Share
           </button>
+        )}
+
+        {showProof && (
+          <ProofPanel
+            predictionId={prediction.id}
+            chain={detectedChain}
+            onClose={() => setShowProof(false)}
+          />
         )}
       </div>
     );

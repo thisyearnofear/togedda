@@ -22,6 +22,7 @@ import {
 import { parseEther } from "viem";
 import { ethers } from "ethers";
 import ChainAwarePredictionCard from "./ChainAwarePredictionCard";
+import CreatePrediction from "./CreatePrediction";
 import ChatButton from "./ChatButton";
 import {
   FaLightbulb,
@@ -64,7 +65,7 @@ const PredictionMarket: React.FC = () => {
   );
 
   // Mobile-first UI state
-  const [selectedChain, setSelectedChain] = useState<"all" | "celo" | "base">(
+  const [selectedChain, setSelectedChain] = useState<"all" | "celo" | "base" | "bsc">(
     "all"
   );
   const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
@@ -75,7 +76,7 @@ const PredictionMarket: React.FC = () => {
     amount?: string;
     predictionTitle?: string;
     currency?: string;
-    chain?: "base" | "celo";
+    chain?: "base" | "celo" | "bsc";
     predictionId?: number;
   }>({ type: "stake", hash: "", amount: "" });
 
@@ -109,6 +110,7 @@ const PredictionMarket: React.FC = () => {
   const [expandedNetworks, setExpandedNetworks] = useState<{
     [key: string]: boolean;
   }>({});
+  const [showCreate, setShowCreate] = useState(false);
 
   // Dual-chain network configuration - focused on CELO + Base
   const networks = [
@@ -133,6 +135,17 @@ const PredictionMarket: React.FC = () => {
       stakingNote: "Free testnet ETH - perfect for experimentation",
       isProduction: false,
       currency: "ETH",
+    },
+    {
+      id: "bsc",
+      name: "BNB Chain",
+      emoji: "🟡",
+      color: "bnb",
+      tagline: "Fast & Low Fees",
+      description: "High-performance predictions with low gas costs",
+      stakingNote: "Great UX for hackathon judging",
+      isProduction: true,
+      currency: "BNB",
     },
   ];
 
@@ -633,6 +646,9 @@ const PredictionMarket: React.FC = () => {
               ? `Updated ${lastRefresh.toLocaleTimeString()}`
               : "Live markets across multiple chains"}
           </p>
+          <div className="mt-3">
+            <button onClick={() => setShowCreate(true)} className="px-3 py-1.5 bg-yellow-500 text-black rounded text-xs font-bold">Create Prediction</button>
+          </div>
         </div>
 
         {/* Tab Navigation - Simplified */}
@@ -697,16 +713,26 @@ const PredictionMarket: React.FC = () => {
               >
                 🟡 CELO
               </button>
-              <button
-                onClick={() => setSelectedChain("base")}
-                className={`px-4 py-1.5 rounded text-xs font-medium transition-colors ${
-                  selectedChain === "base"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                }`}
-              >
-                🔵 Base
-              </button>
+            <button
+              onClick={() => setSelectedChain("base")}
+              className={`px-4 py-1.5 rounded text-xs font-medium transition-colors ${
+                selectedChain === "base"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+              }`}
+            >
+              🔵 Base
+            </button>
+            <button
+              onClick={() => setSelectedChain("bsc")}
+              className={`px-4 py-1.5 rounded text-xs font-medium transition-colors ${
+                selectedChain === "bsc"
+                  ? "bg-yellow-500 text-black"
+                  : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+              }`}
+            >
+              🟡 BNB
+            </button>
             </div>
 
             {isLoading ? (
@@ -728,11 +754,7 @@ const PredictionMarket: React.FC = () => {
                   const filteredPredictions =
                     selectedChain === "all"
                       ? allPredictions
-                      : allPredictions.filter((p) =>
-                          selectedChain === "celo"
-                            ? p.chainKey === "celo"
-                            : p.chainKey === "base"
-                        );
+                      : allPredictions.filter((p) => p.chainKey === selectedChain);
 
                   if (filteredPredictions.length === 0) {
                     return (
@@ -1068,6 +1090,10 @@ const PredictionMarket: React.FC = () => {
           invalidatePredictions();
         }}
       />
+
+      {showCreate && (
+        <CreatePrediction onClose={() => setShowCreate(false)} />
+      )}
     </WarpcastWallet>
   );
 };

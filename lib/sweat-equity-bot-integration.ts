@@ -363,6 +363,36 @@ export class SweatEquityBotService {
       return [];
     }
   }
+
+  async createChallenge(
+    predictionId: number,
+    exerciseType: number,
+    targetAmount: number,
+    userAddress: string
+  ): Promise<{ success: boolean; txHash?: string; challengeId?: number; error?: string }> {
+    if (!SWEAT_EQUITY_BOT_ADDRESSES[this.network as keyof typeof SWEAT_EQUITY_BOT_ADDRESSES]) {
+      return { success: false, error: 'Contract address not configured' };
+    }
+    try {
+      const { getAgentKitInstance } = await import('./agentkit-integration');
+      const agentKit = await getAgentKitInstance();
+      const tx = await agentKit.executeGaslessTransaction(
+        SWEAT_EQUITY_BOT_ADDRESSES[this.network as keyof typeof SWEAT_EQUITY_BOT_ADDRESSES],
+        'createSweatEquityChallenge',
+        [predictionId, exerciseType, targetAmount],
+        userAddress,
+        SWEAT_EQUITY_BOT_ABI as ReadonlyArray<any>
+      );
+      if (!tx.success) {
+        return { success: false, error: tx.error || 'Gasless transaction failed' };
+      }
+      const challenges = await this.getUserChallenges(userAddress);
+      const challengeId = challenges.length > 0 ? challenges[challenges.length - 1] : undefined;
+      return { success: true, txHash: tx.txHash, challengeId };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Unknown error' };
+    }
+  }
 }
 
 // Export singleton instance (defaults to Base mainnet)

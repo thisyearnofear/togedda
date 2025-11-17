@@ -338,6 +338,47 @@ export default function AuthFlow({
 
               {/* Wallet Connection Options */}
               <div className="space-y-2">
+                {/* WalletConnect presets for Binance and Trust Wallet */}
+                {connectors.some((c) => c.id === "walletConnect") && (
+                  <div className="mb-2">
+                    {/** inline import for presets */}
+                    <div className="bg-black bg-opacity-40 border border-gray-700 rounded p-2">
+                      <div className="text-xs text-gray-400 mb-2">Quick Connect</div>
+                      {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+                      {/* Component inline to avoid separate import ordering issues */}
+                      <div>
+                        {/* Presets */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            onClick={() => {
+                              const wc = connectors.find((c) => c.id === "walletConnect");
+                              if (wc) {
+                                setSelectedMethod("wallet");
+                                handleWalletConnect(wc);
+                              }
+                            }}
+                            className="flex items-center justify-center gap-2 px-3 py-2 rounded bg-yellow-500 text-black text-xs font-bold"
+                          >
+                            🟡 Binance Wallet
+                          </button>
+                          <button
+                            onClick={() => {
+                              const wc = connectors.find((c) => c.id === "walletConnect");
+                              if (wc) {
+                                setSelectedMethod("wallet");
+                                handleWalletConnect(wc);
+                              }
+                            }}
+                            className="flex items-center justify-center gap-2 px-3 py-2 rounded bg-blue-600 text-white text-xs font-bold"
+                          >
+                            🔷 Trust Wallet
+                          </button>
+                        </div>
+                        <div className="text-[10px] text-gray-500 mt-1">Select your wallet in the WalletConnect prompt</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {connectors
                   .filter((connector) => connector.id !== "farcasterFrame") // Exclude frame connector in web app
                   .map((connector) => (

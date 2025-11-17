@@ -5,9 +5,9 @@
  */
 
 import { Client, type XmtpEnv, type Conversation } from "@xmtp/node-sdk";
-import { initializeXMTPClient, validateXMTPEnvironment } from "./xmtp-helpers";
-import { enhancedMessageStore } from "./enhanced-message-store";
-import { processGroupFitnessCommand } from "./group-fitness-agent";
+import { initializeXMTPClient, validateXMTPEnvironment } from "../xmtp-helpers";
+import { enhancedMessageStore } from "../enhanced-message-store";
+import { processGroupFitnessCommand } from "../group-fitness-agent";
 
 export interface AgentMessage {
   id: string;

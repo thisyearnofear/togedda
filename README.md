@@ -18,6 +18,7 @@
 
 For detailed information about the project, please refer to the following documentation:
 
+- **[BNB Hackathon Roadmap](./docs/BNB_HACKATHON_ROADMAP.md)** - Complete 3-week sprint plan with UI/UX improvements 🚀
 - [Project Overview](./docs/PROJECT_OVERVIEW.md) - Complete overview of Togedda's features and concept
 - [Technical Details](./docs/TECHNICAL_DETAILS.md) - In-depth technical documentation and implementation details
 - [Deployment Report](./docs/DEPLOYMENT_REPORT.md) - Deployment success report and system specifications

@@ -562,7 +562,8 @@ Ready to create your prediction?`;
     contractAddress: string,
     functionName: string,
     args: any[],
-    userAddress: string
+    userAddress: string,
+    abiOverride?: ReadonlyArray<any>
   ): Promise<{ success: boolean; txHash?: string; error?: string }> {
     try {
       if (!this.isAgentKitAvailable || !this.agentkit) {
@@ -594,15 +595,15 @@ Ready to create your prediction?`;
       }
 
       // Import contract ABI and ethers for contract interaction
-      const { unifiedPredictionMarketABI } = await import(
-        "./unified-prediction-market-abi"
-      );
       const { ethers } = await import("ethers");
-
-      // Create contract interface for encoding function call
-      const contractInterface = new ethers.Interface(
-        unifiedPredictionMarketABI
-      );
+      let abi: ReadonlyArray<any> | undefined = abiOverride;
+      if (!abi) {
+        const { unifiedPredictionMarketABI } = await import(
+          "./unified-prediction-market-abi"
+        );
+        abi = unifiedPredictionMarketABI as ReadonlyArray<any>;
+      }
+      const contractInterface = new ethers.Interface(abi as any);
       const encodedData = contractInterface.encodeFunctionData(
         functionName,
         args

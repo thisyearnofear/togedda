@@ -275,6 +275,22 @@ export default function Home() {
 
         {/* Main Content - Always visible */}
         <main className="space-y-4 md:space-y-6">
+            <div className="bg-black bg-opacity-50 border border-yellow-600 rounded-lg p-4">
+              <div className="text-center">
+                <div className="text-xl font-bold">Turn Fitness Goals Into Wins</div>
+                <div className="text-sm text-gray-300 mt-1">Stake on goals. Fail? Recover by sweating.</div>
+                <div className="flex items-center justify-center gap-4 mt-3 text-xs text-gray-400">
+                  <div>Live • Fast Verification</div>
+                  <div>BNB‑aligned UX</div>
+                </div>
+                <button
+                  onClick={() => setSelectedTab("predictions")}
+                  className="mt-4 px-4 py-2 bg-yellow-500 text-black font-bold rounded hover:bg-yellow-400"
+                >
+                  Start Your First Prediction
+                </button>
+              </div>
+            </div>
             {/* Navigation Tabs */}
             <WebAppNavigation
               selectedTab={selectedTab}

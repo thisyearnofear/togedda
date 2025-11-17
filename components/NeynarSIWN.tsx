@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { NeynarAuthButton, useNeynarContext } from "@neynar/react";
+import { NeynarAuthButton, useNeynarContext, SIWN_variant } from "@neynar/react";
 
 interface NeynarSIWNProps {
   onAuthSuccess?: (user: any) => void;
@@ -30,7 +30,7 @@ export default function NeynarSIWN({
 
   return (
     <div className={className}>
-      <NeynarAuthButton variant="farcaster" />
+      <NeynarAuthButton variant={SIWN_variant.FARCASTER} />
     </div>
   );
 }

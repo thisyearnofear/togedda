@@ -168,7 +168,7 @@ export const useMiniKitAuth = ({ autoSignIn = false }: { autoSignIn?: boolean })
 
       const referrerFid =
         context.location?.type === "cast_embed"
-          ? context.location.cast.fid
+          ? context.location.cast.author.fid
           : null;
 
       const res = await fetch("/api/auth/sign-in", {

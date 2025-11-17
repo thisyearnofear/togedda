@@ -1,8 +1,11 @@
-# 🚀 Togedda - Collective Fitness Goals Platform
+# 🚀 Togedda - Fitness Prediction Market with Effort-Based Recovery
 
 ## 🏆 **Revolutionary Concept**
 
-**Togedda** is a platform for collective fitness goals that combines community challenges, prediction markets, and social interaction through blockchain technology. Users can participate in large-scale fitness challenges, make predictions about their performance, and interact with others through secure messaging.
+**Togedda** is a prediction market platform that turns fitness goals into wins. Stake on your exercise predictions, and if you fail, recover 80% of your stake by completing extra exercise challenges. Verified through a fast cross-chain oracle system that resolves in <2 hours.
+
+**Built for**: [BNB Chain Prediction Markets Hackathon](https://dorahacks.io/hackathon/predictionmarketshackathon/detail)  
+**Detailed Roadmap**: [BNB_HACKATHON_ROADMAP.md](./BNB_HACKATHON_ROADMAP.md)
 
 ### **Core Features**
 - **Collective Goals**: Community-wide fitness challenges with shared targets

@@ -9,6 +9,7 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import Confetti from "../Confetti";
+import { CHAIN_CONFIG } from "@/lib/services/dual-chain-service";
 
 interface TransactionSuccessModalProps {
   isOpen: boolean;
@@ -18,7 +19,7 @@ interface TransactionSuccessModalProps {
   predictionTitle?: string;
   stakeAmount?: string;
   currency?: string;
-  chain?: "celo" | "base";
+  chain?: "celo" | "base" | "bsc";
   predictionId?: number;
   onRefresh?: () => void;
 }
@@ -49,9 +50,9 @@ const TransactionSuccessModal: React.FC<TransactionSuccessModalProps> = ({
 
   const getExplorerUrl = () => {
     if (!transactionHash) return "";
-    return chain === "celo"
-      ? `https://explorer.celo.org/mainnet/tx/${transactionHash}`
-      : `https://sepolia.basescan.org/tx/${transactionHash}`;
+    const cfg = CHAIN_CONFIG[chain || "base"];
+    const base = cfg.blockExplorer || "";
+    return `${base}/tx/${transactionHash}`;
   };
 
   const getSuccessMessage = () => {

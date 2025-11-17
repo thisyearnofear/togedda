@@ -239,24 +239,25 @@ Smart Contracts → Social Graph Analysis → Prediction Markets
 ## 🎯 **Immediate Next Steps**
 
 ### **BNB Chain Prediction Markets Hackathon (November 2025)**
-- **Focus**: Demonstrate cross-platform sports prediction markets on BNB Chain
-- **Deliverable**: BNB Chain-integrated platform with centralized sports data from imperfectform/coach/abs
-- **Impact**: Enhanced prediction markets with multi-sports platform aggregation
+- **Focus**: Revolutionary fitness prediction market with effort-based stake recovery
+- **Deliverable**: Production-ready BNB Chain platform with <2hr cross-chain oracle verification
+- **Impact**: "Normal app" UX that makes prediction markets accessible + novel recovery mechanics
+- **Detailed Plan**: See [BNB_HACKATHON_ROADMAP.md](./BNB_HACKATHON_ROADMAP.md) for complete 3-week sprint
 
-#### **BNB Chain Integration Features**
-1. **Multi-Chain Support**: Add BNB Chain to existing multi-chain architecture
-2. **Sports Platform Centralization**: Unified dashboard for imperfectform, imperfectcoach, and imperfectabs
-3. **Cross-Platform Prediction Markets**: Create predictions spanning multiple sports platforms
-4. **Enhanced Oracle System**: BNB-specific verification and cross-chain mechanisms
-5. **Hackathon-Specific Predictions**: BNB Chain adoption and DeFi activity predictions
+#### **Hackathon Key Features**
+1. **BNB Chain Deployment**: Primary prediction market on BNB Chain mainnet
+2. **Fast Oracle System**: <2hr resolution vs UMA's 24-48hr delay
+3. **Effort-Based Recovery**: Recover 80% of stake by completing extra exercise
+4. **Cross-Chain Verification**: Read exercise data from Base/CELO/Polygon
+5. **Game-Like UI/UX**: Progress bars and goals, not DeFi interfaces
+6. **Clear Revenue Model**: 2% protocol fee + 0.5-1% recovery fee
 
-### **Development Priorities for Hackathon**
-1. **BNB Chain Frontend Integration** (Week 1)
-2. **Cross-Platform Data Aggregation** (Week 1-2)
-3. **Sports Central Dashboard** (Week 2)
-4. **Multi-Platform Prediction Markets** (Week 2-3)
-5. **Enhanced Oracle System** (Week 3)
-6. **Memory API Integration** (Post-hackathon, Q1 2025)
+### **Development Priorities for Hackathon (3 Weeks)**
+**Week 1**: BNB contracts + Oracle foundation + Off-chain attestor  
+**Week 2**: Complete UI/UX overhaul + Cross-chain integration  
+**Week 3**: Demo prep + Testing + Documentation  
+
+**Post-Hackathon**: Memory API Integration (Q1 2025)
 
 ### **Apply for Memory API Builder Rewards**
 - **Deadline**: October 28, 2025

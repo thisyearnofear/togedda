@@ -166,7 +166,7 @@ export async function processMessageDirect(
  */
 async function processWithAI(message: string, conversationId: string, context?: any): Promise<string> {
   try {
-    const { generatePredictionProposal } = await import('./ai-bot-service');
+    const { generatePredictionProposal } = await import('./services/ai-bot-service');
     
     // Enhanced message with context
     const enhancedMessage = context ?

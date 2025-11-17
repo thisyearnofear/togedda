@@ -25,7 +25,7 @@ export const appConfig = {
   chains: {
     supported: supportedChains,
     metadata: chainMetadata,
-    default: supportedChains[0], // Base as default
+    default: supportedChains[0],
   },
   
   // Feature flags

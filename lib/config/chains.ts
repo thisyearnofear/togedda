@@ -1,4 +1,4 @@
-import { base, baseSepolia, celo, polygon } from "viem/chains";
+import { base, baseSepolia, celo, polygon, bsc, bscTestnet } from "viem/chains";
 import { Chain } from "viem";
 
 // Define custom chain configurations for networks not in viem/chains
@@ -25,10 +25,30 @@ export const monad = {
 } as const satisfies Chain;
 
 // Supported chains configuration
-export const supportedChains = [base, baseSepolia, celo, polygon, monad] as const;
+export const supportedChains = [bsc, base, baseSepolia, celo, polygon, monad, bscTestnet] as const;
 
 // Chain metadata for UI display
 export const chainMetadata = {
+  [bsc.id]: {
+    name: "BNB Chain",
+    shortName: "BNB",
+    icon: "🟡",
+    color: "#F0B90B",
+    bgColor: "bg-bnb",
+    textColor: "text-black",
+    description: "High-performance EVM with low fees",
+    category: "layer1" as const,
+  },
+  [bscTestnet.id]: {
+    name: "BNB Testnet",
+    shortName: "BNB_T",
+    icon: "🟡",
+    color: "#F0B90B",
+    bgColor: "bg-bnb",
+    textColor: "text-black",
+    description: "BNB Chain testnet for development",
+    category: "layer1" as const,
+  },
   [base.id]: {
     name: "Base",
     shortName: "BASE",
@@ -83,6 +103,20 @@ export const chainMetadata = {
 
 // RPC Configuration with fallbacks
 export const rpcConfig = {
+  [bsc.id]: {
+    primary: "https://bsc-dataseed.binance.org",
+    fallbacks: [
+      "https://rpc.ankr.com/bsc",
+      "https://bsc.rpc.blxrbdn.com",
+    ],
+  },
+  [bscTestnet.id]: {
+    primary: "https://data-seed-prebsc-1-s1.binance.org:8545",
+    fallbacks: [
+      "https://endpoints.omniatech.io/v1/bsc/testnet/public",
+      "https://bsc-testnet.publicnode.com",
+    ],
+  },
   [base.id]: {
     primary: "https://mainnet.base.org",
     fallbacks: [
@@ -121,16 +155,20 @@ export const rpcConfig = {
 // Contract addresses per chain
 export const contractAddresses = {
   fitness: {
+    [bsc.id]: "0x...",
     [base.id]: "0x...", // TODO: Deploy fitness contract
     [celo.id]: "0x...",
     [polygon.id]: "0x...",
     [monad.id]: "0x...",
+    [bscTestnet.id]: "0x...",
   },
   predictionMarket: {
+    [bsc.id]: "0x...",
     [base.id]: "0x...", // TODO: Deploy prediction market contract
     [celo.id]: "0x...",
     [polygon.id]: "0x...",
     [monad.id]: "0x...",
+    [bscTestnet.id]: "0x...",
   },
 } as const;
 
@@ -167,6 +205,10 @@ export function getChainName(chainId: number): string {
 
   // Fallback for common chains not in our metadata
   switch (chainId) {
+    case 56:
+      return "BNB Chain";
+    case 97:
+      return "BNB Testnet";
     case 8453:
       return "Base Mainnet";
     case 84532:
@@ -206,6 +248,10 @@ export function getChainSwitchInfo(chainId: number) {
  */
 export function getExplorerUrl(chainId: number): string {
   switch (chainId) {
+    case 56:
+      return "https://bscscan.com";
+    case 97:
+      return "https://testnet.bscscan.com";
     case 8453:
       return "https://basescan.org";
     case 84532:
@@ -231,6 +277,10 @@ export function getChainDescription(chainId: number): string {
   }
 
   switch (chainId) {
+    case 56:
+      return "High-performance EVM with low fees";
+    case 97:
+      return "BNB Chain testnet for development";
     case 8453:
       return "Coinbase's L2 for production apps";
     case 84532:

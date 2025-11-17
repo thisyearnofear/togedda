@@ -5,7 +5,7 @@
  */
 
 import { ethers } from "ethers";
-import { type Prediction } from "./prediction-market-v2";
+import { type Prediction } from "../prediction-market-v2";
 import { fetchAllNetworksDataServer, type NetworkData } from "./blockchain-server";
 import { getAllChainPredictions, getChainPrediction, type ChainPrediction } from "./dual-chain-service";
 

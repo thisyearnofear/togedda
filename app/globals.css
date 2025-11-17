@@ -14,6 +14,7 @@
     --celo-color: 252, 177, 49;
     --base-color: 65, 108, 237;
     --monad-color: 0, 0, 0;
+    --bnb-color: 240, 185, 11;
 
     /* Goal colors */
     --pushups-color: 255, 105, 180;
@@ -138,6 +139,10 @@ body.miniapp-ready::-webkit-scrollbar {
 
     .bg-base-chain {
         background-color: rgb(var(--base-color));
+    }
+
+    .bg-bnb {
+        background-color: rgb(var(--bnb-color));
     }
 
     .bg-monad {

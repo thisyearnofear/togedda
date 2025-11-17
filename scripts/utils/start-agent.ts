@@ -6,7 +6,7 @@
  * Optimized for Base Batches Messaging Buildathon
  */
 
-import { fitnessAgent } from '../../lib/xmtp-agent-service';
+import { fitnessAgent } from '../../lib/services/xmtp-agent-service';
 
 async function startAgent() {
   console.log('🚀 Starting XMTP Fitness Agent for Base Batches Buildathon...\n');

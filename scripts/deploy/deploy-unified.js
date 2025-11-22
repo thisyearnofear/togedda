@@ -113,6 +113,10 @@ async function main() {
     explorerUrl = `https://sepolia.basescan.org/address/${contractAddress}`;
   } else if (network.chainId === 42220n) {
     explorerUrl = `https://celoscan.io/address/${contractAddress}`;
+  } else if (network.chainId === 56n) {
+    explorerUrl = `https://bscscan.com/address/${contractAddress}`;
+  } else if (network.chainId === 97n) {
+    explorerUrl = `https://testnet.bscscan.com/address/${contractAddress}`;
   }
 
   if (explorerUrl) {

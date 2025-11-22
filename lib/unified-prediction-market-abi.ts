@@ -106,6 +106,18 @@ export const unifiedPredictionMarketABI = [
     "type": "function"
   },
 
+  {
+    "inputs": [
+      {"internalType": "uint256", "name": "predictionId", "type": "uint256"},
+      {"internalType": "address", "name": "user", "type": "address"},
+      {"internalType": "uint256", "name": "amount", "type": "uint256"}
+    ],
+    "name": "releaseSweatEquityFunds",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+
   // View Functions
   {
     "inputs": [
@@ -143,6 +155,33 @@ export const unifiedPredictionMarketABI = [
   },
   {
     "inputs": [
+      {"internalType": "uint256", "name": "predictionId", "type": "uint256"}
+    ],
+    "name": "getPredictionDetails",
+    "outputs": [
+      {"internalType": "uint256", "name": "id", "type": "uint256"},
+      {"internalType": "address", "name": "creator", "type": "address"},
+      {"internalType": "string", "name": "title", "type": "string"},
+      {"internalType": "string", "name": "description", "type": "string"},
+      {"internalType": "uint256", "name": "targetDate", "type": "uint256"},
+      {"internalType": "uint256", "name": "targetValue", "type": "uint256"},
+      {"internalType": "uint256", "name": "currentValue", "type": "uint256"},
+      {"internalType": "uint8", "name": "category", "type": "uint8"},
+      {"internalType": "string", "name": "network", "type": "string"},
+      {"internalType": "string", "name": "emoji", "type": "string"},
+      {"internalType": "uint256", "name": "totalStaked", "type": "uint256"},
+      {"internalType": "uint256", "name": "yesVotes", "type": "uint256"},
+      {"internalType": "uint256", "name": "noVotes", "type": "uint256"},
+      {"internalType": "uint8", "name": "status", "type": "uint8"},
+      {"internalType": "bool", "name": "outcome", "type": "bool"},
+      {"internalType": "uint256", "name": "createdAt", "type": "uint256"},
+      {"internalType": "bool", "name": "autoResolvable", "type": "bool"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
       {"internalType": "uint256", "name": "predictionId", "type": "uint256"},
       {"internalType": "address", "name": "user", "type": "address"}
     ],
@@ -159,6 +198,19 @@ export const unifiedPredictionMarketABI = [
         "name": "",
         "type": "tuple"
       }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "uint256", "name": "predictionId", "type": "uint256"},
+      {"internalType": "address", "name": "user", "type": "address"}
+    ],
+    "name": "getUserStake",
+    "outputs": [
+      {"internalType": "uint256", "name": "amount", "type": "uint256"},
+      {"internalType": "bool", "name": "hasStake", "type": "bool"}
     ],
     "stateMutability": "view",
     "type": "function"
@@ -271,6 +323,18 @@ export const unifiedPredictionMarketABI = [
       {"internalType": "address", "name": "newOwner", "type": "address"}
     ],
     "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+] as const;
+
+export const unifiedPredictionMarketAdminABIExtensions = [
+  {
+    "inputs": [
+      {"internalType": "address", "name": "_sweatEquityBot", "type": "address"}
+    ],
+    "name": "setSweatEquityBot",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
